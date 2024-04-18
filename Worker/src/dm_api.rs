@@ -52,6 +52,7 @@ pub async fn get_session_id() -> Result<(), Error>
     headers.insert("Authorization", HeaderValue::from_str(&auth_str).expect("REASON"));
     let client = reqwest::Client::builder()
         .default_headers(headers)
+        .danger_accept_invalid_certs(true)
         .build()?;
 
     let response = client.post(env_dm_url).body(body_str).send().await?;
@@ -59,8 +60,8 @@ pub async fn get_session_id() -> Result<(), Error>
     println!("Status: {}", response.status());
     println!("Headers:\n{:#?}", response.headers());
 
-    let body = response.text().await?;
-    println!("Body:\n{}", body);
+    let body_result = response.text().await?;
+    println!("Body:\n{}", body_result);
 
     Ok(())
 }
