@@ -8,7 +8,7 @@ header {
   grid-column: 1 / 4;
 }
 
-.left-side {
+.left-sidebar {
   grid-column: 1 / 2;
 }
 
@@ -16,7 +16,7 @@ main {
   grid-column: 2 / 3;
 }
 
-.right-side {
+.right-sidebar {
   grid-column: 3 / 4;
 }
 
