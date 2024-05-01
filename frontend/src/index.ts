@@ -1,6 +1,6 @@
-import { gen_header } from "./header";
-import { gen_left_sidebar } from "./left-sidebar";
-import { gen_footer } from "./footer";
+import { gen_header } from "./header.js";
+import { gen_left_sidebar } from "./left-sidebar.js";
+import { gen_footer } from "./footer.js";
 
 function main()
 {

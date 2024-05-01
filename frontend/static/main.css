@@ -24,3 +24,22 @@ footer {
   grid-column: 1 / 4;
 }
         
+nav {
+  display: inline;
+  color: black;
+  text-align: center;
+  padding: 14px 16px;
+  text-decoration: none;
+}
+
+.nav {
+  top: 0px;
+  padding: 10px;
+}
+
+form.nav.right {
+  position: absolute;
+  right: 0px;
+  top: 0px;
+  padding: 10px;
+}
