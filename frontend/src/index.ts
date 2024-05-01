@@ -1,8 +1,18 @@
-// 1. Select the div element using the id property
-const app = document.getElementById("app");
-// 2. Create a new <p></p> element programmatically
-const p = document.createElement("p");
-// 3. Add the text content
-p.textContent = "Hello, World!";
-// 4. Append the p element to the div element
-app?.appendChild(p);
+import { gen_header } from "./header";
+import { gen_left_sidebar } from "./left-sidebar";
+import { gen_footer } from "./footer";
+
+function main()
+{
+    const app = document.getElementById("app");
+    app?.classList.add("parent");
+    app?.appendChild(gen_header());
+    app?.appendChild(gen_left_sidebar());
+    app?.appendChild(gen_footer());
+
+}
+
+window.onload = function() 
+{   
+    main();
+};
