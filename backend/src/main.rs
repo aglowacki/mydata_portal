@@ -74,10 +74,10 @@ async fn main()
 
     // Create a regular axum app.
     let app = Router::new()
-        .route("/slow", get(|| sleep(Duration::from_secs(5))))
-        .route("/forever", get(std::future::pending::<()>))
-        .route("/protected", get(protected))
-        .route("/authorize", post(authorize))
+        .route("/api/slow", get(|| sleep(Duration::from_secs(5))))
+        .route("/api/forever", get(std::future::pending::<()>))
+        .route("/api/protected", get(protected))
+        .route("/api/authorize", post(authorize))
         .layer((
             TraceLayer::new_for_http(),
             // Graceful shutdown will wait for outstanding requests to complete. Add a timeout so
@@ -138,6 +138,9 @@ async fn auth(username: &str, password: &str, claims: &mut Claims) -> Result<boo
     let mut dn = String::new();
     let svc_user = env::var("SVC_USER").unwrap();
     let svc_pass = env::var("SVC_PASS").unwrap();
+    let full_attr_str = env::var("AD_ATTR_VEC").unwrap();
+    let attr_parts = full_attr_str.split(":");
+    let attrs_vec = attr_parts.collect::<Vec<&str>>();
     let ad_url = env::var("AD_URL").unwrap();
     let ad_search_dn = env::var("AD_SEARCH_DN").unwrap();
     let mut ad_filter = String::new();
@@ -153,7 +156,7 @@ async fn auth(username: &str, password: &str, claims: &mut Claims) -> Result<boo
             &ad_search_dn,
             Scope::Subtree,
             &ad_filter,
-            vec!["cn", "sn", "mail", "employeeNumber"]
+            &attrs_vec
         )
         .await?;
     
@@ -163,8 +166,14 @@ async fn auth(username: &str, password: &str, claims: &mut Claims) -> Result<boo
         println!("{:?}", se);
         dn = se.dn;
         
-        
-        claims.employeeID = se.attrs["employeeNumber"][0].to_owned();
+        if se.attrs.contains_key("employeeNumber")
+        {
+            claims.employee_id = se.attrs["employeeNumber"][0].to_owned();
+        }
+        else if se.attrs.contains_key("employeeID")
+        {
+            claims.employee_id = se.attrs["employeeID"][0].to_owned();
+        }
         claims.mail = se.attrs["mail"][0].to_owned();
         claims.sn = se.attrs["sn"][0].to_owned();
         // Mandatory expiry time as UTC timestamp
@@ -198,7 +207,7 @@ async fn authorize(Json(payload): Json<AuthPayload>) -> Result<Json<AuthBody>, A
     }
     let mut claims = Claims
     {
-        employeeID : "0".to_owned(),
+        employee_id : "0".to_owned(),
         mail : "0".to_owned(),
         sn : "0".to_owned(),
         // Mandatory expiry time as UTC timestamp
@@ -300,7 +309,7 @@ impl Keys
 #[derive(Debug, Serialize, Deserialize)]
 struct Claims 
 {
-    employeeID: String,
+    employee_id: String,
     mail: String,
     sn: String,
     exp: usize,
