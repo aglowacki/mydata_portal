@@ -76,7 +76,7 @@ async fn main()
     let app = Router::new()
         .route("/api/slow", get(|| sleep(Duration::from_secs(5))))
         .route("/api/forever", get(std::future::pending::<()>))
-        .route("/api/protected", get(protected))
+        .route("/api/user_info", get(protected))
         .route("/api/authorize", post(authorize))
         .layer((
             TraceLayer::new_for_http(),
@@ -129,7 +129,7 @@ async fn protected(claims: Claims) -> Result<String, AuthError>
 {
     // Send the protected data to the user
     Ok(format!(
-        "Welcome to the protected area :)\nYour data:\n{claims}",
+        "{claims}",
     ))
 }
 
@@ -174,6 +174,14 @@ async fn auth(username: &str, password: &str, claims: &mut Claims) -> Result<boo
         {
             claims.employee_id = se.attrs["employeeID"][0].to_owned();
         }
+        if se.attrs.contains_key("department")
+        {
+            claims.department = se.attrs["department"][0].to_owned();
+        }
+        if se.attrs.contains_key("employeeType")
+        {
+            claims.employee_type =  se.attrs["employeeType"][0].to_owned();
+        }
         claims.mail = se.attrs["mail"][0].to_owned();
         claims.sn = se.attrs["sn"][0].to_owned();
         // Mandatory expiry time as UTC timestamp
@@ -209,6 +217,8 @@ async fn authorize(Json(payload): Json<AuthPayload>) -> Result<Json<AuthBody>, A
     {
         employee_id : "0".to_owned(),
         mail : "0".to_owned(),
+        department : "0".to_owned(),
+        employee_type : "0".to_owned(),
         sn : "0".to_owned(),
         // Mandatory expiry time as UTC timestamp
         exp : 2000000000,
@@ -221,7 +231,7 @@ async fn authorize(Json(payload): Json<AuthPayload>) -> Result<Json<AuthBody>, A
     }
     //println!("Claims {}", claims);
     // Create the authorization token
-    let token = encode(&Header::default(), &claims, &KEYS.encoding)
+    let token: String = encode(&Header::default(), &claims, &KEYS.encoding)
         .map_err(|_| AuthError::TokenCreation)?;
 
     // Send the authorized token
@@ -311,6 +321,8 @@ struct Claims
 {
     employee_id: String,
     mail: String,
+    department: String,
+    employee_type: String,
     sn: String,
     exp: usize,
 }
