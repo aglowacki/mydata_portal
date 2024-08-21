@@ -32,6 +32,11 @@ use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt};
 use std::env;
 use ldap3::{LdapConnAsync, Scope, SearchEntry};
 //use ldap3::result::Result;
+use ::bb8::{Pool, PooledConnection};
+use bb8_redis::RedisConnectionManager;
+use redis::AsyncCommands;
+
+use bb8_redis::bb8;
 
 static KEYS: Lazy<Keys> = Lazy::new(|| 
 {
@@ -52,6 +57,20 @@ async fn main()
         )
         .with(tracing_subscriber::fmt::layer().without_time())
         .init();
+
+    let manager = RedisConnectionManager::new("redis://localhost").unwrap();
+    let pool = bb8::Pool::builder().build(manager).await.unwrap();
+
+    {
+        // ping the database before starting
+        let mut conn = pool.get().await.unwrap();
+        //let keys : Vec<String> = con.hkeys("access_token:*")?;
+        ///conn.keys::<&str,()> ("access_token:*")
+        conn.set::<&str, &str, ()>("foo", "bar").await.unwrap();
+        let result: String = conn.get("foo").await.unwrap();
+        assert_eq!(result, "bar");
+    }
+    tracing::debug!("successfully connected to redis and pinged it");
 
     // Create a regular axum app.
     let app = Router::new()
@@ -114,7 +133,7 @@ async fn protected(claims: Claims) -> Result<String, AuthError>
     ))
 }
 
-async fn auth(username: &str, password: &str) -> Result<bool, ldap3::result::LdapError> 
+async fn auth(username: &str, password: &str, claims: &mut Claims) -> Result<bool, ldap3::result::LdapError> 
 {
     let mut dn = String::new();
     let svc_user = env::var("SVC_USER").unwrap();
@@ -134,7 +153,7 @@ async fn auth(username: &str, password: &str) -> Result<bool, ldap3::result::Lda
             &ad_search_dn,
             Scope::Subtree,
             &ad_filter,
-            //vec![]
+            vec!["cn", "sn", "mail", "employeeNumber"]
         )
         .await?;
     
@@ -143,6 +162,14 @@ async fn auth(username: &str, password: &str) -> Result<bool, ldap3::result::Lda
         let se = SearchEntry::construct(entry);
         println!("{:?}", se);
         dn = se.dn;
+        
+        
+        claims.employeeID = se.attrs["employeeNumber"][0].to_owned();
+        claims.mail = se.attrs["mail"][0].to_owned();
+        claims.sn = se.attrs["sn"][0].to_owned();
+        // Mandatory expiry time as UTC timestamp
+        claims.exp = 2000000000; // May 2033
+
         break;
     }
     let _res = stream.finish().await;
@@ -169,18 +196,21 @@ async fn authorize(Json(payload): Json<AuthPayload>) -> Result<Json<AuthBody>, A
     {
         return Err(AuthError::MissingCredentials);
     }
+    let mut claims = Claims
+    {
+        employeeID : "0".to_owned(),
+        mail : "0".to_owned(),
+        sn : "0".to_owned(),
+        // Mandatory expiry time as UTC timestamp
+        exp : 2000000000,
+
+    }; 
     // Here you can check the user credentials from a database
-    if false == auth(&payload.client_id, &payload.client_secret).await.unwrap_or(false)
+    if false == auth(&payload.client_id, &payload.client_secret, &mut claims).await.unwrap_or(false)
     {
         return Err(AuthError::WrongCredentials);
     }
-    let claims = Claims 
-    {
-        sub: "b@b.com".to_owned(),
-        company: "ACME".to_owned(),
-        // Mandatory expiry time as UTC timestamp
-        exp: 2000000000, // May 2033
-    };
+    //println!("Claims {}", claims);
     // Create the authorization token
     let token = encode(&Header::default(), &claims, &KEYS.encoding)
         .map_err(|_| AuthError::TokenCreation)?;
@@ -193,7 +223,7 @@ impl Display for Claims
 {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result 
     {
-        write!(f, "Email: {}\nCompany: {}", self.sub, self.company)
+        write!(f, "Email: {}\nName: {}", self.mail, self.sn)
     }
 }
 
@@ -270,8 +300,9 @@ impl Keys
 #[derive(Debug, Serialize, Deserialize)]
 struct Claims 
 {
-    sub: String,
-    company: String,
+    employeeID: String,
+    mail: String,
+    sn: String,
     exp: usize,
 }
 
