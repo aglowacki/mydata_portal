@@ -4,6 +4,11 @@ type User = {
     client_secret: string;
   };
 
+interface LoginResponse {
+    access_token: string;
+    token_type: string; 
+}
+
 export function setCookie(name: string, val: string) 
 {
     const date = new Date();
@@ -16,7 +21,7 @@ export function setCookie(name: string, val: string)
     document.cookie = name+"="+value+"; expires="+date.toUTCString()+"; path=/";
 }
 
-async function login_call(user: User): Promise<Response> 
+async function login_call(user: User): Promise<LoginResponse> 
 {
 
     const headers = new Headers({
@@ -40,9 +45,8 @@ async function login_call(user: User): Promise<Response>
         }
         else
         {
-            console.log(response);
-            setCookie('Test_Auth', response.statusText);
-            return response;
+            const data = await response.json();
+            return data as LoginResponse;
         }
     }
     catch (error) 
@@ -60,35 +64,44 @@ function gen_signin_form()
     //form.classList.add("right");
     form.setAttribute('id', 'loginForm');
     
-    const username_label = document.createElement("label");
-    username_label.textContent = 'Username:';
+    const logo_img = document.createElement('img');
+    logo_img.src ='https://login.anl.gov/idp/images/argonne_logo.png';
+    logo_img.width = 167;
+    logo_img.height = 67;
+
     const username_input = document.createElement("input");
-    //username_input.type = 'email';
     username_input.required = true;
     username_input.id = 'username';
+    username_input.placeholder = 'Argonne Username';
 
-    const password_label = document.createElement('label');
-    password_label.textContent = 'Password:';
     const password_input = document.createElement("input");
     password_input.type = 'password';
     password_input.required = true;
     password_input.id = 'password';
+    password_input.placeholder = 'Password';
 
     const submit_button = document.createElement('button');
     submit_button.textContent = 'Login';
     submit_button.type = 'submit';
-
-    form.appendChild(username_label);
+    
+    form.appendChild(logo_img);
+    form.appendChild(document.createElement('br'));
     form.appendChild(username_input);
-    form.appendChild(password_label);
+    form.appendChild(document.createElement('br'));
     form.appendChild(password_input);
+    form.appendChild(document.createElement('br'));
     form.appendChild(submit_button);
 
     form.addEventListener('submit', (event) => 
     {
         event.preventDefault();
         const user: User = { client_id: username_input.value, client_secret: password_input.value };
-        login_call(user);
+        const resp = login_call(user);
+        resp.then(lres =>
+        {
+            setCookie('access_token', lres.token_type + " " +lres.access_token);
+            window.location.reload();
+        });
     });
 
     return form;

@@ -125,12 +125,10 @@ async fn shutdown_signal()
     }
 }
 
-async fn protected(claims: Claims) -> Result<String, AuthError> 
+async fn protected(claims: Claims) -> Result<Json<Claims>, AuthError> 
 {
     // Send the protected data to the user
-    Ok(format!(
-        "{claims}",
-    ))
+    Ok(Json(claims))
 }
 
 async fn auth(username: &str, password: &str, claims: &mut Claims) -> Result<bool, ldap3::result::LdapError> 

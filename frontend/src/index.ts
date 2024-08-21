@@ -17,28 +17,17 @@ function getCookie(name: string): string
 
 async function check_user(): Promise<Response> 
 {
-    const auth_cookie:string = getCookie('Authorization');
-    /*
-    if (hasCookie('Authorization')) 
-    {
-        console.log('The cookie "myCookie" exists.');
-    }
-    else
-    {
-        console.log('The cookie "myCookie" does not exist.');
-    }
-    */ 
+    const auth_cookie:string = getCookie('access_token');
+
     const headers = new Headers({
         'Content-Type': 'application/json',
         'Accept': 'application/json',
         'Authorization': auth_cookie,
       });
     
-      // Create the requestOptions object
       const requestOptions: RequestInit = {
         method: 'GET',
         headers: headers,
-        //body: JSON.stringify(user),
       };
 
     try 
@@ -67,7 +56,7 @@ function main()
 
     check_user().then(response => 
     {
-                    console.log(response);
+                    //console.log(response);
                     app?.classList.add("parent");
                     app?.appendChild(gen_header());
                     app?.appendChild(gen_left_sidebar());
