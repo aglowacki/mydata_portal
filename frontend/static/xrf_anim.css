@@ -1,0 +1,65 @@
+
+#particle_0
+{
+    animation-name: beam_0;
+}
+
+#particle_1
+{
+    animation-name: beam_1;
+}
+
+.xray_particle
+{
+    width: 10px;
+    height: 10px;
+    background-color: red;
+    border-radius: 50%;
+    position: absolute;
+    animation-duration: 2s;
+    animation-timing-function: linear;
+    animation-delay: 0s;
+    animation-iteration-count: infinite;
+    animation-direction: normal;
+}
+
+.sample
+{
+    position: absolute;
+    top: 75%;
+    left: 50%;
+    width: 30px;
+    height: 30px;
+    background-color: aqua;
+    animation:spin 30s linear infinite;
+}
+
+@keyframes spin { 
+    100% { 
+        transform:rotate(360deg); 
+    } 
+}
+
+@keyframes beam_0
+{
+    0%   {background-color:red; left:10%; top:90%;}
+    25% {background-color:rgb(122, 28, 28); left:30%; top:81%;}
+    50% {background-color:rgb(122, 28, 28); left:50%; top:75%;}
+    100% {background-color:rgb(74, 135, 22); left:52%; top:85%;}
+    
+}
+
+@keyframes beam_1 
+{
+    0%   {background-color:red; left:10%; top:91%;}
+    25% {background-color:rgb(122, 28, 28); left:31%; top:80%;}
+    50% {background-color:rgb(122, 28, 28); left:50%; top:75%;}
+    100% {background-color:rgb(22, 28, 135); left:48%; top:65%;}
+    
+}
+
+/*
+ 25%  {background-color:yellow; left:20%; top:85%;}
+    50%  {background-color:blue; left:30%; top:80%;}
+    75%  {background-color:green; left:40%; top:78%;}
+   */
