@@ -1,3 +1,4 @@
+import { gen_anim } from "./intro_anim.js";
 
 type User = {
     client_id: string;
@@ -63,26 +64,31 @@ function gen_signin_form()
     //form.classList.add("nav");
     //form.classList.add("right");
     form.setAttribute('id', 'loginForm');
+    form.classList.add("login_center");
     
     const logo_img = document.createElement('img');
     logo_img.src ='https://login.anl.gov/idp/images/argonne_logo.png';
     logo_img.width = 167;
     logo_img.height = 67;
+    logo_img.classList.add("login_center");
 
     const username_input = document.createElement("input");
     username_input.required = true;
     username_input.id = 'username';
     username_input.placeholder = 'Argonne Username';
+    username_input.classList.add("login_center");
 
     const password_input = document.createElement("input");
     password_input.type = 'password';
     password_input.required = true;
     password_input.id = 'password';
     password_input.placeholder = 'Password';
+    password_input.classList.add("login_center");
 
     const submit_button = document.createElement('button');
     submit_button.textContent = 'Login';
     submit_button.type = 'submit';
+    submit_button.classList.add("login_center");
     
     form.appendChild(logo_img);
     form.appendChild(document.createElement('br'));
@@ -111,6 +117,7 @@ export function gen_login_form()
 {
     const main_div = document.createElement("div");
     main_div.appendChild(gen_signin_form());
+    main_div.appendChild(gen_anim());
 
     return main_div;
 }

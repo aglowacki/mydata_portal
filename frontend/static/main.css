@@ -109,8 +109,15 @@ form.nav.right {
   padding: 10px;
 }
 
+/*-------------------  login.ts ----------------------- */
 
+.login_center {
+  margin: auto;
+  display: block;
+  padding: 10px;
+}
 
+/*------------------- end login.ts ----------------------- */
 
 @media (prefers-color-scheme: dark) {
   /* just tweak the lightness */

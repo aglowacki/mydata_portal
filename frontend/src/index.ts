@@ -64,7 +64,6 @@ function main()
     }).catch(error =>
     {
         console.log(error);
-        app?.classList.add("parent");
         app?.appendChild(gen_login_form());
     }
     );
