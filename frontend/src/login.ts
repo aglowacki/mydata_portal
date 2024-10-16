@@ -124,6 +124,7 @@ function gen_signin_form()
         .catch(error => 
         {
             showToast(error.message);
+            throw error;
         }
         );
     });

@@ -1,0 +1,16 @@
+.toast {
+    position: fixed;
+    top: 20px;
+    right: 20px;
+    background-color: #f8f9fa;
+    border: 1px solid #dee2e6;
+    padding: 10px 20px;
+    border-radius: 5px;
+    z-index: 1000;
+  }
+  
+  .toast-body {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+  }

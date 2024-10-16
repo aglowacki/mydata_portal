@@ -56,7 +56,7 @@ function main()
 
     check_user().then(response => 
     {
-                    //console.log(response);
+                    console.log(response);
                     app?.classList.add("parent");
                     app?.appendChild(gen_header());
                     app?.appendChild(gen_left_sidebar());
