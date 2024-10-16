@@ -58,6 +58,19 @@ async function login_call(user: User): Promise<LoginResponse>
 
 }
 
+export function showToast(message: string, duration: number = 3000) 
+{
+    const toast = document.createElement("div");
+    toast.classList.add("toast");
+    toast.textContent = message;
+    document.body.appendChild(toast);
+  
+    setTimeout(() => 
+    {
+      toast.remove();
+    }, duration);
+}
+
 function gen_signin_form()
 {
     const form = document.createElement("form");
@@ -107,7 +120,12 @@ function gen_signin_form()
         {
             setCookie('access_token', lres.token_type + " " +lres.access_token);
             window.location.reload();
-        });
+        })
+        .catch(error => 
+        {
+            showToast(error.message);
+        }
+        );
     });
 
     return form;
@@ -117,7 +135,7 @@ export function gen_login_form()
 {
     const main_div = document.createElement("div");
     main_div.appendChild(gen_signin_form());
-    main_div.appendChild(gen_anim());
+    //main_div.appendChild(gen_anim());
 
     return main_div;
 }
