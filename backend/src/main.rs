@@ -227,6 +227,10 @@ async fn authorize(Json(payload): Json<AuthPayload>) -> Result<Json<AuthBody>, A
     {
         return Err(AuthError::WrongCredentials);
     }
+    if claims.employee_id == "0"
+    {
+        return Err(AuthError::WrongCredentials);
+    }
     //println!("Claims {}", claims);
     // Create the authorization token
     let token: String = encode(&Header::default(), &claims, &KEYS.encoding)
