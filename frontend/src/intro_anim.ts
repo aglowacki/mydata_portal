@@ -2,23 +2,21 @@
 export function gen_anim()
 {
     const main_div = document.createElement("div");
-
+    for (let i=0; i<6; i++)
+    {
+        const x_particle = document.createElement("div");
+        x_particle.id = 'particle_'+i;
+        x_particle.classList.add('xray_particle');
+        main_div.appendChild(x_particle);
+    }
+    
     const sample = document.createElement("div");
     sample.classList.add('sample');
-
-
-    const x_particle0 = document.createElement("div");
-    x_particle0.id = 'particle_0';
-    x_particle0.classList.add('xray_particle');
-
-    const x_particle1 = document.createElement("div");
-    x_particle1.id = 'particle_1';
-    x_particle1.classList.add('xray_particle');
-
-
-    main_div.appendChild(x_particle0);
-    main_div.appendChild(x_particle1);
     main_div.appendChild(sample);
+
+    const beam_pipe = document.createElement("div");
+    beam_pipe.classList.add('silver-pipe');
+    main_div.appendChild(beam_pipe);
 
     return main_div;
 }

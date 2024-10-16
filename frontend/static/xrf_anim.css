@@ -1,12 +1,29 @@
 
 #particle_0
 {
-    animation-name: beam_0;
+    animation-name: beam_0_0;
 }
-
 #particle_1
 {
-    animation-name: beam_1;
+    animation-name: beam_0_1;
+}
+
+#particle_2
+{
+    animation-name: beam_1_0;
+}
+#particle_3
+{
+    animation-name: beam_1_1;
+}
+
+#particle_4
+{
+    animation-name: beam_2_0;
+}
+#particle_5
+{
+    animation-name: beam_2_1;
 }
 
 .xray_particle
@@ -26,7 +43,7 @@
 .sample
 {
     position: absolute;
-    top: 75%;
+    top: 74%;
     left: 50%;
     width: 30px;
     height: 30px;
@@ -34,32 +51,79 @@
     animation:spin 30s linear infinite;
 }
 
+.silver-pipe {
+    /* Set the size of the pipe */
+    width: 200px;
+    height: 100px;
+  
+    /* Background color to simulate silver */
+    background-color: #c0c0c0;
+  
+    /* Round the corners of the pipe */
+    border-radius: 20px;
+  
+    /* Adjust the borders to simulate a pipe */
+    border-top: 5px solid transparent;
+    border-bottom: 5px solid transparent;
+    border-left: 5px solid #c0c0c0;
+    border-right: 5px solid #c0c0c0;
+  }
+
 @keyframes spin { 
     100% { 
         transform:rotate(360deg); 
     } 
 }
 
-@keyframes beam_0
+@keyframes beam_0_0
 {
-    0%   {background-color:red; left:10%; top:90%;}
-    25% {background-color:rgb(122, 28, 28); left:30%; top:81%;}
-    50% {background-color:rgb(122, 28, 28); left:50%; top:75%;}
+    0%   {background-color:red; left:11%; top:90%;}
+    15% {background-color:rgb(122, 28, 28); left:30%; top:81%;}
+    40% {background-color:rgb(122, 28, 28); left:50%; top:75%;}
+    60% {background-color:rgb(74, 135, 22); left:52%; top:85%;}
     100% {background-color:rgb(74, 135, 22); left:52%; top:85%;}
-    
 }
-
-@keyframes beam_1 
+@keyframes beam_0_1 
 {
     0%   {background-color:red; left:10%; top:91%;}
-    25% {background-color:rgb(122, 28, 28); left:31%; top:80%;}
-    50% {background-color:rgb(122, 28, 28); left:50%; top:75%;}
+    15% {background-color:rgb(122, 28, 28); left:31%; top:80%;}
+    40% {background-color:rgb(122, 28, 28); left:50%; top:75%;}
+    60% {background-color:rgb(22, 28, 135); left:48%; top:65%;}
     100% {background-color:rgb(22, 28, 135); left:48%; top:65%;}
-    
 }
 
-/*
- 25%  {background-color:yellow; left:20%; top:85%;}
-    50%  {background-color:blue; left:30%; top:80%;}
-    75%  {background-color:green; left:40%; top:78%;}
-   */
+@keyframes beam_1_0
+{
+    0%   {background-color:red; left:11%; top:90%;}
+    20%   {background-color:red; left:11%; top:90%;}
+    45% {background-color:rgb(122, 28, 28); left:32%; top:81%;}
+    60% {background-color:rgb(122, 28, 28); left:50%; top:75%;}
+    80% {background-color:rgb(74, 135, 22); left:54%; top:85%;}
+    100% {background-color:rgb(74, 135, 22); left:54%; top:85%;}
+}
+@keyframes beam_1_1 
+{
+    0%   {background-color:red; left:10%; top:91%;}
+    20%   {background-color:red; left:10%; top:91%;}
+    45% {background-color:rgb(122, 28, 28); left:31%; top:80%;}
+    60% {background-color:rgb(122, 28, 28); left:50%; top:75%;}
+    80% {background-color:rgb(22, 28, 135); left:50%; top:65%;}   
+    100% {background-color:rgb(22, 28, 135); left:50%; top:65%;}   
+}
+
+@keyframes beam_2_0
+{
+    0%   {background-color:red; left:10%; top:90%;}
+    40%   {background-color:red; left:10%; top:90%;}
+    65% {background-color:rgb(122, 28, 28); left:30%; top:81%;}
+    80% {background-color:rgb(122, 28, 28); left:50%; top:75%;}
+    100% {background-color:rgb(74, 135, 22); left:53%; top:85%;}
+}
+@keyframes beam_2_1 
+{
+    0%   {background-color:red; left:10%; top:91%;}
+    40%   {background-color:red; left:10%; top:91%;}
+    65% {background-color:rgb(122, 28, 28); left:31%; top:80%;}
+    80% {background-color:rgb(122, 28, 28); left:50%; top:75%;}
+    100% {background-color:rgb(22, 28, 135); left:49%; top:65%;}   
+}
