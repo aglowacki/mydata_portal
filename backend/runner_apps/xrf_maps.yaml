@@ -1,0 +1,68 @@
+Apps:
+  XRF-Maps:
+    Path: ''
+    Exe: ''
+    Args:
+      Dir:
+        Desc: "Parent Directory to process"
+        Decorator: "Browse,LineEdit"
+        Translator: "--dir"
+      Files:
+        Desc: "List of datasets to process. Comma separated"
+        Decorator: "ListBox"
+        Translator: "--files"
+      Analysis:
+        Desc: "How to fit the spectra"
+        Decorator: "Options:roi,nnls,matrix"
+        Translator: "--fit"
+      Detectors:
+        # can also use --detector-range : <int:int> Detector range 0:3 will process 0,1,2,3 detectors
+        Desc: "Which detectors to fit"
+        Decorator: "List"
+        Translator: "--detectors"
+      OptimizeParams:
+        Desc: "Optimize the fitting parameters before per pixel fitting"
+        Decorator: "Options:user,matrix,without tails,tails,free energy,without tails and fit quadratic energy"
+        Translator: "--optimize-fit-override-params"
+      OptimizeFitRoutine:
+        Desc: "Which routine to use when optimizing fit parameters"
+        Decorator: "Options:general,hybrid"
+        Translator: "--optimize-fit-routine"
+      OptimizeRois:
+        Desc: "Look for Regions of Interest maps, integrate those spectra in the maps and fit."
+        Decorator: "Checkbox"
+        Translator: "--optimize-rois"
+      Quantification:
+        Desc: "Perform quantification using definition file."
+        Decorator: "LineEdit:maps_standardinfo.txt"
+        Translator: "--quantify-with"
+      QuantifyFit:
+        Desc: "Which fitting routine to use to quantify. This is needed if you don't want to refit per pixel. If you specify --fit you don't need this."
+        Decorator: "Options:roi,nnls,matrix"
+        Translator: "--quantify-fit"
+      GenerateAverage:
+        Desc: "Generate an average h5 file from all detectors that were processed."
+        Decorator: "Checkbox"
+        Translator: "--generate-avg-h5"
+      AddV9Layout:
+        Desc: "Add symbolic links in h5 files to make it look like v9 so IDL MAPS can open it."
+        Decorator: "Checkbox"
+        Translator: "--add-v9layout"
+      AddExchangeLayout:
+        Desc: "Add group for exchange format. Used for tomographic datasets."
+        Decorator: "Checkbox"
+        Translator: "--add-exchange"
+      ExportCsv:
+        Desc: "Export Integrated spec, fitted, background to csv file."
+        Decorator: "Checkbox"
+        Translator: "--export-csv"
+      NumThreads:
+        Desc: "Number of threads to use (default is all system threads)."
+        Decorator: "Int"
+        Translator: "--nthreads"
+###
+#--update-theta : <theta_pv_string> Update the theta dataset value using theta_pv_string as new pv string ref.
+#--update-amps <us_amp>,<ds_amp>: Updates upstream and downstream amps if they changed inbetween scans.
+#--update-quant-amps <us_amp>,<ds_amp>: Updates upstream and downstream amps for quantification if they changed inbetween scans.
+#--quick-and-dirty : Integrate the detector range into 1 spectra.
+###

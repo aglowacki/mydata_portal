@@ -11,6 +11,7 @@ use axum::{
     extract::FromRequestParts,
     http::{request::Parts, StatusCode},
     response::{IntoResponse, Response},
+    response::sse::{Event, Sse},
     routing::{get, post},
     Json, RequestPartsExt, Router,
 };
@@ -23,8 +24,8 @@ use tower_http::trace::TraceLayer;
 
 
 use serde::{Deserialize, Serialize};
-use serde_json::json;
-use std::fmt::Display;
+//use serde_json::json;
+//use std::fmt::Display;
 use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt};
 
 //use ldap3::result::Result;
@@ -35,7 +36,7 @@ use redis::AsyncCommands;
 use bb8_redis::bb8;
 
 mod auth;
-
+mod sse;
 
 #[tokio::main]
 async fn main() 
@@ -69,8 +70,9 @@ async fn main()
     let app = Router::new()
         .route("/api/slow", get(|| sleep(Duration::from_secs(5))))
         .route("/api/forever", get(std::future::pending::<()>))
-        .route("/api/user_info", get(protected))
+        .route("/api/user_info", get(user_info))
         .route("/api/authorize", post(auth::authorize))
+        .route("/sse", get(sse::sse_handler))
         .layer((
             TraceLayer::new_for_http(),
             // Graceful shutdown will wait for outstanding requests to complete. Add a timeout so
@@ -118,10 +120,34 @@ async fn shutdown_signal()
     }
 }
 
-async fn protected(claims: auth::Claims) -> Result<Json<auth::Claims>, auth::AuthError> 
+async fn user_info(claims: auth::Claims) -> Result<Json<auth::Claims>, auth::AuthError> 
 {
     // Send the protected data to the user
     Ok(Json(claims))
 }
+/*
+async fn add_sse_client(State(mut sse_handler): State(mut sse::SseHandler), id: String,) -> Result<(), Box<dyn std::error::Error>> 
+{
+    sse_handler.add_client(id)?;
+    Ok(())
+}
 
+async fn sse_handler(TypedHeader(user_agent): TypedHeader<headers::UserAgent>) -> Sse<impl Stream<Item = Result<Event, Infallible>>> 
+{
+    println!("`{}` connected", user_agent.as_str());
 
+    // A `Stream` that repeats an event every second
+    //
+    // You can also create streams from tokio channels using the wrappers in
+    // https://docs.rs/tokio-stream
+    let stream = stream::repeat_with(|| Event::default().data("hi!"))
+        .map(Ok)
+        .throttle(Duration::from_secs(1));
+
+    Sse::new(stream).keep_alive(
+        axum::response::sse::KeepAlive::new()
+            .interval(Duration::from_secs(1))
+            .text("keep-alive-text"),
+    )
+}
+*/

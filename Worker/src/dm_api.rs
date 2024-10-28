@@ -18,30 +18,17 @@ struct LoginUser {
 #[tokio::main]
 pub async fn get_session_id() -> Result<(), Error> 
 {
-    let env_dm_url: String = match env::var(defines::ENV_DM_URL) {
-        Ok(val) => val,
-        Err(_) => String::from("none")
-    };
-
-    let env_dm_user: String = match env::var(defines::ENV_DM_USER) {
-        Ok(val) => val,
-        Err(_) => String::from("nobody")
-    };
-    let env_dm_pass: String = match env::var(defines::ENV_DM_PASS) {
-        Ok(val) => val,
-        Err(_) => String::from(" ")
-    };
-
-    let env_dm_auth: String = match env::var(defines::ENV_DM_AUTH) {
-        Ok(val) => val,
-        Err(_) => String::from("nobody")
-    };
+    let seenv_dm_urlcret = std::env::var(defines::ENV_DM_URL).expect(defines::ENV_DM_URL+" must be set");
+    let env_dm_user = std::env::var(defines::ENV_DM_USER).expect(defines::ENV_DM_USER+" must be set");
+    let env_dm_pass = std::env::var(defines::ENV_DM_PASS).expect(defines::ENV_DM_PASS+" must be set");
+    let env_dm_auth = std::env::var(defines::ENV_DM_AUTH).expect(defines::ENV_DM_AUTH+" must be set");
     println!("Logging in user {}\n", env_dm_user);
     println!("URL: {}\n", env_dm_url);
 
     let auth_str: String = String::from("Basic ") + &env_dm_auth;
     
-    let login_user = LoginUser {
+    let login_user = LoginUser 
+    {
         username: env_dm_user,
         password: env_dm_pass,
     };
