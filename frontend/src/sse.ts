@@ -1,6 +1,6 @@
 async function connectToSSE() 
 {
-    const eventSource = new EventSource("http://localhost:3000/sse");
+    const eventSource = new EventSource("api/sse");
 
     eventSource.onmessage = (event) => 
     {

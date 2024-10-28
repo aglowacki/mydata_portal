@@ -7,7 +7,6 @@ use axum::{
     extract::FromRequestParts,
     http::{request::Parts, StatusCode},
     response::{IntoResponse, Response},
-    routing::{get, post},
     Json, RequestPartsExt,
 };
 use axum_extra::{
