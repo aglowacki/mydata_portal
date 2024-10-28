@@ -1,4 +1,4 @@
-use axum::response::sse::{Event, Sse};
+use axum::response::sse::{Event, KeepAlive, Sse};
 use std::{convert::Infallible, time::Duration};
 //use std::{convert::Infallible, sync::{Arc, Mutex}};
 //use tokio::sync::broadcast;
@@ -50,11 +50,12 @@ pub async fn sse_handler(TypedHeader(user_agent): TypedHeader<headers::UserAgent
         .map(Ok)
         .throttle(Duration::from_secs(1));
 
-    Sse::new(stream).keep_alive(
-        axum::response::sse::KeepAlive::new()
-            .interval(Duration::from_secs(1))
-            .text("keep-alive-text"),
-    )
+    Sse::new(stream).keep_alive( KeepAlive::default() )
+   //Sse::new(stream).keep_alive(
+    //    axum::response::sse::KeepAlive::new()
+     //       .interval(Duration::from_secs(1))
+     //       .text("keep-alive-text"),
+    //)
 }
 
 
