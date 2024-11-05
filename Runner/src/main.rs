@@ -1,14 +1,13 @@
 use std::process::{Command};
 use std::fs::{OpenOptions};
 use std::io::{Result};
-use chrono::{DateTime, Datelike, Timelike, Utc};
+use chrono::{Utc};
 
 fn run() -> Result<()> 
 {
-    let now = Utc::now().format("%Y_%m_%d__%H_%M_%S").to_string();
-    let mut stdout_name = String::from("log_");
-    stdout_name.push_str(&now);
-    stdout_name.push_str(".log");
+    let now_str = Utc::now().format("%Y_%m_%d__%H_%M_%S").to_string();
+    let stdout_name = format!("prog_{}.log",now_str);
+    let stderr_name = format!("prog_{}.err",now_str);
 
     // Create files for stdout and stderr
     let stdout_file = OpenOptions::new()
@@ -16,10 +15,6 @@ fn run() -> Result<()>
         .append(true)
         .create(true)
         .open(stdout_name)?;
-
-    let mut stderr_name = String::from("err_");
-    stderr_name.push_str(&now);
-    stderr_name.push_str(".log");
         
     let stderr_file = OpenOptions::new()
         .write(true)
