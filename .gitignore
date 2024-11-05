@@ -1,5 +1,6 @@
 Cargo.lock
 .env
 backend/target/
-Worker/target/
+worker/target/
+runner/target/
 .DS_Store
