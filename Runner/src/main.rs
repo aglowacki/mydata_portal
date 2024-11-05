@@ -1,28 +1,36 @@
-use std::process::{Command, Stdio};
-use std::fs::{File, OpenOptions};
-use std::io::{Write, Result};
+use std::process::{Command};
+use std::fs::{OpenOptions};
+use std::io::{Result};
+use chrono::{DateTime, Datelike, Timelike, Utc};
 
 fn run() -> Result<()> 
 {
+    let now = Utc::now().format("%Y_%m_%d__%H_%M_%S").to_string();
+    let mut stdout_name = String::from("log_");
+    stdout_name.push_str(&now);
+    stdout_name.push_str(".log");
+
     // Create files for stdout and stderr
     let stdout_file = OpenOptions::new()
         .write(true)
         .append(true)
         .create(true)
-        .open("stdout.log")?;
-    
+        .open(stdout_name)?;
+
+    let mut stderr_name = String::from("err_");
+    stderr_name.push_str(&now);
+    stderr_name.push_str(".log");
+        
     let stderr_file = OpenOptions::new()
         .write(true)
         .append(true)
         .create(true)
-        .open("stderr.log")?;
+        .open(stderr_name)?;
 
     // Define the command to execute the remote application
-    let mut cmd = Command::new("path/to/remote/application");
-    
-    // Redirect stdout and stderr to our custom files
-    cmd.stdout(Stdio::inherit());
-    cmd.stderr(Stdio::inherit());
+    let mut cmd = Command::new("ls");
+    cmd.stdout(stdout_file);
+    cmd.stderr(stderr_file);
 
     // Redirect stdout and stderr to our custom files
     let mut child = cmd.spawn()?;
@@ -33,18 +41,10 @@ fn run() -> Result<()>
     // Write exit code to stderr
     eprintln!("Process exited with code: {}", status.code().unwrap_or(-1));
     
-    // Read and write stdout to our file
-    let stdout = child.output()?.stdout;
-    stdout_file.write_all(&stdout)?;
-    
-    // Read and write stderr to our file
-    let stderr = child.output()?.stderr;
-    stderr_file.write_all(&stderr)?;
-    
     Ok(())
 }
 
 fn main() 
 {
-    println!("Hello, world!");
+    let _ = run();
 }
