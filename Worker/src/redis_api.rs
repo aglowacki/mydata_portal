@@ -1,22 +1,22 @@
 use redis::Commands;
 use std::collections::BTreeMap;
-use rand::Rng;
+//use rand::Rng;
+use std::env;
 
 fn connect() -> redis::Connection 
 {
     //format - host:port
-    let redis_host_name =
-        env::var("REDIS_HOSTNAME").expect("missing environment variable REDIS_HOSTNAME");
+    let redis_host_name = env::var("REDIS_HOSTNAME").expect("missing environment variable REDIS_HOSTNAME");
     let redis_password = env::var("REDIS_PASSWORD").unwrap_or_default();
 
     //if Redis server needs secure connection
-    /*
+    
     let uri_scheme = match env::var("IS_TLS") 
     {
         Ok(_) => "rediss",
         Err(_) => "redis",
     };
-    */
+    
     let redis_conn_url = format!("{}://:{}@{}", uri_scheme, redis_password, redis_host_name);
     //println!("{}", redis_conn_url);
 
@@ -24,6 +24,22 @@ fn connect() -> redis::Connection
         .expect("Invalid connection URL")
         .get_connection()
         .expect("failed to connect to Redis")
+}
+
+pub fn pubsub()
+{
+    let client = redis::Client::open("redis://127.0.0.1/").unwrap();
+    let mut con = client.get_connection().unwrap();
+    let mut pubsub = con.as_pubsub();
+    pubsub.subscribe("channel_1").unwrap();
+    pubsub.subscribe("channel_2").unwrap();
+
+    loop
+    {
+        let msg = pubsub.get_message().unwrap();
+        let payload : String = msg.get_payload().unwrap();
+        println!("channel '{}': {}", msg.get_channel_name(), payload);
+    }
 }
 
 pub fn basics() 
@@ -114,12 +130,12 @@ pub fn list()
         .arg("item-1")
         .query(&mut conn)
         .expect("failed to execute LPUSH for 'items'");
-
+/* 
     let item: String = conn
-        .lpop(list_name)
+        .lpop(list_name, 1)
         .expect("failed to execute LPOP for 'items'");
     println!("first item: {}", item);
-
+*/
     let _: () = conn.rpush(list_name, "item-2").expect("RPUSH failed");
     let _: () = conn.rpush(list_name, "item-3").expect("RPUSH failed");
 
@@ -176,7 +192,7 @@ pub fn sorted_set()
 
     let _: () = redis::cmd("ZADD")
         .arg(sorted_set)
-        .arg(rand::thread_rng().gen_range(1..10))
+        .arg(10)
         .arg("player-1")
         .query(&mut conn)
         .expect("failed to execute ZADD for 'leaderboard'");
@@ -187,7 +203,7 @@ pub fn sorted_set()
             .zadd(
                 sorted_set,
                 String::from("player-") + &num.to_string(),
-                rand::thread_rng().gen_range(1..10),
+                10,
             )
             .expect("failed to execute ZADD for 'leaderboard'");
     }

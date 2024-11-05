@@ -4,7 +4,6 @@ mod defines{
 
 use reqwest::header::{HeaderMap, HeaderValue, USER_AGENT};
 use reqwest::Error;
-use std::env;
 use serde::{Deserialize, Serialize};
 //use serde_json::Result;
 
@@ -18,10 +17,10 @@ struct LoginUser {
 #[tokio::main]
 pub async fn get_session_id() -> Result<(), Error> 
 {
-    let seenv_dm_urlcret = std::env::var(defines::ENV_DM_URL).expect(defines::ENV_DM_URL+" must be set");
-    let env_dm_user = std::env::var(defines::ENV_DM_USER).expect(defines::ENV_DM_USER+" must be set");
-    let env_dm_pass = std::env::var(defines::ENV_DM_PASS).expect(defines::ENV_DM_PASS+" must be set");
-    let env_dm_auth = std::env::var(defines::ENV_DM_AUTH).expect(defines::ENV_DM_AUTH+" must be set");
+    let env_dm_url = std::env::var(defines::ENV_DM_URL).expect(format!("{} must be set",defines::ENV_DM_URL).as_str());
+    let env_dm_user = std::env::var(defines::ENV_DM_USER).expect(format!("{} must be set",defines::ENV_DM_USER).as_str());
+    let env_dm_pass = std::env::var(defines::ENV_DM_PASS).expect(format!("{} must be set",defines::ENV_DM_PASS).as_str());
+    let env_dm_auth = std::env::var(defines::ENV_DM_AUTH).expect(format!("{} must be set",defines::ENV_DM_AUTH).as_str());
     println!("Logging in user {}\n", env_dm_user);
     println!("URL: {}\n", env_dm_url);
 
