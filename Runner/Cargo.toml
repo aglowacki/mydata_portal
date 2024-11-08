@@ -7,3 +7,5 @@ edition = "2021"
 
 [dependencies]
 chrono = "0.4.38"
+serde = { version ="1.0.214", features = ["derive"] }
+serde_yaml = "0.9.34"
