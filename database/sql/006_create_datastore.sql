@@ -1,0 +1,5 @@
+CREATE TABLE DataStore (
+id INT PRIMARY KEY GENERATED ALWAYS AS IDENTITY,
+root varchar(1000) NOT NULL,
+path varchar(2000) NOT NULL
+);
