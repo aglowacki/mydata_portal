@@ -146,3 +146,28 @@ form.nav.right {
   }
 }
         
+/* ----------------- table.ts ------------------*/
+.animated-table {
+  width: 100%;
+  border-collapse: collapse;
+  margin: 20px 0;
+  font-size: 18px;
+  text-align: left;
+}
+
+.animated-table th, .animated-table td {
+  padding: 12px;
+  border: 1px solid #ddd;
+}
+
+.new-row {
+  opacity: 0;
+  transform: translateY(20px);
+  transition: opacity 0.5s ease-out, transform 0.5s ease-out;
+}
+
+.new-row.visible {
+  opacity: 1;
+  transform: translateY(0);
+}
+/* ----------------- end table.ts ------------------*/

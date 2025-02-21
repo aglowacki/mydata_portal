@@ -3,10 +3,10 @@ use serde::{Serialize, Deserialize};
 #[derive(Debug, Serialize, Deserialize, Clone, PartialEq)]
 pub struct CmdArg
 {
-    name: String,
-    desc: String,
-    decorator: String,
-    translator: String
+    pub name: String,
+    pub desc: String,
+    pub decorator: String,
+    pub translator: String
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone, PartialEq)]
