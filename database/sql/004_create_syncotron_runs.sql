@@ -1,4 +1,4 @@
-CREATE TABLE SyncotronRuns (
+CREATE TABLE "SyncotronRuns" (
 id INT PRIMARY KEY GENERATED ALWAYS AS IDENTITY,
 name char(7) NOT NULL,
 start_date TIMESTAMP NOT NULL,
