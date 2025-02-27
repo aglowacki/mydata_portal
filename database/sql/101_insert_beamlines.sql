@@ -1,4 +1,4 @@
-INSERT INTO Beamlines (acronym, name, division, link) VALUES 
+INSERT INTO "Beamlines" (acronym, name, division, link) VALUES 
 ('2-id-d', 'Microfluorescence', 'Microscopy', 'https://bionanoprobe.xray.aps.anl.gov/'),
 ('BNP', 'Microfluorescence and Bionanoprobe', 'Microscopy', 'https://bionanoprobe.xray.aps.anl.gov/'),
 ('2-id-e', 'Microprobe', 'Microscopy', 'https://aps.anl.gov/Beamlines/Directory/Details?beamline_id=61'),

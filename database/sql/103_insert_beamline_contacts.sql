@@ -1,4 +1,4 @@
-INSERT INTO BeamlineContacts (user_id, beamline_id) VALUES 
+INSERT INTO "BeamlineContacts" (user_id, beamline_id) VALUES 
 ((SELECT badge FROM Users WHERE username = 'blai'), (SELECT id FROM Beamlines WHERE acronym = '2-id-d')),
 ((SELECT badge FROM Users WHERE username = 'luxili'), (SELECT id FROM Beamlines WHERE acronym = '2-id-d')),
 ((SELECT badge FROM Users WHERE username = 'sichen'), (SELECT id FROM Beamlines WHERE acronym = '2-id-d')),
