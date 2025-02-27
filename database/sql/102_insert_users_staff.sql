@@ -1,6 +1,6 @@
 INSERT INTO "Users" (badge, username, first_name, last_name, institution, email, user_type) VALUES 
-(231160, 'aglowacki', 'Arthur', 'Glowacki', 'ANL APS XSD SDM', 'aglowacki@anl.gov' (SELECT id FROM UserTypes WHERE level = 'Admin')),
-(67722, 'oantipova', 'Olga', 'Antipova', 'ANL APS XSD MIC', 'oantipova@anl.gov' (SELECT id FROM UserTypes WHERE level = 'Staff')),
+(231160, 'aglowacki', 'Arthur', 'Glowacki', 'ANL APS XSD SDM', 'aglowacki@anl.gov', (SELECT id FROM UserTypes WHERE level = 'Admin')),
+(67722, 'oantipova', 'Olga', 'Antipova', 'ANL APS XSD MIC', 'oantipova@anl.gov', (SELECT id FROM UserTypes WHERE level = 'Staff')),
 (42455, 'cai', 'Zhonghou', 'Cai', 'ANL APS XSD MIC', 'cai@anl.gov', (SELECT id FROM UserTypes WHERE level = 'Staff')),
 (217631, 'sichen', 'Si', 'Chen', 'ANL APS XSD MIC', 'sichen@anl.gov', (SELECT id FROM UserTypes WHERE level = 'Staff')),
 (222816, 'junjingdeng', 'Junjing', 'Deng', 'ANL APS XSD MIC', 'junjingdeng@anl.gov', (SELECT id FROM UserTypes WHERE level = 'Staff')),
