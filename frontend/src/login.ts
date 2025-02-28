@@ -42,7 +42,18 @@ async function login_call(user: User): Promise<LoginResponse>
         const response = await fetch('/api/authorize', requestOptions);
         if (!response.ok) 
         {
-          throw new Error(`HTTP error! status: ${response.status}`);
+            if( response.status == 502)
+            {
+                throw new Error(`Backend Auth Serivce unreachable. May be offline: ${response.status}`);
+            }
+            else if ( response.status == 401)
+            {
+                throw new Error(`Bad login credentials. Please Try again. ${response.status}`);
+            }
+            else
+            {
+                throw new Error(`HTTP error! status: ${response.status}`);
+            }
         }
         else
         {

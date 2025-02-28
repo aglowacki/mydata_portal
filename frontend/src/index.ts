@@ -35,7 +35,18 @@ async function check_user(): Promise<Response>
         const response = await fetch('/api/user_info', requestOptions);
         if (!response.ok) 
         {
-          throw new Error(`HTTP error! status: ${response.status}`);
+            if(response.status == 502)
+            {
+                throw new Error(`Backend Auth Serivce unreachable. ${response.status}`);
+            }
+            else if (response.status == 400)
+            {
+                throw new Error(`Missing credentials. ${response.status}`);
+            }
+            else
+            { 
+                throw new Error(`HTTP error! status: ${response.status}`);
+            }
         }
         else
         {
@@ -63,7 +74,7 @@ function main()
                     app?.appendChild(gen_footer());
     }).catch(error =>
     {
-        console.log(error);
+        //console.log(error);
         app?.appendChild(gen_login_form());
     }
     );
