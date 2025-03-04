@@ -1,4 +1,4 @@
-INSERT INTO "Users" (badge, username, first_name, last_name, institution, email, user_type) VALUES 
+INSERT INTO users (badge, username, first_name, last_name, institution, email, user_type_id) VALUES 
 (231160, 'aglowacki', 'Arthur', 'Glowacki', 'ANL APS XSD SDM', 'aglowacki@anl.gov', (SELECT id FROM "UserTypes" WHERE level = 'Admin')),
 (67722, 'oantipova', 'Olga', 'Antipova', 'ANL APS XSD MIC', 'oantipova@anl.gov', (SELECT id FROM "UserTypes" WHERE level = 'Staff')),
 (42455, 'cai', 'Zhonghou', 'Cai', 'ANL APS XSD MIC', 'cai@anl.gov', (SELECT id FROM "UserTypes" WHERE level = 'Staff')),

@@ -1,5 +1,5 @@
-CREATE TABLE "DatasetUserRelation" (
-datasest_id integer REFERENCES "Datasets" (id),
-user_id integer REFERENCES "Users" (badge),
-experiment_role integer REFERENCES "ExperimentRoles" (id)
+CREATE TABLE dataset_user_relation (
+datasest_id integer REFERENCES datasets (id),
+user_badge integer REFERENCES users (badge),
+experiment_role_id integer REFERENCES experiment_roles (id)
 );
