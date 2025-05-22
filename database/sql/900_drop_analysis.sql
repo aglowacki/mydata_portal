@@ -1,1 +1,1 @@
-DROP TABLE data_analysis;
+DROP TABLE data_analysis CASCADE;
