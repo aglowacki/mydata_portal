@@ -3,5 +3,5 @@ id INT PRIMARY KEY NOT NULL,
 title VARCHAR (10000) NOT NULL,
 proprietaryFlag VARCHAR (1) NOT NULL,
 mailInFlag VARCHAR (1) NOT NULL,
-status VARCHAR (400) NOT NULL
+status VARCHAR (400)
 );
