@@ -1,7 +1,6 @@
 #!/bin/sh
 
 psql -d mydata -f 000_create_beamlines.sql
-psql -d mydata -f 000_create_datastore.sql
 psql -d mydata -f 000_create_experiment_roles.sql
 psql -d mydata -f 000_create_proposals.sql
 psql -d mydata -f 000_create_scan_type.sql
