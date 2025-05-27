@@ -1,4 +1,4 @@
-INSERT INTO experiment_roles (experiment_role) VALUES 
+INSERT INTO experiment_roles (role) VALUES 
 ('Principal Investigator'),
 ('Co-Investigator'),
 ('Collaborator'),
