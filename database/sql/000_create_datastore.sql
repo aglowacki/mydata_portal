@@ -1,5 +1,5 @@
 CREATE TABLE data_store (
 id INT PRIMARY KEY GENERATED ALWAYS AS IDENTITY,
-root varchar(1000) NOT NULL,
+root varchar(1000),
 path varchar(2000) NOT NULL
 );
