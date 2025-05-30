@@ -3,11 +3,10 @@ use std::fmt::Display;
 use serde::{Deserialize, Serialize};
 use jsonwebtoken::{decode, encode, DecodingKey, EncodingKey, Header, Validation};
 use axum::{
-    async_trait,
     extract::FromRequestParts,
     http::{request::Parts, StatusCode},
     response::{IntoResponse, Response},
-    Json, RequestPartsExt,
+    Json, RequestPartsExt
 };
 use axum_extra::{
     headers::{authorization::Bearer, Authorization},
@@ -71,10 +70,7 @@ pub enum AuthError
 }
 
 
-#[async_trait]
-impl<S> FromRequestParts<S> for Claims
-where
-    S: Send + Sync,
+impl<S> FromRequestParts<S> for Claims where S: Send + Sync,
 {
     type Rejection = AuthError;
 

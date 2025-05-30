@@ -14,6 +14,8 @@ use axum::{
 use tokio::net::TcpListener;
 use tokio::signal;
 use tokio::time::sleep;
+//use tokio_postgres::NoTls;
+
 use tower_http::timeout::TimeoutLayer;
 use tower_http::trace::TraceLayer;
 
@@ -24,14 +26,30 @@ use tower_http::trace::TraceLayer;
 use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt};
 
 //use ldap3::result::Result;
-//use ::bb8::{Pool, PooledConnection};
-use bb8_redis::RedisConnectionManager;
-use redis::AsyncCommands;
+//use bb8_redis::RedisConnectionManager;
+//use redis::AsyncCommands;
 
-use bb8_redis::bb8;
+//use bb8::{Pool, PooledConnection};
+//use bb8_postgres::PostgresConnectionManager;
+
+//use bb8_redis::bb8;
+
+use diesel_async::{
+    pooled_connection::AsyncDieselConnectionManager, AsyncPgConnection, RunQueryDsl,
+};
 
 mod auth;
 mod sse;
+mod database;
+
+
+#[derive(Clone)]
+struct AppState 
+{
+
+
+}
+
 
 #[tokio::main]
 async fn main() 
@@ -46,13 +64,16 @@ async fn main()
         )
         .with(tracing_subscriber::fmt::layer().without_time())
         .init();
-
-    let manager = RedisConnectionManager::new("redis://localhost").unwrap();
-    let pool = bb8::Pool::builder().build(manager).await.unwrap();
-
+/*
+        let postgres_manager = PostgresConnectionManager::new_from_stringlike("host=localhost user=postgres", NoTls).unwrap();
+        let postgres_pool = Pool::builder().build(postgres_manager).await.unwrap();
+*/
+/*
+    let redis_manager = RedisConnectionManager::new("redis://localhost").unwrap();
+    let redis_pool = bb8::Pool::builder().build(manager).await.unwrap();
     {
         // ping the database before starting
-        let mut conn = pool.get().await.unwrap();
+        let mut conn = redis_pool.get().await.unwrap();
         //let keys : Vec<String> = con.hkeys("access_token:*")?;
         //conn.keys::<&str,()> ("access_token:*")
         conn.set::<&str, &str, ()>("foo", "bar").await.unwrap();
@@ -60,6 +81,11 @@ async fn main()
         assert_eq!(result, "bar");
     }
     tracing::debug!("successfully connected to redis and pinged it");
+*/
+    let db_url = std::env::var("DATABASE_URL").unwrap();
+    // set up connection pool
+    let config = AsyncDieselConnectionManager::<diesel_async::AsyncPgConnection>::new(db_url);
+    let pool = bb8::Pool::builder().build(config).await.unwrap();
 
     // Create a regular axum app.
     let app = Router::new()
@@ -68,12 +94,14 @@ async fn main()
         .route("/api/user_info", get(user_info))
         .route("/api/authorize", post(auth::authorize))
         .route("/api/sse", get(sse::sse_handler))
+        .route("/api/testdb", get(database::list_users))
         .layer((
             TraceLayer::new_for_http(),
             // Graceful shutdown will wait for outstanding requests to complete. Add a timeout so
             // requests don't hang forever.
             TimeoutLayer::new(Duration::from_secs(10)),
-        ));
+            )).with_state(pool);
+        //)).with_state(postgres_pool);
 
     // Create a `TcpListener` using tokio.
     let listener = TcpListener::bind("0.0.0.0:3000").await.unwrap();
