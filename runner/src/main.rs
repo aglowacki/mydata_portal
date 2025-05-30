@@ -3,7 +3,7 @@ use std::fs::{OpenOptions};
 use std::io::{Result};
 use chrono::{Utc};
 use std::fs;
-
+use zmq;
 use std::io::{self, Write};
 //use std::thread;
 //use std::time::Duration;
@@ -13,7 +13,7 @@ fn atoi(s: &str) -> u64 {
 }
 
 mod cmd_app;
-mod analysis_job;
+//mod analysis_job;
 
 fn run(app: &cmd_app::CmdApp) -> Result<()> 
 {

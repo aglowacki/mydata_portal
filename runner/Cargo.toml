@@ -10,3 +10,4 @@ serde_with = "3.11.0"
 serde = { version ="1.0.214", features = ["derive"] }
 chrono = { version = "0.4.38", features = ["serde"] } 
 serde_yaml = "0.9.34"
+zmq = "0.10.0"
