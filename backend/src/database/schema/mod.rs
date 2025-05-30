@@ -81,7 +81,7 @@ diesel::table! {
 }
 
 diesel::table! {
-    scan_type (id) {
+    scan_types (id) {
         id -> Int4,
         #[max_length = 255]
         name -> Varchar,
@@ -101,7 +101,7 @@ diesel::table! {
 }
 
 diesel::table! {
-    user_access_control (id) {
+    user_access_controls (id) {
         id -> Int4,
         #[max_length = 10]
         level -> Varchar,
@@ -131,13 +131,13 @@ diesel::joinable!(beamline_contacts -> beamlines (beamline_id));
 diesel::joinable!(beamline_contacts -> users (user_badge));
 diesel::joinable!(data_analysis -> datasets (dataset_id));
 diesel::joinable!(datasets -> beamlines (beamline_id));
-diesel::joinable!(datasets -> scan_type (scan_type_id));
+diesel::joinable!(datasets -> scan_types (scan_type_id));
 diesel::joinable!(datasets -> syncotron_runs (syncotron_run_id));
 diesel::joinable!(experimenters -> datasets (dataset_id));
 diesel::joinable!(experimenters -> experiment_roles (experiment_role_id));
 diesel::joinable!(experimenters -> proposals (proposal_id));
 diesel::joinable!(experimenters -> users (user_badge));
-diesel::joinable!(users -> user_access_control (user_access_control_id));
+diesel::joinable!(users -> user_access_controls (user_access_control_id));
 
 diesel::allow_tables_to_appear_in_same_query!(
     beamline_contacts,
@@ -147,8 +147,8 @@ diesel::allow_tables_to_appear_in_same_query!(
     experiment_roles,
     experimenters,
     proposals,
-    scan_type,
+    scan_types,
     syncotron_runs,
-    user_access_control,
+    user_access_controls,
     users,
 );

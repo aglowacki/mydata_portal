@@ -4,27 +4,23 @@ use axum::{
     http::{request::Parts, StatusCode},
     response::Json,
 };
+use axum_macros::debug_handler;
 use diesel::prelude::*;
 use diesel_async::{
     pooled_connection::AsyncDieselConnectionManager, AsyncPgConnection, RunQueryDsl,
 };
 
-// normally part of your generated schema.rs file
-table! {
-    users (id) {
-        id -> Integer,
-        name -> Text,
-        hair_color -> Nullable<Text>,
-    }
-}
-
+mod schema;
+mod models;
+/* 
 #[derive(serde::Serialize, Selectable, Queryable)]
+#[diesel(table_name = schema::users)]
 pub struct User {
     id: i32,
     name: String,
     hair_color: Option<String>,
 }
-/*
+
 #[derive(serde::Deserialize, Insertable)]
 #[diesel(table_name = users)]
 struct NewUser {
@@ -51,9 +47,7 @@ async fn create_user(
 */
 // we can also write a custom extractor that grabs a connection from the pool
 // which setup is appropriate depends on your application
-pub struct DatabaseConnection(
-    bb8::PooledConnection<'static, AsyncDieselConnectionManager<AsyncPgConnection>>,
-);
+pub struct DatabaseConnection(bb8::PooledConnection<'static, AsyncDieselConnectionManager<AsyncPgConnection>>,);
 
 impl<S> FromRequestParts<S> for DatabaseConnection
 where
@@ -70,12 +64,11 @@ where
         Ok(Self(conn))
     }
 }
-
-pub async fn list_users(
-    DatabaseConnection(mut conn): DatabaseConnection,
-) -> Result<Json<Vec<User>>, (StatusCode, String)> {
-    let res = users::table
-        .select(User::as_select())
+#[axum_macros::debug_handler]
+pub async fn list_users(DatabaseConnection(mut conn): DatabaseConnection,) -> Result<Json<Vec<models::User>>, (StatusCode, String)> 
+{
+    let res = schema::users::table
+        .select(models::User::as_select())
         .load(&mut conn)
         .await
         .map_err(internal_error)?;
