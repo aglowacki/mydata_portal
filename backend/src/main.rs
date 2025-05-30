@@ -43,14 +43,6 @@ mod sse;
 mod database;
 
 
-#[derive(Clone)]
-struct AppState 
-{
-
-
-}
-
-
 #[tokio::main]
 async fn main() 
 {
@@ -85,7 +77,7 @@ async fn main()
     let db_url = std::env::var("DATABASE_URL").unwrap();
     // set up connection pool
     let config = AsyncDieselConnectionManager::<diesel_async::AsyncPgConnection>::new(db_url);
-    let pool = bb8::Pool::builder().build(config).await.unwrap();
+    let app_state = database::AppState{pool: bb8::Pool::builder().build(config).await.unwrap()};
 
     // Create a regular axum app.
     let app = Router::new()
@@ -100,7 +92,7 @@ async fn main()
             // Graceful shutdown will wait for outstanding requests to complete. Add a timeout so
             // requests don't hang forever.
             TimeoutLayer::new(Duration::from_secs(10)),
-            )).with_state(pool);
+            )).with_state(app_state);
         //)).with_state(postgres_pool);
 
     // Create a `TcpListener` using tokio.

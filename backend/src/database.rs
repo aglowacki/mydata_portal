@@ -64,8 +64,22 @@ where
         Ok(Self(conn))
     }
 }
+#[derive(Clone)]
+pub struct AppState {
+    pub pool: Pool,
+}
+
+impl FromRef<AppState> for Pool {
+    fn from_ref(state: &AppState) -> Pool {
+        state.pool.clone()
+    }
+}
+
 #[axum_macros::debug_handler]
-pub async fn list_users(DatabaseConnection(mut conn): DatabaseConnection,) -> Result<Json<Vec<models::User>>, (StatusCode, String)> 
+pub async fn list_users(
+    State(state): State<AppState>,
+    DatabaseConnection(mut conn): DatabaseConnection,
+) -> Result<Json<Vec<models::User>>, (StatusCode, String)> 
 {
     let res = schema::users::table
         .select(models::User::as_select())
