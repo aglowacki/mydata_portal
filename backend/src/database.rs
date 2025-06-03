@@ -3,6 +3,7 @@ use axum::{
     extract::{FromRef, FromRequestParts, State},
     http::{request::Parts, StatusCode},
     response::Json,
+    extract::Path,
 };
 use axum_macros::debug_handler;
 use diesel::prelude::*;
@@ -98,15 +99,7 @@ pub async fn get_user_proposals(
     DatabaseConnection(mut conn): DatabaseConnection,
 ) -> Result<Json<Vec<models::Proposal>>, (StatusCode, String)> 
 {
-    /*
-    let res = schema::experimenters::table
-    .inner_join(schema::proposals::table.on(schema::proposals::id.eq(schema::experimenters::proposal_id)))
-    .inner_join(schema::users::table.on(schema::experimenters::user_badge.eq(schema::users::badge)))
-    .select(schema::proposals::table)
-    .load::(&mut conn)
-    .await
-    .map_err((internal_error))?;
-*/
+   
     let res = schema::proposals::table.select(models::Proposal::as_select())
     .inner_join(schema::experimenters::table.on(schema::proposals::id.eq(schema::experimenters::proposal_id)))
     .inner_join(schema::users::table.on(schema::experimenters::user_badge.eq(schema::users::badge)))
@@ -115,15 +108,51 @@ pub async fn get_user_proposals(
     .await
     .map_err(internal_error)?;
 
-    /*
-    let res = schema::proposals::table.select(models::Proposal::as_select())
-    .load(&mut conn)
-    .await
-    .map_err((internal_error))?;
-*/
     Ok(Json(res))
 }
 
+#[axum_macros::debug_handler]
+pub async fn get_user_proposals_as(
+    Path((user_id)): Path<(i32)>,
+    State(state): State<AppState>,
+    claims: auth::Claims,
+    DatabaseConnection(mut conn): DatabaseConnection,
+) -> Result<Json<Vec<models::Proposal>>, (StatusCode, String)> 
+{
+    /*
+    let result = schema::users::table.find(claims.get_badge()).first::<models::User>(&mut conn).await.map_err(internal_error);
+    let asking_user = match result
+    {
+        Ok(user) => user,
+        Err(error) => panic!("Problem opening the file: {error:?}"),
+    }
+    */
+    let asking_user: Vec<models::User> = schema::users::table.select(models::User::as_select())
+    .inner_join(schema::user_access_controls::table.on(schema::user_access_controls::id.eq(schema::users::user_access_control_id)))
+    .filter(schema::user_access_controls::level.eq("Admin").or(schema::user_access_controls::level.eq("Staff")))
+    .filter(schema::users::badge.eq(claims.get_badge()))
+    .load(&mut conn)
+    .await
+    .map_err(internal_error)?;
+    
+    if asking_user.len() > 0
+    {
+        let res = schema::proposals::table.select(models::Proposal::as_select())
+        .inner_join(schema::experimenters::table.on(schema::proposals::id.eq(schema::experimenters::proposal_id)))
+        .inner_join(schema::users::table.on(schema::experimenters::user_badge.eq(schema::users::badge)))
+        .filter(schema::users::badge.eq(user_id))
+        .load(&mut conn)
+        .await
+        .map_err(internal_error)?;
+
+        Ok(Json(res))
+    }
+    else 
+    {
+        let v = Vec::new();
+        Ok(Json(v))
+    }
+}
 
 /// Utility function for mapping any error into a `500 Internal Server Error`
 /// response.

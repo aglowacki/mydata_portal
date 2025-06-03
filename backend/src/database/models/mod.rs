@@ -6,7 +6,7 @@
 use chrono::NaiveDateTime;
 use chrono::DateTime;
 use chrono::offset::Utc;
-use diesel::{Queryable, Identifiable, Selectable};
+use diesel::{Queryable, Identifiable, Selectable, QueryableByName};
 use serde::Serialize;
 use crate::database::schema::{beamline_contacts,
                                 beamlines,
@@ -104,8 +104,9 @@ pub struct UserAccessControl {
     pub description: String,
 }
 
-#[derive(Queryable, Debug, Identifiable, Selectable, serde::Serialize)]
+#[derive(Queryable, Debug, Identifiable, Selectable, QueryableByName, serde::Serialize)]
 #[diesel(primary_key(badge))]
+#[diesel(check_for_backend(diesel::pg::Pg))]
 pub struct User {
     pub badge: i32,
     pub username: String,
@@ -113,6 +114,6 @@ pub struct User {
     pub last_name: String,
     pub institution: String,
     pub email: String,
-    pub user_access_control_id: Option<i32>,
+    pub user_access_control_id: i32,
 }
 
