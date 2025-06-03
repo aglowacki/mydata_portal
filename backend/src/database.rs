@@ -104,6 +104,7 @@ pub async fn get_user_proposals(
     .inner_join(schema::experimenters::table.on(schema::proposals::id.eq(schema::experimenters::proposal_id)))
     .inner_join(schema::users::table.on(schema::experimenters::user_badge.eq(schema::users::badge)))
     .filter(schema::users::badge.eq(claims.get_badge()))
+    .distinct()
     .load(&mut conn)
     .await
     .map_err(internal_error)?;
@@ -141,6 +142,7 @@ pub async fn get_user_proposals_as(
         .inner_join(schema::experimenters::table.on(schema::proposals::id.eq(schema::experimenters::proposal_id)))
         .inner_join(schema::users::table.on(schema::experimenters::user_badge.eq(schema::users::badge)))
         .filter(schema::users::badge.eq(user_id))
+        .distinct()
         .load(&mut conn)
         .await
         .map_err(internal_error)?;
