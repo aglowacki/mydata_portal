@@ -86,7 +86,7 @@ async fn main()
         .route("/api/user_info", get(user_info))
         .route("/api/authorize", post(auth::authorize))
         .route("/api/sse", get(sse::sse_handler))
-        .route("/api/testdb", get(database::list_users))
+        .route("/api/get_user_proposals", get(database::get_user_proposals))
         .layer((
             TraceLayer::new_for_http(),
             // Graceful shutdown will wait for outstanding requests to complete. Add a timeout so

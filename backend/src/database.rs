@@ -12,6 +12,7 @@ use diesel_async::{
 
 mod schema;
 mod models;
+use crate::auth;
 /* 
 #[derive(serde::Serialize, Selectable, Queryable)]
 #[diesel(table_name = schema::users)]
@@ -74,10 +75,11 @@ impl FromRef<AppState> for Pool {
         state.pool.clone()
     }
 }
-
+/*
 #[axum_macros::debug_handler]
 pub async fn list_users(
     State(state): State<AppState>,
+    claims: auth::Claims,
     DatabaseConnection(mut conn): DatabaseConnection,
 ) -> Result<Json<Vec<models::User>>, (StatusCode, String)> 
 {
@@ -88,6 +90,39 @@ pub async fn list_users(
         .map_err(internal_error)?;
     Ok(Json(res))
 }
+*/
+#[axum_macros::debug_handler]
+pub async fn get_user_proposals(
+    State(state): State<AppState>,
+    claims: auth::Claims,
+    DatabaseConnection(mut conn): DatabaseConnection,
+) -> Result<Json<Vec<models::Proposal>>, (StatusCode, String)> 
+{
+    /*
+    let res = schema::experimenters::table
+    .inner_join(schema::proposals::table.on(schema::proposals::id.eq(schema::experimenters::proposal_id)))
+    .inner_join(schema::users::table.on(schema::experimenters::user_badge.eq(schema::users::badge)))
+    .select(schema::proposals::table)
+    .load::(&mut conn)
+    .await
+    .map_err((internal_error))?;
+*/
+    let res = schema::proposals::table.select(models::Proposal::as_select())
+    .inner_join(schema::experimenters::table.on(schema::proposals::id.eq(schema::experimenters::proposal_id)))
+    .inner_join(schema::users::table.on(schema::experimenters::user_badge.eq(schema::users::badge)))
+    .load(&mut conn)
+    .await
+    .map_err(internal_error)?;
+
+    /*
+    let res = schema::proposals::table.select(models::Proposal::as_select())
+    .load(&mut conn)
+    .await
+    .map_err((internal_error))?;
+*/
+    Ok(Json(res))
+}
+
 
 /// Utility function for mapping any error into a `500 Internal Server Error`
 /// response.

@@ -73,7 +73,7 @@ pub struct Experimenter {
     pub id: i32,
 }
 
-#[derive(Queryable, Debug, Identifiable)]
+#[derive(Queryable, Debug, Identifiable, Selectable, Serialize)]
 pub struct Proposal {
     pub id: i32,
     pub title: String,

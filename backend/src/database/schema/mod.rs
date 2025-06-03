@@ -2,8 +2,8 @@
 
 diesel::table! {
     beamline_contacts (id) {
-        user_badge -> Nullable<Int4>,
-        beamline_id -> Nullable<Int4>,
+        user_badge -> Int4,
+        beamline_id -> Int4,
         id -> Int4,
     }
 }
@@ -29,7 +29,7 @@ diesel::table! {
         id -> Int4,
         #[max_length = 2000]
         path -> Varchar,
-        dataset_id -> Nullable<Int4>,
+        dataset_id -> Int4,
         analysis_submit_time -> Timestamp,
         processing_start_time -> Nullable<Timestamp>,
         processing_end_time -> Nullable<Timestamp>,
@@ -42,9 +42,9 @@ diesel::table! {
         #[max_length = 2000]
         path -> Varchar,
         acquisition_timestamp -> Timestamp,
-        beamline_id -> Nullable<Int4>,
-        syncotron_run_id -> Nullable<Int4>,
-        scan_type_id -> Nullable<Int4>,
+        beamline_id -> Int4,
+        syncotron_run_id -> Int4,
+        scan_type_id -> Int4,
     }
 }
 
@@ -58,10 +58,10 @@ diesel::table! {
 
 diesel::table! {
     experimenters (id) {
-        dataset_id -> Nullable<Int4>,
-        user_badge -> Nullable<Int4>,
-        proposal_id -> Nullable<Int4>,
-        experiment_role_id -> Nullable<Int4>,
+        dataset_id -> Int4,
+        user_badge -> Int4,
+        proposal_id -> Int4,
+        experiment_role_id -> Int4,
         id -> Int4,
     }
 }
@@ -123,7 +123,7 @@ diesel::table! {
         institution -> Varchar,
         #[max_length = 50]
         email -> Varchar,
-        user_access_control_id -> Nullable<Int4>,
+        user_access_control_id -> Int4,
     }
 }
 
