@@ -46,6 +46,14 @@ pub struct Claims
     exp: usize,
 }
 
+impl Claims
+{
+    pub fn get_badge(&self) -> i32
+    {
+        return self.employee_id.parse::<i32>().unwrap();
+    }
+}
+
 #[derive(Debug, Serialize)]
 pub struct AuthBody 
 {

@@ -110,6 +110,7 @@ pub async fn get_user_proposals(
     let res = schema::proposals::table.select(models::Proposal::as_select())
     .inner_join(schema::experimenters::table.on(schema::proposals::id.eq(schema::experimenters::proposal_id)))
     .inner_join(schema::users::table.on(schema::experimenters::user_badge.eq(schema::users::badge)))
+    .filter(schema::users::badge.eq(claims.get_badge()))
     .load(&mut conn)
     .await
     .map_err(internal_error)?;

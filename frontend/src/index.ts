@@ -71,6 +71,7 @@ function main()
                     app?.classList.add("parent");
                     app?.appendChild(gen_header());
                     app?.appendChild(gen_left_sidebar());
+                    //app?.appendChild(gen_center());
                     app?.appendChild(gen_footer());
     }).catch(error =>
     {
