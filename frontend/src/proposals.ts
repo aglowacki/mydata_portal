@@ -102,7 +102,7 @@ function fill_table(data: JSON)
 
     if (!Array.isArray(data) || data.length === 0) 
     {
-        throw new Error("JSON string must represent a non-empty array of objects");
+        return;
     }
     const headers = Object.keys(data[0]);
     // Create table header
