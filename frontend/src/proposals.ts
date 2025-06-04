@@ -188,7 +188,7 @@ export function gen_proposals_table()
     .catch(error => 
     {
         show_toast(error.message);
-        throw error;
+        //throw error;
     }
     );
 
