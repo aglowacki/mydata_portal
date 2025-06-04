@@ -14,8 +14,8 @@ function gen_proposals_link()
     // if logged in and user has beam time
     const proposals_a = document.createElement("a");
     proposals_a.classList.add("nav");
-    proposals_a.href = "/proposals";
-    proposals_a.innerHTML = "proposals";
+    proposals_a.href = "/proposals.html";
+    proposals_a.innerHTML = "Proposals";
 
     return proposals_a;
 }
