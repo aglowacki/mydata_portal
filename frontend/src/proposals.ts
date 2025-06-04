@@ -65,7 +65,8 @@ async function get_proposals_for(badge: string): Promise<Response>
 
     try 
     {
-        const response = await fetch('/api/get_user_proposals_as/'+badge, requestOptions);
+        const url = '/api/get_user_proposals_as/'+badge;
+        const response = await fetch(url, requestOptions);
         if (!response.ok) 
         {
             if(response.status == 502)
@@ -159,7 +160,7 @@ function admin_controls()
         console.log('button clicked');
         console.log(event);
         console.log(event.target);
-        update_proposals(input.innerText);
+        update_proposals(input.value);
     });
 
     div.appendChild(label);
