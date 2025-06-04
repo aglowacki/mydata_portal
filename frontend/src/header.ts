@@ -9,15 +9,15 @@ function gen_beam_time_link()
     return beam_a;
 }
 
-function gen_datasets_link()
+function gen_proposals_link()
 {
     // if logged in and user has beam time
-    const datasets_a = document.createElement("a");
-    datasets_a.classList.add("nav");
-    datasets_a.href = "/datasets";
-    datasets_a.innerHTML = "Datasets";
+    const proposals_a = document.createElement("a");
+    proposals_a.classList.add("nav");
+    proposals_a.href = "/proposals";
+    proposals_a.innerHTML = "proposals";
 
-    return datasets_a;
+    return proposals_a;
 }
 
 
@@ -56,9 +56,9 @@ export function gen_header()
 
     header.appendChild(header_nav);
     header_nav.appendChild(home_a);
-    header_nav.appendChild(gen_beam_time_link());
-    header_nav.appendChild(gen_datasets_link());
-   // header_nav.appendChild(gen_signin_form());
+    //header_nav.appendChild(gen_beam_time_link());
+    header_nav.appendChild(gen_proposals_link());
+    //header_nav.appendChild(gen_signin_form());
 
     return header;
 }

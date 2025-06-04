@@ -10,7 +10,7 @@
   "author": "Arthur Glowacki",
   "license": "ISC",
   "devDependencies": {
-    "typescript": "^5.4.5"
+    "typescript": "^5.8.3"
   },
   "dependencies": {
     "echarts": "^5.5.0"
