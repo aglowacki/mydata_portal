@@ -149,8 +149,8 @@ pub async fn get_user_proposals_as(
     }
     else 
     {
-        let v = Vec::new();
-        Ok(Json(v))
+        let err_msg = "Need to be Admin or Staff to get proposals by other user.".to_string();
+        Err((StatusCode::FORBIDDEN, err_msg))
     }
 }
 
