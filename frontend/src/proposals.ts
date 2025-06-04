@@ -98,7 +98,7 @@ async function get_proposals_for(badge: string): Promise<Response>
 function fill_table(data: JSON)
 {
     const table = document.getElementById('proposals_table') as HTMLTableElement;
-    table?.remove();
+    table.remove();
 
     if (!Array.isArray(data) || data.length === 0) 
     {
@@ -106,7 +106,7 @@ function fill_table(data: JSON)
     }
     const headers = Object.keys(data[0]);
     // Create table header
-    const headerRow = table?.insertRow();
+    const headerRow = table.insertRow();
     headers.forEach(header => 
     {
         const th = document.createElement("th");
@@ -116,7 +116,7 @@ function fill_table(data: JSON)
 
     data.forEach(item => 
     {
-        const row = table?.insertRow();
+        const row = table.insertRow();
         row.className = "new-row";
         headers.forEach(header => 
         {
