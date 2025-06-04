@@ -100,20 +100,10 @@ function fill_table(data: JSON)
     var table = document.getElementById('proposals-table') as HTMLTableElement;
     if (table == null)
     {
-        const div = document.getElementById('center') as HTMLElement;
-        if( div == null)
-        {
-            console.log("Could not find center div");
-            return;
-        }
-        console.log("Creating new table");
-        table = document.createElement("table");
-        div.appendChild(table);
+        console.log("Could not find table id proposals-table");
+        return;
     }
-    else
-    {
-        table.remove();
-    }
+    table.innerHTML = "";
 
     if (!Array.isArray(data) || data.length === 0) 
     {
