@@ -118,6 +118,8 @@ function fill_table(data: JSON)
     if (!Array.isArray(data) || data.length === 0) 
     {
         console.log("Resply is empty array");
+        const row = table.insertRow();
+        const cell = row.insertCell();
         return;
     }
     const headers = Object.keys(data[0]);
@@ -189,27 +191,59 @@ function admin_controls()
 export function gen_proposals_table()
 {
     const div = document.createElement("div");
-    div.id = 'center';
+    div.id = "center";
     div.appendChild(admin_controls());
 
     const table = document.createElement("table") as HTMLTableElement;
     table.id = "proposals-table";
     table.className = "animated-table";
-    div.appendChild(table);
+    
     //document.body.appendChild(table);
     const resp = get_proposals();
     resp.then(lres =>
     {
-        lres.json().then( data => fill_table(data));
+        lres.json().then( data => 
+        {
+            if (!Array.isArray(data) || data.length === 0) 
+            {
+                console.log("Resply is empty array");
+                const row = table.insertRow();
+                const cell = row.insertCell();
+                return;
+            }
+            const headers = Object.keys(data[0]);
+            // Create table header
+            const headerRow = table.insertRow();
+            headers.forEach(header => 
+            {
+                const th = document.createElement("th");
+            
+                th.innerText = header;
+            });
+
+            data.forEach(item => 
+            {
+                const row = table.insertRow();
+                row.className = "new-row";
+                headers.forEach(header => 
+                {
+                    const cell = row.insertCell();
+                    cell.innerText = item[header];
+                });
+                row.offsetWidth; 
+                row.classList.add("visible");
+            });
+        });
     })
     .catch(error => 
     {
         show_toast(error.message);
         //throw error;
-        const row = table.insertRow();
     }
     );
 
+    
+    div.appendChild(table);
     return div;
 }
 
