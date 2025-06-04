@@ -192,9 +192,10 @@ export function gen_proposals_table()
     div.id = 'center';
     div.appendChild(admin_controls());
 
-    const table = document.createElement("table");
+    const table = document.createElement("table") as HTMLTableElement;
     table.id = "proposals-table";
     table.className = "animated-table";
+    div.appendChild(table);
     //document.body.appendChild(table);
     const resp = get_proposals();
     resp.then(lres =>
@@ -205,10 +206,10 @@ export function gen_proposals_table()
     {
         show_toast(error.message);
         //throw error;
+        const row = table.insertRow();
     }
     );
 
-    div.appendChild(table);
     return div;
 }
 
