@@ -97,11 +97,27 @@ async function get_proposals_for(badge: string): Promise<Response>
 
 function fill_table(data: JSON)
 {
-    const table = document.getElementById('proposals_table') as HTMLTableElement;
-    table.remove();
+    var table = document.getElementById('proposals-table') as HTMLTableElement;
+    if (table == null)
+    {
+        const div = document.getElementById('center') as HTMLElement;
+        if( div == null)
+        {
+            console.log("Could not find center div");
+            return;
+        }
+        console.log("Creating new table");
+        table = document.createElement("table");
+        div.appendChild(table);
+    }
+    else
+    {
+        table.remove();
+    }
 
     if (!Array.isArray(data) || data.length === 0) 
     {
+        console.log("Resply is empty array");
         return;
     }
     const headers = Object.keys(data[0]);
@@ -173,11 +189,11 @@ function admin_controls()
 export function gen_proposals_table()
 {
     const div = document.createElement("div");
-
+    div.id = 'center';
     div.appendChild(admin_controls());
 
     const table = document.createElement("table");
-    table.id = "proposals_table";
+    table.id = "proposals-table";
     table.className = "animated-table";
     //document.body.appendChild(table);
     const resp = get_proposals();
