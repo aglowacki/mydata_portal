@@ -108,18 +108,16 @@ function fill_table(data: JSON)
     if (!Array.isArray(data) || data.length === 0) 
     {
         console.log("Resply is empty array");
-        const row = table.insertRow();
-        const cell = row.insertCell();
         return;
     }
     const headers = Object.keys(data[0]);
     // Create table header
-    const headerRow = table.insertRow();
+    const thead = table.createTHead();
     headers.forEach(header => 
     {
         const th = document.createElement("th");
-    
         th.innerText = header;
+        thead.appendChild(th);
     });
 
     data.forEach(item => 
