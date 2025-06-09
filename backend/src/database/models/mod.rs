@@ -66,7 +66,6 @@ pub struct Beamline {
     pub link: String,
 }
 
-
 #[derive(Queryable, Debug, Identifiable, Selectable, Serialize)]
 #[diesel(primary_key(id))]
 pub struct Proposal {
@@ -133,3 +132,4 @@ pub struct Experimenter {
     pub experiment_role_id: Option<i32>,
     pub id: i32,
 }
+

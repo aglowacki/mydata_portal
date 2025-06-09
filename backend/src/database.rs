@@ -14,39 +14,9 @@ use diesel_async::{
 mod schema;
 mod models;
 use crate::auth;
-/* 
-#[derive(serde::Serialize, Selectable, Queryable)]
-#[diesel(table_name = schema::users)]
-pub struct User {
-    id: i32,
-    name: String,
-    hair_color: Option<String>,
-}
 
-#[derive(serde::Deserialize, Insertable)]
-#[diesel(table_name = users)]
-struct NewUser {
-    name: String,
-    hair_color: Option<String>,
-}
-*/
 pub type Pool = bb8::Pool<AsyncDieselConnectionManager<AsyncPgConnection>>;
-/*
-async fn create_user(
-    State(pool): State<Pool>,
-    Json(new_user): Json<NewUser>,
-) -> Result<Json<User>, (StatusCode, String)> {
-    let mut conn = pool.get().await.map_err(internal_error)?;
 
-    let res = diesel::insert_into(users::table)
-        .values(new_user)
-        .returning(User::as_returning())
-        .get_result(&mut conn)
-        .await
-        .map_err(internal_error)?;
-    Ok(Json(res))
-}
-*/
 // we can also write a custom extractor that grabs a connection from the pool
 // which setup is appropriate depends on your application
 pub struct DatabaseConnection(bb8::PooledConnection<'static, AsyncDieselConnectionManager<AsyncPgConnection>>,);
