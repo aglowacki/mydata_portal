@@ -13,7 +13,7 @@ use diesel_async::{
 
 mod schema;
 mod models;
-use crate::auth;
+use crate::{auth};
 
 pub type Pool = bb8::Pool<AsyncDieselConnectionManager<AsyncPgConnection>>;
 
@@ -83,7 +83,7 @@ pub async fn get_user_proposals(
 
 #[axum_macros::debug_handler]
 pub async fn get_user_proposals_as(
-    Path((user_id)): Path<(i32)>,
+    Path(user_id): Path<i32>,
     State(state): State<AppState>,
     claims: auth::Claims,
     DatabaseConnection(mut conn): DatabaseConnection,
@@ -106,16 +106,16 @@ pub async fn get_user_proposals_as(
     .map_err(internal_error)?;
     
     if asking_user.len() > 0
-    {
-        let res = schema::proposals::table.select(models::Proposal::as_select())
+    {   
+        let res: Vec<_> = schema::proposals::table.select(models::Proposal::as_select())
         .inner_join(schema::experimenters::table.on(schema::proposals::id.eq(schema::experimenters::proposal_id)))
         .filter(schema::experimenters::user_badge.eq(user_id))
         .distinct()
         .load(&mut conn)
         .await
         .map_err(internal_error)?;
-
-        Ok(Json(res))
+        
+        Ok(Json(res))    
     }
     else 
     {
@@ -123,6 +123,65 @@ pub async fn get_user_proposals_as(
         Err((StatusCode::FORBIDDEN, err_msg))
     }
 }
+
+#[axum_macros::debug_handler]
+pub async fn get_user_proposals_with_datasets(
+    Path(user_id): Path<i32>,
+    State(state): State<AppState>,
+    claims: auth::Claims,
+    DatabaseConnection(mut conn): DatabaseConnection,
+) -> Result<Json<Vec<models::ProposalWithDatasets>>, (StatusCode, String)> 
+{
+    let asking_user: Vec<models::User> = schema::users::table.select(models::User::as_select())
+    .inner_join(schema::user_access_controls::table.on(schema::user_access_controls::id.eq(schema::users::user_access_control_id)))
+    .filter(schema::user_access_controls::level.eq("Admin").or(schema::user_access_controls::level.eq("Staff")))
+    .filter(schema::users::badge.eq(claims.get_badge()))
+    .load(&mut conn)
+    .await
+    .map_err(internal_error)?;
+    
+    if asking_user.len() > 0
+    {   
+        let user_proposals: Vec<_> = schema::proposals::table.select(models::Proposal::as_select())
+        .inner_join(schema::experimenters::table.on(schema::proposals::id.eq(schema::experimenters::proposal_id)))
+        .filter(schema::experimenters::user_badge.eq(user_id))
+        .distinct()
+        .load(&mut conn)
+        .await
+        .map_err(internal_error)?;
+        
+        let mut proposals_with_datasets = Vec::new();
+        for proposal in user_proposals        
+        {
+            let datasets = schema::datasets::table.select(models::Dataset::as_select())
+            .inner_join(schema::experimenters::table.on(schema::datasets::id.eq(schema::experimenters::dataset_id)))
+            .filter(schema::experimenters::proposal_id.eq(proposal.id))
+            .load(&mut conn)
+            .await
+            .map_err(internal_error)?;
+        
+            proposals_with_datasets.push( models::ProposalWithDatasets { proposal, datasets } );
+        }
+        
+        Ok(Json(proposals_with_datasets))
+    /*
+        let proposals_with_datasets = datasets
+        .grouped_by(&proposals_links)
+        .into_iter()
+        .zip(proposals_links)
+        .map(|(datasets, experiementer)| models::ProposalWithJobs { experiementer, datasets })
+        .collect::<Vec<models::ProposalWithJobs>>();
+
+        Ok((proposals_with_datasets))
+ */
+    }
+    else 
+    {
+        let err_msg = "Need to be Admin or Staff to get proposals by other user.".to_string();
+        Err((StatusCode::FORBIDDEN, err_msg))
+    }
+}
+
 
 /// Utility function for mapping any error into a `500 Internal Server Error`
 /// response.

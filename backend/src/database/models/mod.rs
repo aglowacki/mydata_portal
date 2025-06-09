@@ -24,6 +24,7 @@ use crate::database::schema::{beamline_contacts,
 
 #[derive(Queryable, Debug, Identifiable)]
 #[diesel(primary_key(id))]
+#[diesel(check_for_backend(diesel::pg::Pg))]
 pub struct ExperimentRole {
     pub id: i32,
     pub role: String,
@@ -66,7 +67,7 @@ pub struct Beamline {
     pub link: String,
 }
 
-#[derive(Queryable, Debug, Identifiable, Selectable, Serialize)]
+#[derive(Queryable, Debug, Identifiable, Selectable, Serialize, Clone)]
 #[diesel(primary_key(id))]
 pub struct Proposal {
     pub id: i32,
@@ -98,16 +99,16 @@ pub struct BeamlineContact {
     pub id: i32,
 }
 
-#[derive(Queryable, Debug, Identifiable, Associations)]
+#[derive(Queryable, Debug, Identifiable, Associations, Selectable, QueryableByName, serde::Serialize)]
 #[diesel(belongs_to(ScanType), belongs_to(SyncotronRun), belongs_to(Beamline))]
 #[diesel(primary_key(id))]
 pub struct Dataset {
     pub id: i32,
     pub path: String,
     pub acquisition_timestamp: NaiveDateTime,
-    pub beamline_id: Option<i32>,
-    pub syncotron_run_id: Option<i32>,
-    pub scan_type_id: Option<i32>,
+    pub beamline_id: i32,
+    pub syncotron_run_id: i32,
+    pub scan_type_id: i32,
 }
 
 #[derive(Queryable, Debug, Identifiable, Associations)]
@@ -122,14 +123,24 @@ pub struct DataAnalysi {
     pub processing_end_time: Option<NaiveDateTime>,
 }
 
-#[derive(Queryable, Debug, Associations, Identifiable)]
+#[derive(Queryable, Debug, Associations, Identifiable, Selectable, QueryableByName)]
 #[diesel(belongs_to(Dataset), belongs_to(User, foreign_key=user_badge), belongs_to(Proposal), belongs_to(ExperimentRole))]
 #[diesel(primary_key(id))]
+#[diesel(check_for_backend(diesel::pg::Pg))]
 pub struct Experimenter {
-    pub dataset_id: Option<i32>,
-    pub user_badge: Option<i32>,
-    pub proposal_id: Option<i32>,
-    pub experiment_role_id: Option<i32>,
+    pub dataset_id: i32,
+    pub user_badge: i32,
+    pub proposal_id: i32,
+    pub experiment_role_id: i32,
     pub id: i32,
 }
 
+// ------------------------- joined -------------------------
+
+#[derive(serde::Serialize)]
+pub struct ProposalWithDatasets
+{
+    #[serde(flatten)]
+    pub proposal: Proposal,
+    pub datasets: Vec<Dataset>,
+}
