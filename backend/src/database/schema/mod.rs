@@ -57,12 +57,19 @@ diesel::table! {
 }
 
 diesel::table! {
-    experimenters (id) {
-        dataset_id -> Int4,
+    experimenter_proposal_links (id) {
+        id -> Int4,
         user_badge -> Int4,
         proposal_id -> Int4,
         experiment_role_id -> Int4,
+    }
+}
+
+diesel::table! {
+    proposal_dataset_links (id) {
         id -> Int4,
+        dataset_id -> Int4,
+        proposal_id -> Int4,
     }
 }
 
@@ -133,10 +140,11 @@ diesel::joinable!(data_analysis -> datasets (dataset_id));
 diesel::joinable!(datasets -> beamlines (beamline_id));
 diesel::joinable!(datasets -> scan_types (scan_type_id));
 diesel::joinable!(datasets -> syncotron_runs (syncotron_run_id));
-diesel::joinable!(experimenters -> datasets (dataset_id));
-diesel::joinable!(experimenters -> experiment_roles (experiment_role_id));
-diesel::joinable!(experimenters -> proposals (proposal_id));
-diesel::joinable!(experimenters -> users (user_badge));
+diesel::joinable!(proposal_dataset_links -> datasets (dataset_id));
+diesel::joinable!(proposal_dataset_links -> proposals (proposal_id));
+diesel::joinable!(experimenter_proposal_links -> experiment_roles (experiment_role_id));
+diesel::joinable!(experimenter_proposal_links -> proposals (proposal_id));
+diesel::joinable!(experimenter_proposal_links -> users (user_badge));
 diesel::joinable!(users -> user_access_controls (user_access_control_id));
 
 diesel::allow_tables_to_appear_in_same_query!(
@@ -145,7 +153,8 @@ diesel::allow_tables_to_appear_in_same_query!(
     data_analysis,
     datasets,
     experiment_roles,
-    experimenters,
+    experimenter_proposal_links,
+    proposal_dataset_links,
     proposals,
     scan_types,
     syncotron_runs,

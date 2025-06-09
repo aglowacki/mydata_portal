@@ -13,7 +13,8 @@ use crate::database::schema::{beamline_contacts,
                                 data_analysis,
                                 datasets,
                                 experiment_roles,
-                                experimenters,
+                                experimenter_proposal_links,
+                                proposal_dataset_links,
                                 proposals,
                                 scan_types,
                                 syncotron_runs,
@@ -124,14 +125,24 @@ pub struct DataAnalysi {
 }
 
 #[derive(Queryable, Debug, Associations, Identifiable, Selectable, QueryableByName)]
-#[diesel(belongs_to(Dataset), belongs_to(User, foreign_key=user_badge), belongs_to(Proposal), belongs_to(ExperimentRole))]
+#[diesel(belongs_to(User, foreign_key=user_badge), belongs_to(Proposal), belongs_to(ExperimentRole))]
 #[diesel(primary_key(id))]
 #[diesel(check_for_backend(diesel::pg::Pg))]
-pub struct Experimenter {
-    pub dataset_id: i32,
+pub struct ExperimenterProposalLink { 
     pub user_badge: i32,
     pub proposal_id: i32,
     pub experiment_role_id: i32,
+    pub id: i32,
+}
+
+
+#[derive(Queryable, Debug, Associations, Identifiable, Selectable, QueryableByName)]
+#[diesel(belongs_to(Dataset), belongs_to(Proposal))]
+#[diesel(primary_key(id))]
+#[diesel(check_for_backend(diesel::pg::Pg))]
+pub struct ProposalDatasetLink {
+    pub dataset_id: i32,
+    pub proposal_id: i32,
     pub id: i32,
 }
 

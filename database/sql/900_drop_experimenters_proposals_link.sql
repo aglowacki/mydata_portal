@@ -1,0 +1,1 @@
+DROP TABLE experimenter_proposal_links CASCADE;

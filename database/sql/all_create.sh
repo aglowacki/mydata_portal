@@ -13,5 +13,6 @@ psql -d mydata -f 002_create_beamline_contacts.sql
 psql -d mydata -f 002_create_datasets.sql
 
 psql -d mydata -f 003_create_analysis.sql
-psql -d mydata -f 003_create_experimenters.sql
+psql -d mydata -f 003_create_experimenter_proposal_links.sql
+psql -d mydata -f 003_create_proposal_dataset_links.sql
 

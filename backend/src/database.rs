@@ -71,8 +71,8 @@ pub async fn get_user_proposals(
 {
    
     let res = schema::proposals::table.select(models::Proposal::as_select())
-    .inner_join(schema::experimenters::table.on(schema::proposals::id.eq(schema::experimenters::proposal_id)))
-    .filter(schema::experimenters::user_badge.eq(claims.get_badge()))
+    .inner_join(schema::experimenter_proposal_links::table.on(schema::proposals::id.eq(schema::experimenter_proposal_links::proposal_id)))
+    .filter(schema::experimenter_proposal_links::user_badge.eq(claims.get_badge()))
     .distinct()
     .load(&mut conn)
     .await
@@ -108,8 +108,8 @@ pub async fn get_user_proposals_as(
     if asking_user.len() > 0
     {   
         let res: Vec<_> = schema::proposals::table.select(models::Proposal::as_select())
-        .inner_join(schema::experimenters::table.on(schema::proposals::id.eq(schema::experimenters::proposal_id)))
-        .filter(schema::experimenters::user_badge.eq(user_id))
+        .inner_join(schema::experimenter_proposal_links::table.on(schema::proposals::id.eq(schema::experimenter_proposal_links::proposal_id)))
+        .filter(schema::experimenter_proposal_links::user_badge.eq(user_id))
         .distinct()
         .load(&mut conn)
         .await
@@ -143,8 +143,8 @@ pub async fn get_user_proposals_with_datasets(
     if asking_user.len() > 0
     {   
         let user_proposals: Vec<_> = schema::proposals::table.select(models::Proposal::as_select())
-        .inner_join(schema::experimenters::table.on(schema::proposals::id.eq(schema::experimenters::proposal_id)))
-        .filter(schema::experimenters::user_badge.eq(user_id))
+        .inner_join(schema::experimenter_proposal_links::table.on(schema::proposals::id.eq(schema::experimenter_proposal_links::proposal_id)))
+        .filter(schema::experimenter_proposal_links::user_badge.eq(user_id))
         .distinct()
         .load(&mut conn)
         .await
@@ -154,8 +154,8 @@ pub async fn get_user_proposals_with_datasets(
         for proposal in user_proposals        
         {
             let datasets = schema::datasets::table.select(models::Dataset::as_select())
-            .inner_join(schema::experimenters::table.on(schema::datasets::id.eq(schema::experimenters::dataset_id)))
-            .filter(schema::experimenters::proposal_id.eq(proposal.id))
+            .inner_join(schema::proposal_dataset_links::table.on(schema::datasets::id.eq(schema::proposal_dataset_links::dataset_id)))
+            .filter(schema::proposal_dataset_links::proposal_id.eq(proposal.id))
             .load(&mut conn)
             .await
             .map_err(internal_error)?;
@@ -164,16 +164,7 @@ pub async fn get_user_proposals_with_datasets(
         }
         
         Ok(Json(proposals_with_datasets))
-    /*
-        let proposals_with_datasets = datasets
-        .grouped_by(&proposals_links)
-        .into_iter()
-        .zip(proposals_links)
-        .map(|(datasets, experiementer)| models::ProposalWithJobs { experiementer, datasets })
-        .collect::<Vec<models::ProposalWithJobs>>();
 
-        Ok((proposals_with_datasets))
- */
     }
     else 
     {
