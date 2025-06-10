@@ -127,7 +127,14 @@ function fill_table(data: JSON)
         headers.forEach(header => 
         {
             const cell = row.insertCell();
-            cell.innerText = item[header];
+            if (Object.prototype.toString.call(item[header]) === '[object Array]') // if array then show count
+            {
+                cell.innerText = item[header].length;
+            }
+            else
+            {
+                cell.innerText = item[header];
+            }
         });
         row.offsetWidth; 
         row.classList.add("visible");
