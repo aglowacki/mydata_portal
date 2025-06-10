@@ -65,7 +65,7 @@ async function get_proposals_for(badge: string): Promise<Response>
 
     try 
     {
-        const url = '/api/get_user_proposals_as/'+badge;
+        const url = '/api/get_user_proposals_with_datasets/'+badge;
         const response = await fetch(url, requestOptions);
         if (!response.ok) 
         {
@@ -216,7 +216,14 @@ export function gen_proposals_table()
                 headers.forEach(header => 
                 {
                     const cell = row.insertCell();
-                    cell.innerText = item[header];
+                    if (Object.prototype.toString.call(item[header]) === '[object Array]') // if array then show count
+                    {
+                        cell.innerText = item[header].length;
+                    }
+                    else
+                    {
+                        cell.innerText = item[header];
+                    }
                 });
                 row.offsetWidth; 
                 row.classList.add("visible");
