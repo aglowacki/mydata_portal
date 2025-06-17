@@ -11,6 +11,8 @@ use diesel_async::{
     pooled_connection::AsyncDieselConnectionManager, AsyncPgConnection, RunQueryDsl,
 };
 
+use bb8::PooledConnection;
+
 mod schema;
 mod models;
 use crate::{auth};
@@ -62,6 +64,29 @@ pub async fn list_users(
     Ok(Json(res))
 }
 */
+
+
+
+async fn is_admin_or_staff(claims: &auth::Claims, conn: &mut PooledConnection<'static, AsyncDieselConnectionManager<AsyncPgConnection>>) -> bool
+{
+    let asking_user: Vec<models::User> = schema::users::table.select(models::User::as_select())
+    .inner_join(schema::user_access_controls::table.on(schema::user_access_controls::id.eq(schema::users::user_access_control_id)))
+    .filter(schema::user_access_controls::level.eq("Admin").or(schema::user_access_controls::level.eq("Staff")))
+    .filter(schema::users::badge.eq(claims.get_badge()))
+    .load(conn)
+    .await
+    .map_err(internal_error).unwrap_or(Vec::new());
+    
+    if asking_user.len() > 0
+    {
+        return true;   
+    }
+    else 
+    {
+        return false;    
+    }
+}
+
 #[axum_macros::debug_handler]
 pub async fn get_user_proposals(
     State(state): State<AppState>,
@@ -97,15 +122,8 @@ pub async fn get_user_proposals_as(
         Err(error) => panic!("Problem opening the file: {error:?}"),
     }
     */
-    let asking_user: Vec<models::User> = schema::users::table.select(models::User::as_select())
-    .inner_join(schema::user_access_controls::table.on(schema::user_access_controls::id.eq(schema::users::user_access_control_id)))
-    .filter(schema::user_access_controls::level.eq("Admin").or(schema::user_access_controls::level.eq("Staff")))
-    .filter(schema::users::badge.eq(claims.get_badge()))
-    .load(&mut conn)
-    .await
-    .map_err(internal_error)?;
-    
-    if asking_user.len() > 0
+
+    if is_admin_or_staff(&claims, &mut conn).await
     {   
         let res: Vec<_> = schema::proposals::table.select(models::Proposal::as_select())
         .inner_join(schema::experimenter_proposal_links::table.on(schema::proposals::id.eq(schema::experimenter_proposal_links::proposal_id)))
@@ -132,15 +150,7 @@ pub async fn get_user_proposals_with_datasets(
     DatabaseConnection(mut conn): DatabaseConnection,
 ) -> Result<Json<Vec<models::ProposalWithDatasets>>, (StatusCode, String)> 
 {
-    let asking_user: Vec<models::User> = schema::users::table.select(models::User::as_select())
-    .inner_join(schema::user_access_controls::table.on(schema::user_access_controls::id.eq(schema::users::user_access_control_id)))
-    .filter(schema::user_access_controls::level.eq("Admin").or(schema::user_access_controls::level.eq("Staff")))
-    .filter(schema::users::badge.eq(claims.get_badge()))
-    .load(&mut conn)
-    .await
-    .map_err(internal_error)?;
-    
-    if asking_user.len() > 0
+    if is_admin_or_staff(&claims, &mut conn).await
     {   
         let user_proposals: Vec<_> = schema::proposals::table.select(models::Proposal::as_select())
         .inner_join(schema::experimenter_proposal_links::table.on(schema::proposals::id.eq(schema::experimenter_proposal_links::proposal_id)))
