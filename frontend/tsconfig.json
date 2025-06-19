@@ -12,7 +12,11 @@
 		"resolveJsonModule": true,
 		"skipLibCheck": true,
 		"sourceMap": true,
-		"strict": true
+		"strict": true,
+		"baseUrl": "src",
+		"paths":{
+			"echarts":["node_modules/echarts/*"],
+		},
 	},
 	"lib": ["es2023"]
 }
