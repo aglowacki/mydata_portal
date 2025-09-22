@@ -15,9 +15,8 @@ use bb8::PooledConnection;
 
 mod schema;
 mod models;
+use super::appstate;
 use crate::{auth};
-
-pub type Pool = bb8::Pool<AsyncDieselConnectionManager<AsyncPgConnection>>;
 
 // we can also write a custom extractor that grabs a connection from the pool
 // which setup is appropriate depends on your application
@@ -26,28 +25,19 @@ pub struct DatabaseConnection(bb8::PooledConnection<'static, AsyncDieselConnecti
 impl<S> FromRequestParts<S> for DatabaseConnection
 where
     S: Send + Sync,
-    Pool: FromRef<S>,
+    appstate::DieselPool: FromRef<S>,
 {
     type Rejection = (StatusCode, String);
 
     async fn from_request_parts(_parts: &mut Parts, state: &S) -> Result<Self, Self::Rejection> {
-        let pool = Pool::from_ref(state);
+        let pool = appstate::DieselPool::from_ref(state);
 
         let conn = pool.get_owned().await.map_err(internal_error)?;
 
         Ok(Self(conn))
     }
 }
-#[derive(Clone)]
-pub struct AppState {
-    pub pool: Pool,
-}
 
-impl FromRef<AppState> for Pool {
-    fn from_ref(state: &AppState) -> Pool {
-        state.pool.clone()
-    }
-}
 /*
 #[axum_macros::debug_handler]
 pub async fn list_users(
@@ -89,7 +79,7 @@ async fn is_admin_or_staff(claims: &auth::Claims, conn: &mut PooledConnection<'s
 
 #[axum_macros::debug_handler]
 pub async fn get_user_proposals(
-    State(state): State<AppState>,
+    State(state): State<appstate::AppState>,
     claims: auth::Claims,
     DatabaseConnection(mut conn): DatabaseConnection,
 ) -> Result<Json<Vec<models::Proposal>>, (StatusCode, String)> 
@@ -109,7 +99,7 @@ pub async fn get_user_proposals(
 #[axum_macros::debug_handler]
 pub async fn get_user_proposals_as(
     Path(user_id): Path<i32>,
-    State(state): State<AppState>,
+    State(state): State<appstate::AppState>,
     claims: auth::Claims,
     DatabaseConnection(mut conn): DatabaseConnection,
 ) -> Result<Json<Vec<models::Proposal>>, (StatusCode, String)> 
@@ -145,7 +135,7 @@ pub async fn get_user_proposals_as(
 #[axum_macros::debug_handler]
 pub async fn get_user_proposals_with_datasets(
     Path(user_id): Path<i32>,
-    State(state): State<AppState>,
+    State(state): State<appstate::AppState>,
     claims: auth::Claims,
     DatabaseConnection(mut conn): DatabaseConnection,
 ) -> Result<Json<Vec<models::ProposalWithDatasets>>, (StatusCode, String)> 

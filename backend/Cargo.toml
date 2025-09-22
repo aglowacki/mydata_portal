@@ -28,3 +28,4 @@ futures = "0.3"
 headers = "0.4"
 axum-macros = "0.5.0"
 chrono = {version = "0.4.41", features = ["serde"]}
+redis = {version = "0.32.5", features = ["tokio-comp"]}
