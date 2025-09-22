@@ -112,13 +112,15 @@ fn main()
                             Ok(Ok(message)) => 
                             {
                                 println!("Received message: {}", message);
-
-                                // Push the message to the Redis list
-                                let result: redis::RedisResult<()> = redis_conn.rpush(&(clients[index].redis_key), &message);
-                                match result 
+                                if message != clients[index].topic
                                 {
-                                    Ok(_) => println!("Message pushed to Redis list: {}", clients[index].redis_key),
-                                    Err(err) => eprintln!("Failed to push message to Redis: {}", err),
+                                    // Push the message to the Redis list
+                                    let result: redis::RedisResult<()> = redis_conn.rpush(&(clients[index].redis_key), &message);
+                                    match result 
+                                    {
+                                        Ok(_) => println!("Message pushed to Redis list: {}", clients[index].redis_key),
+                                        Err(err) => eprintln!("Failed to push message to Redis: {}", err),
+                                    }
                                 }
                             }
                             Ok(Err(err)) => eprintln!("Failed to decode message: {}", String::from_utf8(err).expect("Failed to decode!")),
