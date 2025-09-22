@@ -1,0 +1,14 @@
+{
+    "redis_config":
+    {
+        "conn_str": "redis://127.0.0.1/"
+    },
+    "bluesky_clients":
+    [
+        {
+            "conn_str": "tcp://127.0.0.1:5555",
+            "zmq_topic": "QS_Console",
+            "redis_channel": "Sec0_QS_Messages"
+        }
+    ]
+}
