@@ -104,26 +104,25 @@ option = {
 
 option && myChart.setOption(option);
 
-
+fetch('test_data.json')
+  .then(response => response.json())
+  .then(data => {
+    myChart.setOption({
+      xAxis: {
+        data: data.xData
+      },
+      yAxis: {
+        data: data.yData
+      },
+      series: [
+        {
+          data: data.data
+        }
+      ]
+    });
+  });
 }
 
-// Asynchronous Data Loading
-$.get('test_data.json').done(function(data) {
-  // Fill in the data
-  myChart.setOption({
-    xAxis: {
-      data: data.xData
-    },
-    yAxis: {
-      data: data.yData
-    },
-    series: [
-      {
-        data: data.data
-      }
-    ]
-  });
-});
 
 window.onload = function() 
 {   
