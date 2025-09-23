@@ -30,7 +30,7 @@ pub async fn redis_event_listener(state: appstate::AppState)
 
 /// SSE handler: each client gets its own subscription to the broadcast channel.
 //async fn sse_handler(State(tx): State<Arc<broadcast::Sender<String>>>) -> Sse<impl futures::Stream<Item = Result<Event, Infallible>>> 
-pub async fn sse_handler(State(state): State<appstate::AppState>, claims: auth::Claims) -> Sse<impl futures::Stream<Item = Result<Event, Infallible>>> 
+pub async fn sse_handler(State(state): State<appstate::AppState>) -> Sse<impl futures::Stream<Item = Result<Event, Infallible>>> 
 {
     // Subscribe to our broadcast channel
     let rx =  state.sse_tx.subscribe();
