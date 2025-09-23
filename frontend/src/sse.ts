@@ -1,4 +1,4 @@
-async function connectToSSE() 
+export async function connectToSSE() 
 {
     const eventSource = new EventSource("api/sse", { withCredentials: true} );
     
@@ -20,5 +20,3 @@ async function connectToSSE()
 
     console.log("Connected to SSE");
 }
-
-connectToSSE();

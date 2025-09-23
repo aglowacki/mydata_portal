@@ -21,7 +21,7 @@ pub async fn redis_event_listener(state: appstate::AppState)
             println!("Received Redis event: {}", payload);
 
             // Broadcast the event to all connected clients
-            let _ = state.sse_tx.send(payload);
+            state.sse_tx.send(payload).unwrap();
         }
     }
 
