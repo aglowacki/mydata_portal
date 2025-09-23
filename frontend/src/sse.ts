@@ -1,7 +1,12 @@
 async function connectToSSE() 
 {
-    const eventSource = new EventSource("api/sse");
-
+    const eventSource = new EventSource("api/sse", { withCredentials: true} );
+    
+    eventSource.onopen = (event) => 
+    {
+        console.log('SSE connection established.', event);
+    };
+    
     eventSource.onmessage = (event) => 
     {
         console.log("Received SSE message:", event.data);
