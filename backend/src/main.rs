@@ -23,7 +23,7 @@ use tower_http::trace::TraceLayer;
 use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt};
 use diesel_async::pooled_connection::AsyncDieselConnectionManager;
 
-use std::sync::Arc;
+//use std::sync::Arc;
 
 mod auth;
 mod sse;
@@ -43,15 +43,17 @@ async fn main()
         )
         .with(tracing_subscriber::fmt::layer().without_time())
         .init();
-/*
-        let postgres_manager = PostgresConnectionManager::new_from_stringlike("host=localhost user=postgres", NoTls).unwrap();
-        let postgres_pool = Pool::builder().build(postgres_manager).await.unwrap();
-*/
+
+    let (sse_tx, _rx) = broadcast::channel::<String>(100);
     tracing::debug!("successfully connected to redis and pinged it");
     let db_url = std::env::var("DATABASE_URL").unwrap();
     // set up connection pool
     let db_config = AsyncDieselConnectionManager::<diesel_async::AsyncPgConnection>::new(db_url);
-    let app_state = appstate::AppState::new(db_config, "redis://localhost").await;
+    let diesel_pool = bb8::Pool::builder().build(db_config).await.unwrap();
+    let redis_client = redis::Client::open("redis://localhost").unwrap();
+    let app_state = appstate::AppState { diesel_pool, redis_client, sse_tx };
+
+    //let app_state = appstate::AppState::new(db_config, "redis://localhost", tx.clone()).await;
 
     tokio::spawn(sse::redis_event_listener(app_state.clone()));
 

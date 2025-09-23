@@ -13,8 +13,8 @@ pub async fn redis_event_listener(state: appstate::AppState)
     pubsub.subscribe("events").await.unwrap();
 
     println!("Subscribed to Redis channel: events");
-    
-    while let Some(msg) = pubsub.on_message().next().await 
+    let mut stream_msg = pubsub.on_message();
+    while let Some(msg) = stream_msg.next().await 
     {  
         if let Ok(payload) = msg.get_payload::<String>() 
         {
@@ -24,7 +24,6 @@ pub async fn redis_event_listener(state: appstate::AppState)
             let _ = state.sse_tx.send(payload);
         }
     }
-
 }
 
 /// SSE handler: each client gets its own subscription to the broadcast channel.
@@ -47,9 +46,9 @@ pub async fn sse_handler(State(state): State<appstate::AppState>) -> Sse<impl fu
                 Some(Ok(event))
             }
             // On lagging or closed channel, just skip
-            Err(E) => 
+            Err(b_err) => 
             {
-                println!("Error sse event: {}", E);
+                println!("Error sse event: {}", b_err);
                 None
             }
         }

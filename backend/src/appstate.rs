@@ -14,12 +14,12 @@ pub struct AppState
     pub redis_client: redis::Client,
     pub sse_tx: broadcast::Sender::<String>,
 }
-
+/*
 impl AppState
 {
     pub async fn new(diesel_config: AsyncDieselConnectionManager::<diesel_async::AsyncPgConnection>, redis_config: &str) -> Self
     {
-        let (tx, _rx) = broadcast::channel::<String>(100);
+        
         Self 
         {   
             diesel_pool: bb8::Pool::builder().build(diesel_config).await.unwrap(),
@@ -28,7 +28,7 @@ impl AppState
         }
     }
 }
-
+*/
 impl FromRef<AppState> for DieselPool 
 {
     fn from_ref(state: &AppState) -> DieselPool 
