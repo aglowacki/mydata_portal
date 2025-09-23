@@ -21,7 +21,7 @@ pub async fn redis_event_listener(state: appstate::AppState)
             println!("Received Redis event: {}", payload);
 
             // Broadcast the event to all connected clients
-            state.sse_tx.send(payload).unwrap();
+            let _ = state.sse_tx.send(payload);
         }
     }
 
@@ -41,12 +41,17 @@ pub async fn sse_handler(State(state): State<appstate::AppState>) -> Sse<impl fu
         {
             Ok(msg) => 
             {
+                println!("Sending sse event: {}", msg);
                 // Wrap each message in a Server‐Sent Event
                 let event = Event::default().data(msg);
                 Some(Ok(event))
             }
             // On lagging or closed channel, just skip
-            Err(_) => None,
+            Err(E) => 
+            {
+                println!("Error sse event: {}", E);
+                None
+            }
         }
     });
 
