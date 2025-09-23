@@ -47,14 +47,11 @@ async fn main()
         let postgres_manager = PostgresConnectionManager::new_from_stringlike("host=localhost user=postgres", NoTls).unwrap();
         let postgres_pool = Pool::builder().build(postgres_manager).await.unwrap();
 */
-    let (tx ,_rx)=  broadcast::channel::<String>(100);
-    let arc_tx = std::sync::Arc::new(tx);
     tracing::debug!("successfully connected to redis and pinged it");
-
     let db_url = std::env::var("DATABASE_URL").unwrap();
     // set up connection pool
     let db_config = AsyncDieselConnectionManager::<diesel_async::AsyncPgConnection>::new(db_url);
-    let app_state = appstate::AppState::new(db_config, "redis://localhost", &arc_tx).await;
+    let app_state = appstate::AppState::new(db_config, "redis://localhost").await;
 
     tokio::spawn(sse::redis_event_listener(app_state.clone()));
 

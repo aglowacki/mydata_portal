@@ -6,7 +6,6 @@ use tokio_stream::wrappers::BroadcastStream;
 use std::time::Duration;
 
 use super::appstate;
-use crate::{auth};
 
 pub async fn redis_event_listener(state: appstate::AppState) 
 {
