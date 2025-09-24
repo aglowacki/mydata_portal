@@ -47,6 +47,6 @@ fn main()
         // poll redis command queue
         
         // Sleep 
-        std::thread::sleep(Duration::from_millis(10));
+       std::thread::sleep(Duration::from_millis(10));
     }
 }
