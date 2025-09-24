@@ -66,6 +66,7 @@ async fn main()
         .route("/api/get_user_proposals", get(database::get_user_proposals))
         .route("/api/get_user_proposals_as/{user_id}", get(database::get_user_proposals_as))
         .route("/api/get_user_proposals_with_datasets/{user_id}", get(database::get_user_proposals_with_datasets))
+        .route("/api/get_beamline_log/{beamline_id}", get(beamline_controls::get_beamline_log))
         .route("/api/get_available_scans/{beamline_id}", get(beamline_controls::get_available_scans))
         .layer((
             TraceLayer::new_for_http(),

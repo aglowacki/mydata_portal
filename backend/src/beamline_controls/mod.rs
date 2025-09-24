@@ -6,9 +6,11 @@ use axum::{
     extract::Path,
 };
 use serde::Serialize;
+use redis::Commands;
 
 use super::appstate;
 use crate::{auth};
+
 
 
 #[derive(Debug, Serialize, Clone)]
@@ -47,4 +49,17 @@ pub async fn get_available_scans(
     */
     let plans = vec![Plan{name: "abc".to_string()}];
     Ok(Json(plans)) 
+}
+
+#[axum_macros::debug_handler]
+pub async fn get_beamline_log(
+    Path(beamline_id): Path<String>,
+    State(state): State<appstate::AppState>,
+    claims: auth::Claims
+) -> Result<Json<Vec<String>>, (StatusCode, String)> 
+{
+    let mut conn = state.redis_client.get_connection().unwrap();
+    let items: Vec<String> = conn.lrange(beamline_id, 0, -1).expect("Error getting logs");
+    
+    Ok(Json(items)) 
 }
