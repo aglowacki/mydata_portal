@@ -1,14 +1,15 @@
 {
     "redis_config":
     {
-        "conn_str": "redis://127.0.0.1/"
+        "conn_str": "redis://127.0.0.1/",
+        "redis_cmd_queue": "Sec0_Q"
     },
     "bluesky_clients":
     [
         {
-            "conn_str": "tcp://127.0.0.1:5555",
+            "host": "127.0.0.1",
             "zmq_topic": "QS_Console",
-            "redis_channel": "Sec0_QS_Messages"
+            "redis_channel": "BeamlineId"
         }
     ]
 }
