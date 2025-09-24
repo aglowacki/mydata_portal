@@ -29,6 +29,7 @@ mod auth;
 mod sse;
 mod database;
 mod appstate;
+mod beamline_controls;
 
 #[tokio::main]
 async fn main() 
@@ -53,8 +54,6 @@ async fn main()
     let redis_client = redis::Client::open("redis://localhost").unwrap();
     let app_state = appstate::AppState { diesel_pool, redis_client, sse_tx };
 
-    //let app_state = appstate::AppState::new(db_config, "redis://localhost", tx.clone()).await;
-
     tokio::spawn(sse::redis_event_listener(app_state.clone()));
 
     // Create a regular axum app.
@@ -67,6 +66,7 @@ async fn main()
         .route("/api/get_user_proposals", get(database::get_user_proposals))
         .route("/api/get_user_proposals_as/{user_id}", get(database::get_user_proposals_as))
         .route("/api/get_user_proposals_with_datasets/{user_id}", get(database::get_user_proposals_with_datasets))
+        .route("/api/get_available_scans/{beamline_id}", get(beamline_controls::get_available_scans))
         .layer((
             TraceLayer::new_for_http(),
             // Graceful shutdown will wait for outstanding requests to complete. Add a timeout so
