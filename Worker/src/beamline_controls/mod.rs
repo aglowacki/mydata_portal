@@ -114,6 +114,7 @@ impl ClientMap
                                     {
                                         // Push the message to the Redis list
                                         let result: redis::RedisResult<()> = redis_conn.rpush(&(client.redis_key), &message);
+                                        let _: redis::RedisResult<()> = redis_conn.publish(&(client.redis_key), &message);
                                         match result 
                                         {
                                             Ok(_) => println!("Message pushed to Redis list: {}", client.redis_key),
