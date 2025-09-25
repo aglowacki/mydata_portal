@@ -89,7 +89,7 @@ impl Command for BlueSkyCommand
 {
     fn execute(&mut self, channel: &zmq::Socket) -> Result<String, zmq::Error>
     {
-        let message = "Hello from client!";
+        let message = serde_json::to_string(&self).unwrap();
         channel.send(message.as_bytes(), 0)?;
         println!("Client sent: {}", message);
 

@@ -174,7 +174,11 @@ impl ClientMap
                             let reply_result = protocol_cmd.execute(&cmd_client.cmd_channel);
                             match reply_result
                             {
-                                Ok(reply) => beamline_cmd.reply = Some(reply),
+                                Ok(reply) => 
+                                {
+                                    beamline_cmd.status = "Completed".to_string();
+                                    beamline_cmd.reply = Some(reply);
+                                }
                                 Err(e) => beamline_cmd.status = e.message().to_string(),
                             }
                             beamline_cmd.proc_end_time = Some(Utc::now());
