@@ -43,6 +43,9 @@ fn main()
     println!("Setting up redis command queue done {}", client_map.redis_key_cmd_queue_done);
 
     
+    println!("Updating Redis with available scans");
+    client_map.update_available_scans(&mut redis_conn);
+
     println!("Polling for messages...");
     // Poll for messages in a loop
     loop 

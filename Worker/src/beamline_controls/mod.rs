@@ -2,7 +2,7 @@ use zmq::PollItem;
 use redis::{Commands};
 use std::{collections::HashMap};
 use std::sync::Arc;
-use crate::config;
+use crate::{beamline_controls, config};
 use std::time::Duration;
 use chrono::{DateTime, Utc};
 
@@ -62,6 +62,34 @@ pub struct ClientMap
     poll_list: Vec<PollItem<'static>>,
 }
 
+fn process_protocol_command(cmd_client: &ControlClient, beamline_cmd: &mut command_protocols::BeamlineCommand) 
+{
+    let gen_result = command_protocols::generate_cmd(&cmd_client.protocol, &beamline_cmd);
+    match gen_result
+    {
+        Some(mut protocol_cmd)=>
+        {
+            beamline_cmd.proc_start_time = Some(Utc::now());
+            let reply_result = protocol_cmd.execute(&cmd_client.cmd_channel);
+            match reply_result
+            {
+                Ok(reply) => 
+                {
+                    beamline_cmd.status = "Completed".to_string();
+                    beamline_cmd.reply = Some(reply);
+                }
+                Err(e) => beamline_cmd.status = e.message().to_string(),
+            }
+            beamline_cmd.proc_end_time = Some(Utc::now());
+        }
+        None =>
+        {
+                println!("Failed to traslate command for protocol {}", cmd_client.protocol);
+                beamline_cmd.set_unable_to_translate_protocol()
+        }
+    }  
+}
+
 impl ClientMap
 {
     pub fn init(config: &config::Config, context: &zmq::Context ) -> Self
@@ -93,18 +121,7 @@ impl ClientMap
             poll_list: p_list,
         }
     }
-    /*
-    pub fn get_client_by_name(&self, name: &str) -> Option<Arc<ControlClient>>
-    {
-        self.client_map.get(name).cloned()
-    }
-    */
-    /*
-    pub fn get_client_by_pollitem(&self, id: PollItem) -> Option<&BsClient>
-    {
-        self.poll_map.get(id)
-    }
-    */
+
     pub fn poll_logs(&mut self, redis_conn: &mut redis::Connection) -> bool
     {
         let mut got_data = false;
@@ -154,6 +171,25 @@ impl ClientMap
         got_data
     }
 
+    pub fn update_available_scans(&mut self, redis_conn: &mut redis::Connection)
+    {
+        for (name, client) in self.client_map.iter_mut()
+        {
+            let rkey = format!("{}_AVAILABLE_SCANS",name);
+            let mut command = command_protocols::BeamlineCommand::gen_get_avail_scans(name);
+            process_protocol_command(&client, &mut command);
+            match command.reply
+            {
+                Some(value)=>
+                {
+                    println!("Updating available scans for {}", name);
+                    let _: redis::RedisResult<()>= redis_conn.set(&rkey, &value);
+                }
+                None=> println!("Failed to get available scans for {}", name),
+            }
+        }
+    }
+
     fn process_request(&mut self, cmd_str: &String) -> String
     {
         let mut beamline_cmd: command_protocols::BeamlineCommand = serde_json::from_str(&cmd_str).unwrap_or(command_protocols::BeamlineCommand::new(cmd_str));
@@ -164,31 +200,8 @@ impl ClientMap
             {
                 Some(cmd_client) => 
                 {
-                    let gen_result = command_protocols::generate_cmd(&cmd_client.protocol, &beamline_cmd);
-                    match gen_result
-                    {
-                        Some(mut protocol_cmd)=>
-                        {
-                            println!("Processing: {}", cmd_str);
-                            beamline_cmd.proc_start_time = Some(Utc::now());
-                            let reply_result = protocol_cmd.execute(&cmd_client.cmd_channel);
-                            match reply_result
-                            {
-                                Ok(reply) => 
-                                {
-                                    beamline_cmd.status = "Completed".to_string();
-                                    beamline_cmd.reply = Some(reply);
-                                }
-                                Err(e) => beamline_cmd.status = e.message().to_string(),
-                            }
-                            beamline_cmd.proc_end_time = Some(Utc::now());
-                        }
-                        None =>
-                        {
-                             println!("Failed to traslate command for protocol {}", cmd_client.protocol);
-                             beamline_cmd.set_unable_to_translate_protocol()
-                        }
-                    }  
+                    print!("Processing: {}", cmd_str);
+                    process_protocol_command(cmd_client, &mut beamline_cmd);
                 }
                 None => beamline_cmd.set_client_not_found()
             }

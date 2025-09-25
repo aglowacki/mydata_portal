@@ -57,7 +57,23 @@ impl BeamlineCommand
     {
         self.status = "UNABLE_TO_TRANS_PROTOCOL".to_string();
     }
-    
+
+    pub fn gen_get_avail_scans(beam_id: &String) -> Self
+    {
+        let mut arg_hash = HashMap::new();
+        arg_hash.insert("user_group".to_string(), "primary".to_string());
+        Self
+        {
+            beamline_id: beam_id.clone(),
+            status: "QUEUED".to_string(),
+            cmd: "plans_allowed".to_string(),
+            args: arg_hash,
+            reply: None,
+            proc_start_time: None,
+            proc_end_time: None,
+            original_str: None,
+        }
+    }
 
 }
 
