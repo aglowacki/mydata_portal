@@ -9,6 +9,7 @@ use std::collections::HashMap;
 
 mod config;
 mod beamline_controls;
+mod command_protocols;
 
 
 #[derive(Parser, Debug)]

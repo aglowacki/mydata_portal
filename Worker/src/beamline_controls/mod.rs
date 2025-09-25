@@ -4,35 +4,44 @@ use std::{collections::HashMap};
 use std::sync::Arc;
 use crate::config;
 use std::time::Duration;
+use chrono::{DateTime, Utc};
 
-pub struct BsClient
+use crate::{command_protocols};
+
+pub struct ControlClient
 {
-    pub cmd_address: String,
-    pub log_address: String,
-    pub topic: String,
-    pub redis_key: String,
-    pub subscriber: zmq::Socket,
+    cmd_address: String,
+    log_address: String,
+    log_topic: String,
+    bealine_id: String,
+    protocol: String,
+    subscriber: zmq::Socket,
+    cmd_channel: zmq::Socket,
 }
 
-impl BsClient 
+impl ControlClient 
 {
-    pub fn new(config: &config::BsClient, context: &zmq::Context) -> Self
+    pub fn new(config: &config::ControlClient, context: &zmq::Context) -> Self
     {
         Self 
         {
             cmd_address: format!("tcp://{}:60615", config.host.to_string()),
             log_address: format!("tcp://{}:60625", config.host.to_string()),
-            topic: String::from(config.zmq_topic.clone()),
-            redis_key: String::from(config.redis_channel.clone()),
+            log_topic: String::from(config.zmq_log_topic.clone()),
+            protocol: String::from(config.protocol.clone()),
+            bealine_id: String::from(config.beamline_id.clone()),
             subscriber: context.socket(zmq::SUB).expect("Failed to create SUB socket"),
+            cmd_channel: context.socket(zmq::REQ).expect("Failed to create CMD socket"),
         }
     }
 
     pub fn connect(&self)
     {
-        self.subscriber.connect(&self.log_address).expect("Failed to connect to PUB socket");
         println!("Connecting to ZeroMQ PUB at {}", self.log_address);
-        self.subscriber.set_subscribe(self.topic.as_bytes()).expect("Failed to subscribe");
+        self.subscriber.connect(&self.log_address).expect("Failed to connect to PUB socket");
+        self.subscriber.set_subscribe(self.log_topic.as_bytes()).expect("Failed to subscribe");
+        println!("Connecting to ZeroMQ CMD at {}", self.cmd_address);
+        self.cmd_channel.connect(&self.cmd_address).expect("Failed to connect to CMD socket");
     }
 
     pub fn gen_poll_item(&self) -> PollItem<'_>
@@ -48,8 +57,8 @@ pub struct ClientMap
     pub redis_key_cmd_queue_waiting: String,
     pub redis_key_cmd_queue_processing: String,
     pub redis_key_cmd_queue_done: String,
-    client_map: HashMap<String, Arc<BsClient>>,
-    poll_map: HashMap<usize, Arc<BsClient>>,
+    client_map: HashMap<String, Arc<ControlClient>>,
+    poll_map: HashMap<usize, Arc<ControlClient>>,
     poll_list: Vec<PollItem<'static>>,
 }
 
@@ -57,19 +66,19 @@ impl ClientMap
 {
     pub fn init(config: &config::Config, context: &zmq::Context ) -> Self
     {
-        let mut c_map:HashMap<String, Arc<BsClient>> = HashMap::new();
-        let mut p_map:HashMap<usize, Arc<BsClient>> = HashMap::new();
+        let mut c_map:HashMap<String, Arc<ControlClient>> = HashMap::new();
+        let mut p_map:HashMap<usize, Arc<ControlClient>> = HashMap::new();
         let mut p_list:Vec<PollItem<'static>> = Vec::new();
         let mut idx: usize = 0;
-        for bs_client_config in config.bluesky_clients.iter()
+        for bs_client_config in config.control_clients.iter()
         {
-            let bs_client = Arc::new(BsClient::new(bs_client_config, context));
+            let bs_client = Arc::new(ControlClient::new(bs_client_config, context));
             println!("New BlueSky Client: Cmd: {} , Log: {}", bs_client.cmd_address, bs_client.log_address);
             bs_client.connect();
             // SAFETY: We extend the lifetime to 'static because Arc ensures the data lives long enough.
             let poll_item: PollItem<'static> = unsafe { std::mem::transmute(bs_client.gen_poll_item()) };
             p_list.push(poll_item);
-            c_map.insert(bs_client_config.redis_channel.to_string(), Arc::clone(&bs_client));
+            c_map.insert(bs_client_config.beamline_id.clone(), Arc::clone(&bs_client));
             p_map.insert(idx, Arc::clone(&bs_client));
             idx = idx + 1;
         }
@@ -84,11 +93,12 @@ impl ClientMap
             poll_list: p_list,
         }
     }
-
-    pub fn get_client_by_name(&self, name: &str) -> Option<Arc<BsClient>>
+    /*
+    pub fn get_client_by_name(&self, name: &str) -> Option<Arc<ControlClient>>
     {
         self.client_map.get(name).cloned()
     }
+    */
     /*
     pub fn get_client_by_pollitem(&self, id: PollItem) -> Option<&BsClient>
     {
@@ -118,14 +128,14 @@ impl ClientMap
                                 {
                                     println!("Received message: {}", message);
                                     got_data = true;
-                                    if message != client.topic
+                                    if message != client.log_topic
                                     {
                                         // Push the message to the Redis list
-                                        let result: redis::RedisResult<()> = redis_conn.rpush(&(client.redis_key), &message);
-                                        let _: redis::RedisResult<()> = redis_conn.publish(&(client.redis_key), &message);
+                                        let result: redis::RedisResult<()> = redis_conn.rpush(&(client.bealine_id), &message);
+                                        let _: redis::RedisResult<()> = redis_conn.publish(&(client.bealine_id), &message);
                                         match result 
                                         {
-                                            Ok(_) => println!("Message pushed to Redis list: {}", client.redis_key),
+                                            Ok(_) => println!("Message pushed to Redis list: {}", client.bealine_id),
                                             Err(err) => eprintln!("Failed to push message to Redis: {}", err),
                                         }
                                     }
@@ -144,9 +154,47 @@ impl ClientMap
         got_data
     }
 
-    fn process_request(&mut self, cmd: &String)
+    fn process_request(&mut self, cmd_str: &String) -> String
     {
-        println!("Processing: {}", cmd);
+        let mut beamline_cmd: command_protocols::BeamlineCommand = serde_json::from_str(&cmd_str).unwrap_or(command_protocols::BeamlineCommand::new(cmd_str));
+        if beamline_cmd.is_valid()
+        {
+            let result = self.client_map.get(beamline_cmd.get_beamline_id());
+            match result
+            {
+                Some(cmd_client) => 
+                {
+                    
+                    let gen_result = command_protocols::generate_cmd(&cmd_client.protocol, &beamline_cmd);
+                    match gen_result
+                    {
+                        Some(mut protocol_cmd)=>
+                        {
+                            println!("Processing: {}", cmd_str);
+                            beamline_cmd.proc_start_time = Some(Utc::now());
+                            let reply_result = protocol_cmd.execute(&cmd_client.cmd_channel);
+                            match reply_result
+                            {
+                                Ok(reply) => beamline_cmd.reply = reply,
+                                Err(e) => beamline_cmd.status = e.message().to_string(),
+                            }
+                            beamline_cmd.proc_end_time = Some(Utc::now());
+                        }
+                        None =>
+                        {
+                             println!("Failed to traslate command for protocol {}", cmd_client.protocol);
+                             beamline_cmd.set_unable_to_translate_protocol()
+                        }
+                    }  
+                }
+                None => beamline_cmd.set_client_not_found()
+            }
+        }
+        else 
+        {
+            println!("Failed to parse command: {}", cmd_str);
+        }
+        serde_json::to_string(&beamline_cmd).unwrap()
     }
 
     pub fn poll_cmd_queue(&mut self, redis_conn: &mut redis::Connection)
@@ -157,8 +205,8 @@ impl ClientMap
             Ok(Some(value)) => 
             {
                 println!("A1 : {}", value);
-                self.process_request(&value);
-                let _: redis::RedisResult<()> = redis_conn.rpush(&(self.redis_key_cmd_queue_done), &value);
+                let done_value = self.process_request(&value);
+                let _: redis::RedisResult<()> = redis_conn.lpush(&(self.redis_key_cmd_queue_done), &done_value);
                 
             }
             Ok(None) => 
