@@ -44,6 +44,7 @@ impl BsClient
 
 pub struct ClientMap
 {
+    redis_cmd_queue_key: String,
     client_map: HashMap<String, Arc<BsClient>>,
     poll_map: HashMap<usize, Arc<BsClient>>,
     poll_list: Vec<PollItem<'static>>,
@@ -71,6 +72,7 @@ impl ClientMap
 
         Self
         {
+            redis_cmd_queue_key: config.redis_config.redis_cmd_queue.clone(),
             client_map: c_map,
             poll_map: p_map,
             poll_list: p_list,
@@ -134,5 +136,26 @@ impl ClientMap
             }
         }
         got_data
+    }
+
+
+    pub fn poll_cmd_queue(&mut self, redis_conn: &mut redis::Connection)
+    {
+        let result: redis::RedisResult<Option<String>> = redis_conn.rpop(self.redis_cmd_queue_key.clone(), None);
+        match result
+        {
+            Ok(Some(value)) => 
+            {
+                println!("Successfully popped item: {}", value);
+            }
+            Ok(None) => 
+            {
+                println!("The list is empty.");
+            }
+            Err(e) => 
+            {
+                eprintln!("An error occurred: {}", e);
+            }
+        }
     }
 }
