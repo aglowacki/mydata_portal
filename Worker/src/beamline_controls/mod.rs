@@ -176,7 +176,6 @@ impl ClientMap
                             {
                                 Ok(reply) => 
                                 {
-                                    println!("Completed with reply {}", reply);
                                     beamline_cmd.status = "Completed".to_string();
                                     beamline_cmd.reply = Some(reply);
                                 }
@@ -198,7 +197,8 @@ impl ClientMap
         {
             println!("Failed to parse command: {}", cmd_str);
         }
-        serde_json::to_string(&beamline_cmd).unwrap()
+        let done_job = serde_json::to_string(&beamline_cmd).unwrap();
+        done_job
     }
 
     pub fn poll_cmd_queue(&mut self, redis_conn: &mut redis::Connection)
@@ -221,8 +221,9 @@ impl ClientMap
                     Ok(Some(value)) => 
                     {
                         println!("A2: {}", value);
-                        self.process_request(&value);
-                        let _: redis::RedisResult<()> = redis_conn.rpoplpush(&(self.redis_key_cmd_queue_processing), &(self.redis_key_cmd_queue_done));
+                        let done_value = self.process_request(&value);
+                        let _: redis::RedisResult<()> = redis_conn.lpush(&(self.redis_key_cmd_queue_done), &done_value);
+                        let _: redis::RedisResult<()> = redis_conn.rpop(&(self.redis_key_cmd_queue_processing), None);
                     }
                     Ok(None) => 
                     {
