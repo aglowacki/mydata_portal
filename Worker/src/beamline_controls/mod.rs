@@ -170,7 +170,7 @@ impl ClientMap
                     {
                         println!("A2: {}", value);
                         self.process_request(&value);
-                        let _: redis::RedisResult<()> = redis_conn.rpush(&(self.redis_key_cmd_queue_done), &value);
+                        let _: redis::RedisResult<()> = redis_conn.rpoplpush(&(self.redis_key_cmd_queue_processing), &(self.redis_key_cmd_queue_done));
                     }
                     Ok(None) => 
                     {
