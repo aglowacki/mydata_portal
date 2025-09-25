@@ -1,5 +1,6 @@
 use serde::{Deserialize, Serialize};
 use chrono::{DateTime, Utc};
+use std::collections::{HashMap};
 
 // base command to know which beamline to send to
 #[derive(Serialize, Deserialize, Debug)]
@@ -9,7 +10,7 @@ pub struct BeamlineCommand
     //queue_time: String,
     pub status: String,
     cmd: String,
-    args: Vec<String>,
+    args: HashMap<String,String>,
     pub reply: Option<String>,
     pub proc_start_time: Option<DateTime<Utc>>,
     pub proc_end_time: Option<DateTime<Utc>>,
@@ -25,7 +26,7 @@ impl BeamlineCommand
             beamline_id: "N/A".to_string(),
             status: "BAD_CMD".to_string(),
             cmd: "".to_string(),
-            args: Vec::new(),
+            args: HashMap::new(),
             reply: None,
             proc_start_time: Some(Utc::now()),
             proc_end_time: Some(Utc::now()),
@@ -69,12 +70,12 @@ pub trait Command
 pub struct BlueSkyCommand
 {
     method: String,
-    params: Vec<String>, 
+    params: HashMap<String,String>, 
 }
 
 impl BlueSkyCommand
 {
-    pub fn new(cmd: &String, args: &Vec<String>) -> Self
+    pub fn new(cmd: &String, args: &HashMap<String,String>) -> Self
     {
         Self
         {

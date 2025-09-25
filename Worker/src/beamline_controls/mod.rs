@@ -156,8 +156,7 @@ impl ClientMap
 
     fn process_request(&mut self, cmd_str: &String) -> String
     {
-        //let mut beamline_cmd: command_protocols::BeamlineCommand = serde_json::from_str(&cmd_str).unwrap_or(command_protocols::BeamlineCommand::new(cmd_str));
-        let mut beamline_cmd: command_protocols::BeamlineCommand = serde_json::from_str(&cmd_str).unwrap();
+        let mut beamline_cmd: command_protocols::BeamlineCommand = serde_json::from_str(&cmd_str).unwrap_or(command_protocols::BeamlineCommand::new(cmd_str));
         if beamline_cmd.is_valid()
         {
             let result = self.client_map.get(beamline_cmd.get_beamline_id());
