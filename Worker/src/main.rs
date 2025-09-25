@@ -45,8 +45,8 @@ fn main()
         // poll and publish and logs
         client_map.poll_logs(&mut redis_conn);
         // poll redis command queue
-        
+        client_map.poll_cmd_queue(&mut redis_conn);
         // Sleep 
-       std::thread::sleep(Duration::from_millis(10));
+       //std::thread::sleep(Duration::from_millis(10));
     }
 }

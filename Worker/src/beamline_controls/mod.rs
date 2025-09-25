@@ -3,6 +3,7 @@ use redis::{Commands};
 use std::{collections::HashMap};
 use std::sync::Arc;
 use crate::config;
+use std::time::Duration;
 
 pub struct BsClient
 {
@@ -150,7 +151,8 @@ impl ClientMap
             }
             Ok(None) => 
             {
-                println!("The list is empty.");
+                //println!("The list is empty.");
+                std::thread::sleep(Duration::from_millis(10));
             }
             Err(e) => 
             {
