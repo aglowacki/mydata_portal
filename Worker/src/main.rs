@@ -31,14 +31,18 @@ fn main()
     //let running = Arc::new(AtomicBool::new(true));
     //let r = running.clone();
     let context = zmq::Context::new();
+    println!("Connected to Redis: {}", config.redis_config.conn_str);
     let mut client_map = beamline_controls::ClientMap::init(&config, &context);//.expect("Error setting up zmq clients");
 
     let redis_client = redis::Client::open(config.redis_config.conn_str).expect("Failed to connect to Redis");
     let mut redis_conn = redis_client.get_connection().expect("Failed to get Redis connection");
+    
+    println!("Setting up redis command queue waiting {}", client_map.redis_key_cmd_queue_waiting);
+    println!("Setting up redis command queue processing {}", client_map.redis_key_cmd_queue_processing);
+    println!("Setting up redis command queue done {}", client_map.redis_key_cmd_queue_done);
 
-    println!("Connected to Redis");
+    
     println!("Polling for messages...");
-
     // Poll for messages in a loop
     loop 
     {

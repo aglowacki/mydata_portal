@@ -45,7 +45,9 @@ impl BsClient
 
 pub struct ClientMap
 {
-    redis_cmd_queue_key: String,
+    pub redis_key_cmd_queue_waiting: String,
+    pub redis_key_cmd_queue_processing: String,
+    pub redis_key_cmd_queue_done: String,
     client_map: HashMap<String, Arc<BsClient>>,
     poll_map: HashMap<usize, Arc<BsClient>>,
     poll_list: Vec<PollItem<'static>>,
@@ -62,6 +64,7 @@ impl ClientMap
         for bs_client_config in config.bluesky_clients.iter()
         {
             let bs_client = Arc::new(BsClient::new(bs_client_config, context));
+            println!("New BlueSky Client: Cmd: {} , Log: {}", bs_client.cmd_address, bs_client.log_address);
             bs_client.connect();
             // SAFETY: We extend the lifetime to 'static because Arc ensures the data lives long enough.
             let poll_item: PollItem<'static> = unsafe { std::mem::transmute(bs_client.gen_poll_item()) };
@@ -73,7 +76,9 @@ impl ClientMap
 
         Self
         {
-            redis_cmd_queue_key: config.redis_config.redis_cmd_queue.clone(),
+            redis_key_cmd_queue_waiting: format!("{}_waiting", config.redis_config.redis_cmd_queue.to_string()),
+            redis_key_cmd_queue_processing: format!("{}_processing", config.redis_config.redis_cmd_queue.to_string()),
+            redis_key_cmd_queue_done: format!("{}_done", config.redis_config.redis_cmd_queue.to_string()),
             client_map: c_map,
             poll_map: p_map,
             poll_list: p_list,
@@ -139,20 +144,43 @@ impl ClientMap
         got_data
     }
 
+    fn process_request(&mut self, cmd: &String)
+    {
+        println!("Processing: {}", cmd);
+    }
 
     pub fn poll_cmd_queue(&mut self, redis_conn: &mut redis::Connection)
     {
-        let result: redis::RedisResult<Option<String>> = redis_conn.rpop(self.redis_cmd_queue_key.clone(), None);
-        match result
+        let proc_result: redis::RedisResult<Option<String>> = redis_conn.rpop(&(self.redis_key_cmd_queue_processing), None);
+        match proc_result
         {
             Ok(Some(value)) => 
             {
-                println!("Successfully popped item: {}", value);
+                println!("A1 : {}", value);
+                self.process_request(&value);
+                let _: redis::RedisResult<()> = redis_conn.rpush(&(self.redis_key_cmd_queue_done), &value);
+                
             }
             Ok(None) => 
             {
-                //println!("The list is empty.");
-                std::thread::sleep(Duration::from_millis(10));
+                let wait_result: redis::RedisResult<Option<String>> = redis_conn.rpoplpush(&(self.redis_key_cmd_queue_waiting), &(self.redis_key_cmd_queue_processing));
+                match wait_result
+                {
+                    Ok(Some(value)) => 
+                    {
+                        println!("A2: {}", value);
+                        self.process_request(&value);
+                        let _: redis::RedisResult<()> = redis_conn.rpush(&(self.redis_key_cmd_queue_done), &value);
+                    }
+                    Ok(None) => 
+                    {
+                        std::thread::sleep(Duration::from_millis(10));
+                    }
+                    Err(e) => 
+                    {
+                        eprintln!("An error occurred: {}", e);
+                    }
+                }
             }
             Err(e) => 
             {
