@@ -156,7 +156,8 @@ impl ClientMap
 
     fn process_request(&mut self, cmd_str: &String) -> String
     {
-        let mut beamline_cmd: command_protocols::BeamlineCommand = serde_json::from_str(&cmd_str).unwrap_or(command_protocols::BeamlineCommand::new(cmd_str));
+        //let mut beamline_cmd: command_protocols::BeamlineCommand = serde_json::from_str(&cmd_str).unwrap_or(command_protocols::BeamlineCommand::new(cmd_str));
+        let mut beamline_cmd: command_protocols::BeamlineCommand = serde_json::from_str(&cmd_str).unwrap();
         if beamline_cmd.is_valid()
         {
             let result = self.client_map.get(beamline_cmd.get_beamline_id());
@@ -164,7 +165,6 @@ impl ClientMap
             {
                 Some(cmd_client) => 
                 {
-                    
                     let gen_result = command_protocols::generate_cmd(&cmd_client.protocol, &beamline_cmd);
                     match gen_result
                     {
@@ -175,7 +175,7 @@ impl ClientMap
                             let reply_result = protocol_cmd.execute(&cmd_client.cmd_channel);
                             match reply_result
                             {
-                                Ok(reply) => beamline_cmd.reply = reply,
+                                Ok(reply) => beamline_cmd.reply = Some(reply),
                                 Err(e) => beamline_cmd.status = e.message().to_string(),
                             }
                             beamline_cmd.proc_end_time = Some(Utc::now());
