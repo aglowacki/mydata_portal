@@ -91,7 +91,7 @@ impl Command for BlueSkyCommand
     {
         let message = serde_json::to_string(&self).unwrap();
         channel.send(message.as_bytes(), 0)?;
-        println!("Client sent: {}", message);
+        //println!("Client sent: {}", message);
 
         // Set a receive timeout of 3 seconds (3000 milliseconds)
         channel.set_rcvtimeo(30000)?; 
@@ -100,7 +100,7 @@ impl Command for BlueSkyCommand
             Ok(reply) => 
             {
                 let reply_str = String::from_utf8_lossy(&reply).to_string();
-                println!("Client received: {}", reply_str);
+                //println!("Client received: {}", reply_str);
                 return Ok(reply_str);
             }
             Err(zmq::Error::EAGAIN) => 

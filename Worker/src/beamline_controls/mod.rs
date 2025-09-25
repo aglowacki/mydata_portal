@@ -176,6 +176,7 @@ impl ClientMap
                             {
                                 Ok(reply) => 
                                 {
+                                    println!("Completed with reply {}", reply);
                                     beamline_cmd.status = "Completed".to_string();
                                     beamline_cmd.reply = Some(reply);
                                 }
