@@ -1,9 +1,13 @@
     const esbuild = require('esbuild');
 
     esbuild.build({
-        entryPoints: ['src/xrf-map-plot.ts'],
+        entryPoints: ['src/xrf-map-plot.ts',
+            'src/proposals-index.ts',
+            'src/samples-index.ts',
+            'src/index.ts'
+        ],
         bundle: true,
-        outfile: 'dist/bundle.js',
+        outdir: 'static/',
         platform: 'browser',
         format: 'esm', // or 'iife' if you prefer a self-executing function
         minify: true, // Optional: for production builds
