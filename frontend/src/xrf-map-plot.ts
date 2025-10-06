@@ -13,8 +13,8 @@ import { ScatterChart, ScatterSeriesOption } from 'echarts/charts';
 import { UniversalTransition } from 'echarts/features';
 import { HeatmapChart, HeatmapSeriesOption } from 'echarts/charts';
 import { CanvasRenderer } from 'echarts/renderers';
-import { get_cookie } from "./cookies.js";
-import { show_toast } from "./toast.js"
+import { get_cookie } from "./cookies";
+import { show_toast } from "./toast"
 
 
 function main()

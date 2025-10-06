@@ -6,4 +6,3 @@ export function gen_footer()
     
     return footer;
 }
-

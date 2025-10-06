@@ -1,6 +1,6 @@
 //import { gen_anim } from "./intro_anim.js";
-import { get_cookie, has_cookie, set_cookie } from "./cookies.js";
-import { show_toast } from "./toast.js"
+import { get_cookie, has_cookie, set_cookie } from "./cookies";
+import { show_toast } from "./toast"
 
 
 type User = {

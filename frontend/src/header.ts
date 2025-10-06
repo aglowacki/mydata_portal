@@ -1,26 +1,13 @@
-function gen_beam_time_link()
+function gen_link(txt: string, href: string)
 {
     // if logged in and user has beam time
     const beam_a = document.createElement("a");
     beam_a.classList.add("nav");
-    beam_a.href = "/beamline";
-    beam_a.innerHTML = "Beamline";
+    beam_a.href = href;
+    beam_a.innerHTML = txt;
 
     return beam_a;
 }
-
-function gen_proposals_link()
-{
-    // if logged in and user has beam time
-    const proposals_a = document.createElement("a");
-    proposals_a.classList.add("nav");
-    proposals_a.href = "/proposals.html";
-    proposals_a.innerHTML = "Proposals";
-
-    return proposals_a;
-}
-
-
 
 function gen_user_icon()
 {
@@ -48,16 +35,10 @@ export function gen_header()
     const header_nav = document.createElement("nav");
     header_nav.classList.add("nav");
 
-    // always show home link in header
-    const home_a = document.createElement("a");
-    home_a.classList.add("nav");
-    home_a.href = "/";
-    home_a.innerHTML = "Home";
-
     header.appendChild(header_nav);
-    header_nav.appendChild(home_a);
-    //header_nav.appendChild(gen_beam_time_link());
-    header_nav.appendChild(gen_proposals_link());
+    header_nav.appendChild(gen_link("Home", "/"));
+    header_nav.appendChild(gen_link("Proposals", "/proposals.html"));
+    header_nav.appendChild(gen_link("Samples", "/samples.html"));
     //header_nav.appendChild(gen_signin_form());
 
     return header;

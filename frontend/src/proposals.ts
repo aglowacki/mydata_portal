@@ -1,5 +1,5 @@
-import { get_cookie } from "./cookies.js";
-import { show_toast } from "./toast.js"
+import { get_cookie } from "./cookies";
+import { show_toast } from "./toast"
 
 
 async function get_proposals(): Promise<Response> 
