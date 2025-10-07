@@ -1,0 +1,4 @@
+CREATE TABLE sample_sub_origins (
+id INT PRIMARY KEY GENERATED ALWAYS AS IDENTITY,
+name varchar(2000) UNIQUE NOT NULL
+);

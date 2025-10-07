@@ -1,0 +1,4 @@
+CREATE TABLE bio_sample_types (
+id INT PRIMARY KEY GENERATED ALWAYS AS IDENTITY,
+type_name varchar(512) UNIQUE NOT NULL
+);

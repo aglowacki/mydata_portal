@@ -1,0 +1,4 @@
+CREATE TABLE bio_sample_conditions (
+id INT PRIMARY KEY GENERATED ALWAYS AS IDENTITY,
+name varchar(512) UNIQUE NOT NULL
+);
