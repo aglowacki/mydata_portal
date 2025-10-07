@@ -25,6 +25,73 @@ diesel::table! {
 }
 
 diesel::table! {
+    bio_sample_conditions (id) {
+        id -> Int4,
+        #[max_length = 512]
+        name -> Varchar,
+    }
+}
+
+diesel::table! {
+    bio_sample_fixations (id) {
+        id -> Int4,
+        #[max_length = 512]
+        name -> Varchar,
+        fixative_id -> Int4,
+    }
+}
+
+diesel::table! {
+    bio_sample_fixatives (id) {
+        id -> Int4,
+        #[max_length = 512]
+        name -> Varchar,
+    }
+}
+
+diesel::table! {
+    bio_sample_type_origin_sub_origin_links (id) {
+        id -> Int4,
+        bio_sample_type_id -> Int4,
+        origin_id -> Int4,
+        sub_origin_id -> Int4,
+    }
+}
+
+diesel::table! {
+    bio_sample_types (id) {
+        id -> Int4,
+        #[max_length = 512]
+        type_name -> Varchar,
+    }
+}
+
+diesel::table! {
+    bio_samples (id) {
+        id -> Int4,
+        proposal_id -> Int4,
+        #[max_length = 1000]
+        name -> Varchar,
+        type_id -> Int4,
+        origin_id -> Int4,
+        sub_origin_id -> Int4,
+        source_id -> Int4,
+        thickness -> Int4,
+        #[max_length = 256]
+        cell_line -> Nullable<Varchar>,
+        is_cancer -> Bool,
+        condition_id -> Int4,
+        #[max_length = 2000]
+        treatment_details -> Nullable<Varchar>,
+        fixation_id -> Int4,
+        #[max_length = 2000]
+        expected_elemental_content_change -> Nullable<Varchar>,
+        #[max_length = 3000]
+        notes -> Nullable<Varchar>,
+    }
+}
+
+diesel::table! {
     data_analysis (id) {
         id -> Int4,
         #[max_length = 2000]
@@ -66,6 +133,16 @@ diesel::table! {
 }
 
 diesel::table! {
+    experimenters (id) {
+        dataset_id -> Int4,
+        user_badge -> Int4,
+        proposal_id -> Int4,
+        experiment_role_id -> Int4,
+        id -> Int4,
+    }
+}
+
+diesel::table! {
     proposal_dataset_links (id) {
         id -> Int4,
         dataset_id -> Int4,
@@ -84,6 +161,30 @@ diesel::table! {
         mailinflag -> Varchar,
         #[max_length = 400]
         status -> Nullable<Varchar>,
+    }
+}
+
+diesel::table! {
+    sample_origins (id) {
+        id -> Int4,
+        #[max_length = 255]
+        name -> Varchar,
+    }
+}
+
+diesel::table! {
+    sample_sources (id) {
+        id -> Int4,
+        #[max_length = 255]
+        name -> Varchar,
+    }
+}
+
+diesel::table! {
+    sample_sub_origins (id) {
+        id -> Int4,
+        #[max_length = 2000]
+        name -> Varchar,
     }
 }
 
@@ -136,6 +237,17 @@ diesel::table! {
 
 diesel::joinable!(beamline_contacts -> beamlines (beamline_id));
 diesel::joinable!(beamline_contacts -> users (user_badge));
+diesel::joinable!(bio_sample_fixations -> bio_sample_fixatives (fixative_id));
+diesel::joinable!(bio_sample_type_origin_sub_origin_links -> bio_sample_types (bio_sample_type_id));
+diesel::joinable!(bio_sample_type_origin_sub_origin_links -> sample_origins (origin_id));
+diesel::joinable!(bio_sample_type_origin_sub_origin_links -> sample_sub_origins (sub_origin_id));
+diesel::joinable!(bio_samples -> bio_sample_conditions (condition_id));
+diesel::joinable!(bio_samples -> bio_sample_fixations (fixation_id));
+diesel::joinable!(bio_samples -> bio_sample_types (type_id));
+diesel::joinable!(bio_samples -> proposals (proposal_id));
+diesel::joinable!(bio_samples -> sample_origins (origin_id));
+diesel::joinable!(bio_samples -> sample_sources (source_id));
+diesel::joinable!(bio_samples -> sample_sub_origins (sub_origin_id));
 diesel::joinable!(data_analysis -> datasets (dataset_id));
 diesel::joinable!(datasets -> beamlines (beamline_id));
 diesel::joinable!(datasets -> scan_types (scan_type_id));
@@ -145,17 +257,31 @@ diesel::joinable!(proposal_dataset_links -> proposals (proposal_id));
 diesel::joinable!(experimenter_proposal_links -> experiment_roles (experiment_role_id));
 diesel::joinable!(experimenter_proposal_links -> proposals (proposal_id));
 diesel::joinable!(experimenter_proposal_links -> users (user_badge));
+diesel::joinable!(experimenters -> datasets (dataset_id));
+diesel::joinable!(experimenters -> experiment_roles (experiment_role_id));
+diesel::joinable!(experimenters -> proposals (proposal_id));
+diesel::joinable!(experimenters -> users (user_badge));
 diesel::joinable!(users -> user_access_controls (user_access_control_id));
 
 diesel::allow_tables_to_appear_in_same_query!(
     beamline_contacts,
     beamlines,
+    bio_sample_conditions,
+    bio_sample_fixations,
+    bio_sample_fixatives,
+    bio_sample_type_origin_sub_origin_links,
+    bio_sample_types,
+    bio_samples,
     data_analysis,
     datasets,
     experiment_roles,
     experimenter_proposal_links,
+    experimenters,
     proposal_dataset_links,
     proposals,
+    sample_origins,
+    sample_sources,
+    sample_sub_origins,
     scan_types,
     syncotron_runs,
     user_access_controls,
