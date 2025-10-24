@@ -10,6 +10,12 @@ use diesel::{Queryable, Identifiable, Selectable, QueryableByName, Associations}
 use serde::Serialize;
 use crate::database::schema::{beamline_contacts,
                                 beamlines,
+                                bio_sample_conditions,
+                                bio_sample_fixations,
+                                bio_sample_fixatives,
+                                bio_sample_type_origin_sub_origin_links,
+                                bio_sample_types,
+                                bio_samples,
                                 data_analysis,
                                 datasets,
                                 experiment_roles,
@@ -19,16 +25,7 @@ use crate::database::schema::{beamline_contacts,
                                 scan_types,
                                 syncotron_runs,
                                 user_access_controls,
-                                users,
-                                bio_sample_conditions,
-                                bio_sample_fixations,
-                                bio_sample_fixatives,
-                                bio_sample_type_origin_sub_origin_links,
-                                bio_sample_types,
-                                bio_samples,
-                                sample_origins,
-                                sample_sources,
-                                sample_sub_origins
+                                users
                                 };
 
 
@@ -75,6 +72,58 @@ pub struct Beamline {
     pub old_acronym: Option<String>,
     pub division: String,
     pub link: String,
+}
+
+#[derive(Queryable, Debug, Identifiable)]
+pub struct BioSampleCondition {
+    pub id: i32,
+    pub name: String,
+}
+
+#[derive(Queryable, Debug, Identifiable)]
+pub struct BioSampleFixation {
+    pub id: i32,
+    pub name: String,
+    pub fixative_id: i32,
+}
+
+#[derive(Queryable, Debug, Identifiable)]
+pub struct BioSampleFixative {
+    pub id: i32,
+    pub name: String,
+}
+
+#[derive(Queryable, Debug, Identifiable)]
+pub struct BioSampleTypeOriginSubOriginLink {
+    pub id: i32,
+    pub bio_sample_type_id: i32,
+    pub origin_id: i32,
+    pub sub_origin_id: i32,
+}
+
+#[derive(Queryable, Debug, Identifiable)]
+pub struct BioSampleType {
+    pub id: i32,
+    pub type_name: String,
+}
+
+#[derive(Queryable, Debug, Identifiable)]
+pub struct BioSample {
+    pub id: i32,
+    pub proposal_id: i32,
+    pub name: String,
+    pub type_id: i32,
+    pub origin_id: i32,
+    pub sub_origin_id: i32,
+    pub source_id: i32,
+    pub thickness: i32,
+    pub cell_line: Option<String>,
+    pub is_cancer: bool,
+    pub condition_id: i32,
+    pub treatment_details: Option<String>,
+    pub fixation_id: i32,
+    pub expected_elemental_content_change: Option<String>,
+    pub notes: Option<String>,
 }
 
 #[derive(Queryable, Debug, Identifiable, Selectable, Serialize, Clone)]
@@ -154,78 +203,6 @@ pub struct ProposalDatasetLink {
     pub proposal_id: i32,
     pub id: i32,
 }
-
-#[derive(Queryable, Debug, Identifiable)]
-pub struct BioSampleCondition {
-    pub id: i32,
-    pub name: String,
-}
-
-#[derive(Queryable, Debug, Identifiable)]
-pub struct BioSampleFixation {
-    pub id: i32,
-    pub name: String,
-    pub fixative_id: i32,
-}
-
-#[derive(Queryable, Debug, Identifiable)]
-pub struct BioSampleFixative {
-    pub id: i32,
-    pub name: String,
-}
-
-#[derive(Queryable, Debug, Identifiable)]
-pub struct BioSampleTypeOriginSubOriginLink {
-    pub id: i32,
-    pub bio_sample_type_id: i32,
-    pub origin_id: i32,
-    pub sub_origin_id: i32,
-}
-
-#[derive(Queryable, Debug, Identifiable)]
-pub struct BioSampleType {
-    pub id: i32,
-    pub type_name: String,
-}
-
-#[derive(Queryable, Debug, Identifiable)]
-pub struct BioSample {
-    pub id: i32,
-    pub proposal_id: i32,
-    pub name: String,
-    pub type_id: i32,
-    pub origin_id: i32,
-    pub sub_origin_id: i32,
-    pub source_id: i32,
-    pub thickness: i32,
-    pub cell_line: Option<String>,
-    pub is_cancer: bool,
-    pub condition_id: i32,
-    pub treatment_details: Option<String>,
-    pub fixation_id: i32,
-    pub expected_elemental_content_change: Option<String>,
-    pub notes: Option<String>,
-}
-
-#[derive(Queryable, Debug, Identifiable)]
-pub struct SampleOrigin {
-    pub id: i32,
-    pub name: String,
-}
-
-#[derive(Queryable, Debug, Identifiable)]
-pub struct SampleSource {
-    pub id: i32,
-    pub name: String,
-}
-
-#[derive(Queryable, Debug, Identifiable)]
-pub struct SampleSubOrigin {
-    pub id: i32,
-    pub name: String,
-}
-
-
 
 // ------------------------- joined -------------------------
 

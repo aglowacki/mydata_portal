@@ -252,8 +252,6 @@ diesel::joinable!(data_analysis -> datasets (dataset_id));
 diesel::joinable!(datasets -> beamlines (beamline_id));
 diesel::joinable!(datasets -> scan_types (scan_type_id));
 diesel::joinable!(datasets -> syncotron_runs (syncotron_run_id));
-diesel::joinable!(proposal_dataset_links -> datasets (dataset_id));
-diesel::joinable!(proposal_dataset_links -> proposals (proposal_id));
 diesel::joinable!(experimenter_proposal_links -> experiment_roles (experiment_role_id));
 diesel::joinable!(experimenter_proposal_links -> proposals (proposal_id));
 diesel::joinable!(experimenter_proposal_links -> users (user_badge));
@@ -261,6 +259,8 @@ diesel::joinable!(experimenters -> datasets (dataset_id));
 diesel::joinable!(experimenters -> experiment_roles (experiment_role_id));
 diesel::joinable!(experimenters -> proposals (proposal_id));
 diesel::joinable!(experimenters -> users (user_badge));
+diesel::joinable!(proposal_dataset_links -> datasets (dataset_id));
+diesel::joinable!(proposal_dataset_links -> proposals (proposal_id));
 diesel::joinable!(users -> user_access_controls (user_access_control_id));
 
 diesel::allow_tables_to_appear_in_same_query!(
