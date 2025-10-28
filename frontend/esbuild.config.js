@@ -3,7 +3,7 @@
     esbuild.build({
         entryPoints: ['src/xrf-map-plot.ts',
             'src/proposals-index.ts',
-            'src/samples-index.ts',
+            'src/sample_info.ts',
             'src/index.ts'
         ],
         bundle: true,
@@ -13,7 +13,7 @@
         minify: true, // Optional: for production builds
         sourcemap: true, // Optional: for debugging
     }).then(() => {
-        console.log('esbuild finished bundling ECharts example!');
+        console.log('esbuild finished bundling!');
     }).catch(() => {
         process.exit(1);
     });
