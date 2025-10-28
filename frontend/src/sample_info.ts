@@ -90,10 +90,10 @@ class SampleManagementApp {
             
             // Fallback sample types for development/testing
             this.sampleTypes = [
-                { id: '1', name: 'Blood' },
-                { id: '2', name: 'Tissue' },
-                { id: '3', name: 'Urine' },
-                { id: '4', name: 'Saliva' }
+                { id: '1', type_name: 'Blood' },
+                { id: '2', type_name: 'Tissue' },
+                { id: '3', type_name: 'Urine' },
+                { id: '4', type_name: 'Saliva' }
             ];
             this.populateSampleTypeSelect();
         }
@@ -106,7 +106,7 @@ class SampleManagementApp {
         this.sampleTypes.forEach(sampleType => {
             const option = document.createElement('option');
             option.value = sampleType.id;
-            option.textContent = sampleType.name;
+            option.textContent = sampleType.type_name;
             this.sampleTypeSelect.appendChild(option);
         });
     }
