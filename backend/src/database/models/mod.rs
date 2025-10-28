@@ -101,7 +101,7 @@ pub struct BioSampleTypeOriginSubOriginLink {
     pub sub_origin_id: i32,
 }
 
-#[derive(Queryable, Debug, Identifiable)]
+#[derive(Queryable, Debug, Identifiable, Selectable, QueryableByName, serde::Serialize)]
 pub struct BioSampleType {
     pub id: i32,
     pub type_name: String,

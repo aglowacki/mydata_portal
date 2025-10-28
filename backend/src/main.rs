@@ -58,14 +58,13 @@ async fn main()
 
     // Create a regular axum app.
     let app = Router::new()
-        .route("/api/slow", get(|| sleep(Duration::from_secs(5))))
-        //.route("/api/forever", get(std::future::pending::<()>))
         .route("/api/user_info", get(user_info))
         .route("/api/authorize", post(auth::authorize))
         .route("/api/sse", get(sse::sse_handler))
         .route("/api/get_user_proposals", get(database::get_user_proposals))
         .route("/api/get_user_proposals_as/{user_id}", get(database::get_user_proposals_as))
         .route("/api/get_user_proposals_with_datasets/{user_id}", get(database::get_user_proposals_with_datasets))
+        .route("/api/bio_sample_types", get(database::get_bio_sample_types))
         .route("/api/get_beamline_log/{beamline_id}", get(beamline_controls::get_beamline_log))
         .route("/api/get_available_scans/{beamline_id}", get(beamline_controls::get_available_scans))
         .layer((

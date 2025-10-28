@@ -174,6 +174,22 @@ pub async fn get_user_proposals_with_datasets(
 }
 
 
+#[axum_macros::debug_handler]
+pub async fn get_bio_sample_types(
+    State(state): State<appstate::AppState>,
+    //claims: auth::Claims,
+    DatabaseConnection(mut conn): DatabaseConnection,
+) -> Result<Json<Vec<models::BioSampleType>>, (StatusCode, String)> 
+{
+    let res = schema::bio_sample_types::table.select(models::BioSampleType::as_select())
+    .distinct()
+    .load(&mut conn)
+    .await
+    .map_err(internal_error)?;
+
+    Ok(Json(res))
+}
+
 /// Utility function for mapping any error into a `500 Internal Server Error`
 /// response.
 fn internal_error<E>(err: E) -> (StatusCode, String)
