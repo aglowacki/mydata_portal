@@ -1,8 +1,9 @@
 
 form.sample-form {
-  display: flex;
   padding: 10px;
-/*  position: absolute;
+/*
+  display: flex;
+  position: absolute;
   flex-direction: column;
   right: 0px;
   top: 0px;
