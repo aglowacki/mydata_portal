@@ -1,6 +1,24 @@
 import { get_cookie } from "./cookies";
 import { show_toast } from "./toast"
 
+ interface Dataset_Struct 
+ {
+    id: number;
+    path: string;
+    acquisition_timestamp: number;
+    beamline_id: number;
+    syncotron_run_id: number;
+    scan_type_id: number;
+}
+
+interface Proposal_Struct 
+{
+    id: number;
+    title: string;
+    datasets: Array<Dataset_Struct>;
+}
+
+let proposals_json: Array<Proposal_Struct> | null = null;;
 
 async function get_proposals(): Promise<Response> 
 {
@@ -95,7 +113,7 @@ async function get_proposals_for(badge: string): Promise<Response>
 
 }
 
-function fill_table(data: JSON)
+function fill_generic_table(data: JSON)
 {
     var table = document.getElementById('proposals-table') as HTMLTableElement;
     if (table == null)
@@ -141,12 +159,76 @@ function fill_table(data: JSON)
     });
 }
 
+function handleRowSelection(event: Event) 
+{
+    const target = event.target as HTMLElement;
+    const clickedRow = target.closest('tr');
+    if (!clickedRow || clickedRow.parentElement?.tagName === 'THEAD') return; 
+    console.log(clickedRow.id);
+    /*
+    */
+}
+
+function fill_ps_table(data: Array<Proposal_Struct> | null)
+{
+    if(data === null)
+    {
+        console.log("Returned data is null");
+        return;
+    }
+    var ps_table = document.getElementById('proposals-table') as HTMLTableElement;
+    if (ps_table == null)
+    {
+        console.log("Could not find table id proposals-table");
+        return;
+    }
+    ps_table.innerHTML = "";
+
+    if (!Array.isArray(data) || data.length === 0) 
+    {
+        console.log("Resply is empty array");
+        return;
+    }
+    const headers = Object.keys(data[0]);
+    // Create table header
+    const thead = ps_table.createTHead();
+    headers.forEach(header => 
+    {
+        const th = document.createElement("th");
+        th.innerText = header;
+        thead.appendChild(th);
+    });
+
+    data.forEach(item => 
+    {
+        const row = ps_table.insertRow();
+        row.className = "new-row";
+        const cell_id = row.insertCell();
+        cell_id.id = 'ps-cell-id';
+        cell_id.innerText = item.id.toString();
+        const cell_title = row.insertCell();
+        cell_title.innerText = item.title;
+        const cell_num = row.insertCell();
+        cell_num.innerText = item.datasets.length.toString();
+        row.offsetWidth;
+        row.classList.add("visible");
+    });
+
+    ps_table.addEventListener('click', handleRowSelection);
+}
+
+
 function update_proposals(badge: string)
 {
     const resp = get_proposals_for(badge);
     resp.then(lres =>
     {
-        lres.json().then( data => fill_table(data));
+        lres.json().then( data =>
+        {
+            proposals_json = data;
+            fill_ps_table(proposals_json);
+            //fill_generic_table(data);
+        });
     })
     .catch(error => 
     {
@@ -243,9 +325,14 @@ export function gen_proposals_table()
         //throw error;
     }
     );
-
     
     div.appendChild(table);
+
+    const ds_table = document.createElement("table") as HTMLTableElement;
+    ds_table.id = "datasets-table";
+    ds_table.className = "animated-table";
+    div.appendChild(ds_table);
+
     return div;
 }
 
