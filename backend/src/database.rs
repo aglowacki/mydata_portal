@@ -173,6 +173,21 @@ pub async fn get_user_proposals_with_datasets(
     }
 }
 
+#[axum_macros::debug_handler]
+pub async fn get_syncotron_runs(
+    State(state): State<appstate::AppState>,
+    claims: auth::Claims,
+    DatabaseConnection(mut conn): DatabaseConnection,
+) -> Result<Json<Vec<models::SyncotronRun>>, (StatusCode, String)> 
+{
+   
+    let res = schema::syncotron_runs::table.select(models::SyncotronRun::as_select())
+    .load(&mut conn)
+    .await
+    .map_err(internal_error)?;
+
+    Ok(Json(res))
+}
 
 #[axum_macros::debug_handler]
 pub async fn get_bio_sample_types(

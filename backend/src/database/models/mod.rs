@@ -46,7 +46,7 @@ pub struct ScanType {
     pub description: Option<String>,
 }
 
-#[derive(Queryable, Debug, Identifiable)]
+#[derive(Queryable, Debug, Selectable, Identifiable, serde::Serialize)]
 #[diesel(primary_key(id))]
 pub struct SyncotronRun {
     pub id: i32,
