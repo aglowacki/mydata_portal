@@ -15,6 +15,9 @@ interface Proposal_Struct
 {
     id: number;
     title: string;
+    proprietaryflag: string;
+    mailinflag: string;
+    status: string;
     datasets: Array<Dataset_Struct>;
 }
 
@@ -159,14 +162,84 @@ function fill_generic_table(data: JSON)
     });
 }
 
+function fill_dataset_table(data: Proposal_Struct | null)
+{
+    if(data === null)
+    {
+        console.log("Returned data is null");
+        return;
+    }
+    var ds_table = document.getElementById('datasets-table') as HTMLTableElement;
+    if (ds_table == null)
+    {
+        console.log("Could not find table id datasetss-table");
+        return;
+    }
+    ds_table.innerHTML = "";
+
+    if (!Array.isArray(data.datasets) || data.length === 0) 
+    {
+        console.log("No datasets for this proposal");
+        return;
+    }
+    const headers = Object.keys(data.datasets[0]);
+    // Create table header
+    const thead = ds_table.createTHead();
+    headers.forEach(header => 
+    {
+        const th = document.createElement("th");
+        th.innerText = header;
+        thead.appendChild(th);
+    });
+
+    data.datasets.forEach(item => 
+    {
+        const row = ds_table.insertRow();
+        row.className = "ds-row";
+        row.id = item.id.toString();
+
+        const cell_id = row.insertCell();
+        cell_id.id = 'ds-cell-id';
+        cell_id.innerText = item.id.toString();
+
+        const cell_path = row.insertCell();
+        cell_path.innerText = item.path;
+
+        const cell_aq = row.insertCell();
+        cell_aq.innerText = item.acquisition_timestamp.toString();
+
+        const cell_beam = row.insertCell();
+        cell_beam.innerText = item.beamline_id.toString();
+
+        const cell_sync = row.insertCell();
+        cell_sync.innerText = item.syncotron_run_id.toString();
+
+        const cell_st = row.insertCell();
+        cell_st.innerText = item.scan_type_id.toString();
+
+        row.offsetWidth;
+        row.classList.add("visible");
+    });
+
+   // ds_table.addEventListener('click', handleRowSelection);
+}
+
+
 function handleRowSelection(event: Event) 
 {
-    const target = event.target as HTMLElement;
-    const clickedRow = target.closest('tr');
-    if (!clickedRow || clickedRow.parentElement?.tagName === 'THEAD') return; 
-    console.log(clickedRow.id);
-    /*
-    */
+    const clickedRow = (event.target as HTMLElement).parentNode;
+    if (clickedRow)
+    {
+        console.log(clickedRow.id);
+        let numId = Number(clickedRow.id);
+        proposals_json.forEach(proposal => 
+        {
+            if(numId === proposal.id)
+            {
+                fill_dataset_table(proposal);
+            }
+        });
+    }
 }
 
 function fill_ps_table(data: Array<Proposal_Struct> | null)
@@ -202,14 +275,28 @@ function fill_ps_table(data: Array<Proposal_Struct> | null)
     data.forEach(item => 
     {
         const row = ps_table.insertRow();
-        row.className = "new-row";
+        row.className = "ps-row";
+        row.id = item.id.toString();
+
         const cell_id = row.insertCell();
         cell_id.id = 'ps-cell-id';
         cell_id.innerText = item.id.toString();
+
         const cell_title = row.insertCell();
         cell_title.innerText = item.title;
+
+        const cell_flag = row.insertCell();
+        cell_flag.innerText = item.proprietaryflag;
+
+        const cell_mailin = row.insertCell();
+        cell_mailin.innerText = item.mailinflag;
+
+        const cell_status = row.insertCell();
+        cell_status.innerText = item.status;
+
         const cell_num = row.insertCell();
         cell_num.innerText = item.datasets.length.toString();
+
         row.offsetWidth;
         row.classList.add("visible");
     });
