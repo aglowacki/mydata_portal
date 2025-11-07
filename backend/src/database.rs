@@ -156,6 +156,7 @@ pub async fn get_user_proposals_with_datasets(
             let datasets = schema::datasets::table.select(models::Dataset::as_select())
             .inner_join(schema::proposal_dataset_links::table.on(schema::datasets::id.eq(schema::proposal_dataset_links::dataset_id)))
             .filter(schema::proposal_dataset_links::proposal_id.eq(proposal.id))
+            .distinct()
             .load(&mut conn)
             .await
             .map_err(internal_error)?;
