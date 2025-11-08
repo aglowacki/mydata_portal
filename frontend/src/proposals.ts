@@ -33,7 +33,7 @@ export class ProposalManagementApp
     private badge_input: HTMLInputElement;
     private update_btn: HTMLButtonElement;
 
-    private main_center_div: HTMLDivElement;
+    private main_div: HTMLDivElement;
 
     constructor() 
     {
@@ -44,16 +44,16 @@ export class ProposalManagementApp
 
     public gen_main_div(): HTMLDivElement
     {
-        return this.main_center_div;
+        return this.main_div;
     }
 
     private initializeElements(): void 
     {
         this.create_admin_controls();
         
-        this.main_center_div = document.createElement("div");
-        this.main_center_div.id = "center";
-        this.main_center_div.appendChild(this.admin_div);
+        this.main_div = document.createElement("div");
+        this.main_div.id = "center";
+        this.main_div.appendChild(this.admin_div);
         
         this.proposals_table = document.createElement("table") as HTMLTableElement;
         this.proposals_table.id = "proposals-table";
@@ -63,8 +63,8 @@ export class ProposalManagementApp
         this.datasets_table.id = "datasets-table";
         this.datasets_table.className = "animated-table";
 
-        this.main_center_div.appendChild(this.proposals_table);
-        this.main_center_div.appendChild(this.datasets_table);
+        this.main_div.appendChild(this.proposals_table);
+        this.main_div.appendChild(this.datasets_table);
     }
 
     private create_admin_controls(): void
@@ -77,7 +77,7 @@ export class ProposalManagementApp
         this.badge_input = document.createElement("input") as HTMLInputElement;
         this.badge_input.id = "as_badge";
 
-        this.update_btn = document.createElement("button") as HTMLButtonElemenet;
+        this.update_btn = document.createElement("button") as HTMLButtonElement;
         this.update_btn.innerText = "Update";
 
         this.admin_div.appendChild(this.badge_label);
