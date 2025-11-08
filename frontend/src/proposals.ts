@@ -21,101 +21,457 @@ interface Proposal_Struct
     datasets: Array<Dataset_Struct>;
 }
 
-let proposals_json: Array<Proposal_Struct> | null = null;;
-
-async function get_proposals(): Promise<Response> 
+class ProposalManagementApp 
 {
-    const auth_cookie:string = get_cookie('access_token');
+    private proposals_json: Array<Proposal_Struct> | null = null;;
 
-    const headers = new Headers({
-        'Content-Type': 'application/json',
-        'Accept': 'application/json',
-        'Authorization': auth_cookie,
-      });
-    
-      const requestOptions: RequestInit = {
-        method: 'GET',
-        headers: headers,
-      };
+    // DOM Elements
+    private proposals_table: HTMLTableElement;
+    private datasets_table: HTMLTableElement;
+    private admin_controls: HTMLElement;
+    private admin_div: HTMLDivElement;
+    private badge_label: HTMLLabelElement;
+    private badge_input: HTMLInputElement;
+    private update_btn: HTMLButtonElement;
 
-    try 
+    private main_center_div: HTMLDivElement;
+
+    constructor() 
     {
-        const response = await fetch('/api/get_user_proposals', requestOptions);
-        if (!response.ok) 
+        this.initializeElements();
+        this.setupEventListeners();
+        this.loadProposals();
+    }
+
+    public gen_main_div(): HTMLDivElement
+    {
+        return this.main_center_div;
+    }
+
+    private initializeElements(): void 
+    {
+        this.create_admin_controls();
+        
+        this.main_center_div = document.createElement("div");
+        this.main_center_div.id = "center";
+        this.main_center_div.appendChild(this.admin_controls);
+        
+        this.proposals_table = document.createElement("table") as HTMLTableElement;
+        this.proposals_table.id = "proposals-table";
+        this.proposals_table.className = "animated-table";
+    
+        this.datasets_table = document.createElement("table") as HTMLTableElement;
+        this.datasets_table.id = "datasets-table";
+        this.datasets_table.className = "animated-table";
+
+        this.main_center_div.appendChild(this.proposals_table);
+        this.main_center_div.appendChild(this.datasets_table);
+    }
+
+    private create_admin_controls(): void
+    {
+        this.admin_div = document.createElement("div");
+
+        this.badge_label = document.createElement("label");
+        this.badge_label.innerText = "As Badge: ";
+
+        this.badge_input = document.createElement("input");
+        this.badge_input.id = "as_badge";
+
+        this.update_btn = document.createElement("button");
+        this.update_btn.innerText = "Update";
+
+        this.admin_div.appendChild(this.badge_label);
+        this.admin_div.appendChild(this.badge_input);
+        this.admin_div.appendChild(this.update_btn);
+    }
+
+    private setupEventListeners(): void
+    {
+        this.update_btn.addEventListener('click', this.handleUpdateClick);
+        this.proposals_table.addEventListener('click', this.handleRowSelection);
+    }
+
+    private loadProposals(): void
+    {
+        const resp = this.get_proposals();
+        resp.then(lres =>
         {
-            if(response.status == 502)
+            lres.json().then( data => 
             {
-                throw new Error(`Backend Auth Serivce unreachable. ${response.status}`);
-            }
-            else if (response.status == 400)
+                if (!Array.isArray(data) || data.length === 0) 
+                {
+                    console.log("Resply is empty array");
+                    const row = this.proposals_table.insertRow();
+                    const cell = row.insertCell();
+                    return;
+                }
+                const headers = Object.keys(data[0]);
+                // Create table header
+                const headerRow = this.proposals_table.insertRow();
+                headers.forEach(header => 
+                {
+                    const th = document.createElement("th");
+                
+                    th.innerText = header;
+                });
+
+                data.forEach(item => 
+                {
+                    const row = this.proposals_table.insertRow();
+                    row.className = "new-row";
+                    headers.forEach(header => 
+                    {
+                        const cell = row.insertCell();
+                        if (Object.prototype.toString.call(item[header]) === '[object Array]') // if array then show count
+                        {
+                            cell.innerText = item[header].length;
+                        }
+                        else
+                        {
+                            cell.innerText = item[header];
+                        }
+                    });
+                    row.offsetWidth; 
+                    row.classList.add("visible");
+                });
+            });
+        })
+        .catch(error => 
+        {
+            show_toast(error.message);
+            //throw error;
+        });
+    }
+
+    private handleUpdateClick(event: Event): void
+    {
+        //console.log('button clicked');
+        //console.log(event);
+        //console.log(event.target);
+        this.update_proposals(this.badge_input.value);
+    };
+
+    private async get_proposals(): Promise<Response> 
+    {
+        const auth_cookie:string = get_cookie('access_token');
+
+        const headers = new Headers({
+            'Content-Type': 'application/json',
+            'Accept': 'application/json',
+            'Authorization': auth_cookie,
+        });
+        
+        const requestOptions: RequestInit = {
+            method: 'GET',
+            headers: headers,
+        };
+
+        try 
+        {
+            const response = await fetch('/api/get_user_proposals', requestOptions);
+            if (!response.ok) 
             {
-                throw new Error(`Missing credentials. ${response.status}`);
+                if(response.status == 502)
+                {
+                    throw new Error(`Backend Auth Serivce unreachable. ${response.status}`);
+                }
+                else if (response.status == 400)
+                {
+                    throw new Error(`Missing credentials. ${response.status}`);
+                }
+                else
+                { 
+                    throw new Error(`HTTP error! status: ${response.status}`);
+                }
             }
             else
-            { 
-                throw new Error(`HTTP error! status: ${response.status}`);
+            {
+            return response;
             }
         }
-        else
+        catch (error) 
         {
-          return response;
+            console.error('There was a problem with the fetch operation:', error);
+            throw error;
         }
     }
-    catch (error) 
+
+    private async get_proposals_for(badge: string): Promise<Response> 
     {
-        console.error('There was a problem with the fetch operation:', error);
-        throw error;
-    }
+        const auth_cookie:string = get_cookie('access_token');
 
-}
+        const headers = new Headers({
+            'Content-Type': 'application/json',
+            'Accept': 'application/json',
+            'Authorization': auth_cookie,
+        });
+        
+        const requestOptions: RequestInit = {
+            method: 'GET',
+            headers: headers,
+        };
 
-async function get_proposals_for(badge: string): Promise<Response> 
-{
-    const auth_cookie:string = get_cookie('access_token');
-
-    const headers = new Headers({
-        'Content-Type': 'application/json',
-        'Accept': 'application/json',
-        'Authorization': auth_cookie,
-      });
-    
-      const requestOptions: RequestInit = {
-        method: 'GET',
-        headers: headers,
-      };
-
-    try 
-    {
-        const url = '/api/get_user_proposals_with_datasets/'+badge;
-        const response = await fetch(url, requestOptions);
-        if (!response.ok) 
+        try 
         {
-            if(response.status == 502)
+            const url = '/api/get_user_proposals_with_datasets/'+badge;
+            const response = await fetch(url, requestOptions);
+            if (!response.ok) 
             {
-                throw new Error(`Backend Auth Serivce unreachable. ${response.status}`);
-            }
-            else if (response.status == 400)
-            {
-                throw new Error(`Missing credentials. ${response.status}`);
+                if(response.status == 502)
+                {
+                    throw new Error(`Backend Auth Serivce unreachable. ${response.status}`);
+                }
+                else if (response.status == 400)
+                {
+                    throw new Error(`Missing credentials. ${response.status}`);
+                }
+                else
+                { 
+                    throw new Error(`HTTP error! status: ${response.status}`);
+                }
             }
             else
-            { 
-                throw new Error(`HTTP error! status: ${response.status}`);
+            {
+            return response;
             }
         }
-        else
+        catch (error) 
         {
-          return response;
+            console.error('There was a problem with the fetch operation:', error);
+            throw error;
+        }
+
+    }
+
+    private fill_dataset_table(data: Proposal_Struct | null)
+    {
+        if(data === null)
+        {
+            console.log("Returned data is null");
+            return;
+        }
+        
+        this.datasets_table.innerHTML = "";
+
+        if (!Array.isArray(data.datasets) || data.datasets.length === 0) 
+        {
+            console.log("No datasets for this proposal");
+            return;
+        }
+        const headers = Object.keys(data.datasets[0]);
+        // Create table header
+        const thead = this.datasets_table.createTHead();
+        headers.forEach(header => 
+        {
+            const th = document.createElement("th");
+            th.innerText = header;
+            thead.appendChild(th);
+        });
+
+        data.datasets.forEach(item => 
+        {
+            const row = this.datasets_table.insertRow();
+            row.className = "ds-row";
+            row.id = item.id.toString();
+
+            const cell_id = row.insertCell();
+            cell_id.id = 'ds-cell-id';
+            cell_id.innerText = item.id.toString();
+
+            const cell_path = row.insertCell();
+            cell_path.innerText = item.path;
+
+            const cell_aq = row.insertCell();
+            cell_aq.innerText = item.acquisition_timestamp.toString();
+
+            const cell_beam = row.insertCell();
+            cell_beam.innerText = item.beamline_id.toString();
+
+            const cell_sync = row.insertCell();
+            cell_sync.innerText = item.syncotron_run_id.toString();
+
+            const cell_st = row.insertCell();
+            cell_st.innerText = item.scan_type_id.toString();
+
+            row.offsetWidth;
+            row.classList.add("visible");
+        });
+    }
+
+    private handleRowSelection(event: Event) 
+    {
+        const clickedRow = (event.target as HTMLElement).parentNode as HTMLElement;
+        if (clickedRow)
+        {
+            console.log(clickedRow.id);
+            let numId = Number(clickedRow.id);
+            this.proposals_json?.forEach(proposal => 
+            {
+                if(numId === proposal.id)
+                {
+                    this.fill_dataset_table(proposal);
+                }
+            });
         }
     }
-    catch (error) 
+
+    private fill_proposals_table(data: Array<Proposal_Struct> | null)
     {
-        console.error('There was a problem with the fetch operation:', error);
-        throw error;
+        if(data === null)
+        {
+            console.log("Returned data is null");
+            return;
+        }
+        
+        this.proposals_table.innerHTML = "";
+
+        if (!Array.isArray(data) || data.length === 0) 
+        {
+            console.log("Resply is empty array");
+            return;
+        }
+        const headers = Object.keys(data[0]);
+        // Create table header
+        const thead = this.proposals_table.createTHead();
+        headers.forEach(header => 
+        {
+            const th = document.createElement("th");
+            th.innerText = header;
+            thead.appendChild(th);
+        });
+
+        data.forEach(item => 
+        {
+            const row = this.proposals_table.insertRow();
+            row.className = "ps-row";
+            row.id = item.id.toString();
+
+            const cell_id = row.insertCell();
+            cell_id.id = 'ps-cell-id';
+            cell_id.innerText = item.id.toString();
+
+            const cell_title = row.insertCell();
+            cell_title.innerText = item.title;
+
+            const cell_flag = row.insertCell();
+            cell_flag.innerText = item.proprietaryflag;
+
+            const cell_mailin = row.insertCell();
+            cell_mailin.innerText = item.mailinflag;
+
+            const cell_status = row.insertCell();
+            cell_status.innerText = item.status;
+
+            const cell_num = row.insertCell();
+            cell_num.innerText = item.datasets.length.toString();
+
+            row.offsetWidth;
+            row.classList.add("visible");
+        });
     }
 
-}
+    private update_proposals(badge: string)
+    {
+        const resp = this.get_proposals_for(badge);
+        resp.then(lres =>
+        {
+            lres.json().then( data =>
+            {
+                this.proposals_json = data;
+                this.fill_proposals_table(this.proposals_json);
+                //fill_generic_table(data);
+            });
+        })
+        .catch(error => 
+        {
+            show_toast(error.message);
+            throw error;
+        }
+        );
+    }
 
+    private gen_proposals_table()
+    {
+        const div = document.createElement("div");
+        div.id = "center";
+        div.appendChild(this.admin_controls());
+
+        const table = document.createElement("table") as HTMLTableElement;
+        table.id = "proposals-table";
+        table.className = "animated-table";
+        
+        //document.body.appendChild(table);
+        const resp = this.get_proposals();
+        resp.then(lres =>
+        {
+            lres.json().then( data => 
+            {
+                if (!Array.isArray(data) || data.length === 0) 
+                {
+                    console.log("Resply is empty array");
+                    const row = table.insertRow();
+                    const cell = row.insertCell();
+                    return;
+                }
+                const headers = Object.keys(data[0]);
+                // Create table header
+                const headerRow = table.insertRow();
+                headers.forEach(header => 
+                {
+                    const th = document.createElement("th");
+                
+                    th.innerText = header;
+                });
+
+                data.forEach(item => 
+                {
+                    const row = table.insertRow();
+                    row.className = "new-row";
+                    headers.forEach(header => 
+                    {
+                        const cell = row.insertCell();
+                        if (Object.prototype.toString.call(item[header]) === '[object Array]') // if array then show count
+                        {
+                            cell.innerText = item[header].length;
+                        }
+                        else
+                        {
+                            cell.innerText = item[header];
+                        }
+                    });
+                    row.offsetWidth; 
+                    row.classList.add("visible");
+                });
+            });
+        })
+        .catch(error => 
+        {
+            show_toast(error.message);
+            //throw error;
+        }
+        );
+        
+        div.appendChild(table);
+
+        const ds_table = document.createElement("table") as HTMLTableElement;
+        ds_table.id = "datasets-table";
+        ds_table.className = "animated-table";
+        div.appendChild(ds_table);
+
+        return div;
+    }
+
+};
+/*
+// Initialize the application when the DOM is loaded
+document.addEventListener('DOMContentLoaded', () => 
+{
+    new SampleManagementApp();
+});
+*/
+
+/*
 function fill_generic_table(data: JSON)
 {
     var table = document.getElementById('proposals-table') as HTMLTableElement;
@@ -161,265 +517,4 @@ function fill_generic_table(data: JSON)
         row.classList.add("visible");
     });
 }
-
-function fill_dataset_table(data: Proposal_Struct | null)
-{
-    if(data === null)
-    {
-        console.log("Returned data is null");
-        return;
-    }
-    var ds_table = document.getElementById('datasets-table') as HTMLTableElement;
-    if (ds_table == null)
-    {
-        console.log("Could not find table id datasetss-table");
-        return;
-    }
-    ds_table.innerHTML = "";
-
-    if (!Array.isArray(data.datasets) || data.length === 0) 
-    {
-        console.log("No datasets for this proposal");
-        return;
-    }
-    const headers = Object.keys(data.datasets[0]);
-    // Create table header
-    const thead = ds_table.createTHead();
-    headers.forEach(header => 
-    {
-        const th = document.createElement("th");
-        th.innerText = header;
-        thead.appendChild(th);
-    });
-
-    data.datasets.forEach(item => 
-    {
-        const row = ds_table.insertRow();
-        row.className = "ds-row";
-        row.id = item.id.toString();
-
-        const cell_id = row.insertCell();
-        cell_id.id = 'ds-cell-id';
-        cell_id.innerText = item.id.toString();
-
-        const cell_path = row.insertCell();
-        cell_path.innerText = item.path;
-
-        const cell_aq = row.insertCell();
-        cell_aq.innerText = item.acquisition_timestamp.toString();
-
-        const cell_beam = row.insertCell();
-        cell_beam.innerText = item.beamline_id.toString();
-
-        const cell_sync = row.insertCell();
-        cell_sync.innerText = item.syncotron_run_id.toString();
-
-        const cell_st = row.insertCell();
-        cell_st.innerText = item.scan_type_id.toString();
-
-        row.offsetWidth;
-        row.classList.add("visible");
-    });
-
-   // ds_table.addEventListener('click', handleRowSelection);
-}
-
-
-function handleRowSelection(event: Event) 
-{
-    const clickedRow = (event.target as HTMLElement).parentNode;
-    if (clickedRow)
-    {
-        console.log(clickedRow.id);
-        let numId = Number(clickedRow.id);
-        proposals_json.forEach(proposal => 
-        {
-            if(numId === proposal.id)
-            {
-                fill_dataset_table(proposal);
-            }
-        });
-    }
-}
-
-function fill_ps_table(data: Array<Proposal_Struct> | null)
-{
-    if(data === null)
-    {
-        console.log("Returned data is null");
-        return;
-    }
-    var ps_table = document.getElementById('proposals-table') as HTMLTableElement;
-    if (ps_table == null)
-    {
-        console.log("Could not find table id proposals-table");
-        return;
-    }
-    ps_table.innerHTML = "";
-
-    if (!Array.isArray(data) || data.length === 0) 
-    {
-        console.log("Resply is empty array");
-        return;
-    }
-    const headers = Object.keys(data[0]);
-    // Create table header
-    const thead = ps_table.createTHead();
-    headers.forEach(header => 
-    {
-        const th = document.createElement("th");
-        th.innerText = header;
-        thead.appendChild(th);
-    });
-
-    data.forEach(item => 
-    {
-        const row = ps_table.insertRow();
-        row.className = "ps-row";
-        row.id = item.id.toString();
-
-        const cell_id = row.insertCell();
-        cell_id.id = 'ps-cell-id';
-        cell_id.innerText = item.id.toString();
-
-        const cell_title = row.insertCell();
-        cell_title.innerText = item.title;
-
-        const cell_flag = row.insertCell();
-        cell_flag.innerText = item.proprietaryflag;
-
-        const cell_mailin = row.insertCell();
-        cell_mailin.innerText = item.mailinflag;
-
-        const cell_status = row.insertCell();
-        cell_status.innerText = item.status;
-
-        const cell_num = row.insertCell();
-        cell_num.innerText = item.datasets.length.toString();
-
-        row.offsetWidth;
-        row.classList.add("visible");
-    });
-
-    ps_table.addEventListener('click', handleRowSelection);
-}
-
-
-function update_proposals(badge: string)
-{
-    const resp = get_proposals_for(badge);
-    resp.then(lres =>
-    {
-        lres.json().then( data =>
-        {
-            proposals_json = data;
-            fill_ps_table(proposals_json);
-            //fill_generic_table(data);
-        });
-    })
-    .catch(error => 
-    {
-        show_toast(error.message);
-        throw error;
-    }
-    );
-}
-
-function admin_controls()
-{
-    const div = document.createElement("div");
-
-    const label = document.createElement("label");
-    label.innerText = "As Badge: ";
-
-    const input = document.createElement("input");
-    input.id = "as_badge";
-    
-    const btn = document.createElement("button");
-    btn.innerText = "Update";
-    btn.addEventListener('click', function handleClick(event) 
-    {
-        console.log('button clicked');
-        console.log(event);
-        console.log(event.target);
-        update_proposals(input.value);
-    });
-
-    div.appendChild(label);
-    div.appendChild(input);
-    div.appendChild(btn);
-
-    return div;
-}
-
-export function gen_proposals_table()
-{
-    const div = document.createElement("div");
-    div.id = "center";
-    div.appendChild(admin_controls());
-
-    const table = document.createElement("table") as HTMLTableElement;
-    table.id = "proposals-table";
-    table.className = "animated-table";
-    
-    //document.body.appendChild(table);
-    const resp = get_proposals();
-    resp.then(lres =>
-    {
-        lres.json().then( data => 
-        {
-            if (!Array.isArray(data) || data.length === 0) 
-            {
-                console.log("Resply is empty array");
-                const row = table.insertRow();
-                const cell = row.insertCell();
-                return;
-            }
-            const headers = Object.keys(data[0]);
-            // Create table header
-            const headerRow = table.insertRow();
-            headers.forEach(header => 
-            {
-                const th = document.createElement("th");
-            
-                th.innerText = header;
-            });
-
-            data.forEach(item => 
-            {
-                const row = table.insertRow();
-                row.className = "new-row";
-                headers.forEach(header => 
-                {
-                    const cell = row.insertCell();
-                    if (Object.prototype.toString.call(item[header]) === '[object Array]') // if array then show count
-                    {
-                        cell.innerText = item[header].length;
-                    }
-                    else
-                    {
-                        cell.innerText = item[header];
-                    }
-                });
-                row.offsetWidth; 
-                row.classList.add("visible");
-            });
-        });
-    })
-    .catch(error => 
-    {
-        show_toast(error.message);
-        //throw error;
-    }
-    );
-    
-    div.appendChild(table);
-
-    const ds_table = document.createElement("table") as HTMLTableElement;
-    ds_table.id = "datasets-table";
-    ds_table.className = "animated-table";
-    div.appendChild(ds_table);
-
-    return div;
-}
-
+*/

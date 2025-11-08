@@ -1,7 +1,8 @@
 import { gen_index } from './general-helper';
-import {gen_proposals_table} from "./proposals"
+import {ProposalManagementApp} from "./proposals"
 
 window.onload = function() 
 {   
-    gen_index('app', gen_proposals_table());
+    let papp = new SampleManagementApp();
+    gen_index('app', papp.gen_main_div());
 };
