@@ -21,14 +21,13 @@ interface Proposal_Struct
     datasets: Array<Dataset_Struct>;
 }
 
-class ProposalManagementApp 
+export class ProposalManagementApp 
 {
     private proposals_json: Array<Proposal_Struct> | null = null;;
 
     // DOM Elements
     private proposals_table: HTMLTableElement;
     private datasets_table: HTMLTableElement;
-    private admin_controls: HTMLElement;
     private admin_div: HTMLDivElement;
     private badge_label: HTMLLabelElement;
     private badge_input: HTMLInputElement;
@@ -54,7 +53,7 @@ class ProposalManagementApp
         
         this.main_center_div = document.createElement("div");
         this.main_center_div.id = "center";
-        this.main_center_div.appendChild(this.admin_controls);
+        this.main_center_div.appendChild(this.admin_div);
         
         this.proposals_table = document.createElement("table") as HTMLTableElement;
         this.proposals_table.id = "proposals-table";
@@ -70,15 +69,15 @@ class ProposalManagementApp
 
     private create_admin_controls(): void
     {
-        this.admin_div = document.createElement("div");
+        this.admin_div = document.createElement("div") as HTMLDivElement;
 
-        this.badge_label = document.createElement("label");
+        this.badge_label = document.createElement("label") as HTMLLabelElement;
         this.badge_label.innerText = "As Badge: ";
 
-        this.badge_input = document.createElement("input");
+        this.badge_input = document.createElement("input") as HTMLInputElement;
         this.badge_input.id = "as_badge";
 
-        this.update_btn = document.createElement("button");
+        this.update_btn = document.createElement("button") as HTMLButtonElemenet;
         this.update_btn.innerText = "Update";
 
         this.admin_div.appendChild(this.badge_label);
@@ -88,8 +87,8 @@ class ProposalManagementApp
 
     private setupEventListeners(): void
     {
-        this.update_btn.addEventListener('click', this.handleUpdateClick);
-        this.proposals_table.addEventListener('click', this.handleRowSelection);
+        this.update_btn.addEventListener('click', (event) =>  this.handleUpdateClick(event));
+        this.proposals_table.addEventListener('click', (event) =>  this.handleRowSelection(event));
     }
 
     private loadProposals(): void
@@ -395,7 +394,7 @@ class ProposalManagementApp
     {
         const div = document.createElement("div");
         div.id = "center";
-        div.appendChild(this.admin_controls());
+        div.appendChild(this.admin_div);
 
         const table = document.createElement("table") as HTMLTableElement;
         table.id = "proposals-table";
