@@ -56,6 +56,7 @@ class SampleManagementApp
     private initializeElements(): void 
     {
         this.main_div = document.createElement("div") as HTMLDivElement;
+        this.message_div = document.createElement("div") as HTMLDivElement;
 
         this.sample_form = document.createElement('form') as HTMLFormElement;
         this.sample_form.id="sampleForm";
@@ -82,7 +83,7 @@ class SampleManagementApp
         this.sample_type_select = document.createElement('select') as HTMLSelectElement;
         this.sample_type_select.id = 'sampleType';
         this.sample_type_select.innerHTML = '<option value="">Select a sample type...</option>';
-        div2.appendChild(this.sample_name_input);
+        div2.appendChild(this.sample_type_select);
         this.sample_form.appendChild(div2);
 
         // sample Origin input
@@ -162,6 +163,7 @@ class SampleManagementApp
         this.sample_form.appendChild(div13);
 
         this.sample_submit_btn = document.createElement('button') as HTMLButtonElement;
+        this.sample_submit_btn.innerText = 'Submit';
         this.sample_form.appendChild(this.sample_submit_btn);
 
         this.main_div.appendChild(this.message_div);
