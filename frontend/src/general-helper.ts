@@ -1,4 +1,4 @@
-import { gen_login_form, check_user } from './auth';
+import { LoginFormApp, check_user } from './auth';
 import { gen_header } from "./header";
 import { gen_left_sidebar } from "./left-sidebar";
 import { gen_footer } from "./footer";
@@ -18,7 +18,8 @@ export function gen_index(id: string, center_element: HTMLElement)
     }).catch(error =>
     {
         //console.log(error);
-        app?.appendChild(gen_login_form());
+        let loginapp = new LoginFormApp();
+        app?.appendChild(loginapp.gen_main_div());
     }
     ); 
     return app;
