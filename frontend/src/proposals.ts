@@ -51,7 +51,7 @@ export class ProposalManagementApp
     {
         this.create_admin_controls();
         
-        this.main_div = document.createElement("div");
+        this.main_div = document.createElement("div") as HTMLDivElement;
         this.main_div.id = "center";
         this.main_div.appendChild(this.admin_div);
         
