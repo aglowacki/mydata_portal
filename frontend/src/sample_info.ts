@@ -1,9 +1,13 @@
-interface SampleType {
+import { gen_index } from './general-helper';
+
+interface SampleType 
+{
     id: string;
-    name: string;
+    type_name: string;
 }
 
-interface Sample {
+interface Sample 
+{
     sampleId: string;
     sampleName: string;
     sampleType: string;
@@ -11,85 +15,198 @@ interface Sample {
     otherNotes: string;
 }
 
-class SampleManagementApp {
-    private adminMode: boolean = false;
-    private sampleTypes: SampleType[] = [];
+class SampleManagementApp 
+{
+    private sample_types: SampleType[] = [];
 
     // DOM Elements
-    private adminToggle: HTMLButtonElement;
-    private adminPanel: HTMLDivElement;
-    private sampleForm: HTMLFormElement;
-    private sampleTypeSelect: HTMLSelectElement;
-    private newSampleTypeInput: HTMLInputElement;
-    private addSampleTypeButton: HTMLButtonElement;
-    private messageDiv: HTMLDivElement;
+    private sample_form: HTMLFormElement;
+    private sample_id_input: HTMLInputElement;
+    private sample_name_input: HTMLInputElement;
+    private sample_type_select: HTMLSelectElement;
+    private sample_origin_select: HTMLSelectElement;
+    private sample_source_select: HTMLSelectElement;
+    private sample_thickness_input: HTMLInputElement;
+    private sample_cell_line_input: HTMLInputElement;
+    private sample_is_cancer_input: HTMLInputElement;
+    private sample_condition_select: HTMLSelectElement;
+    private sample_treatment_input: HTMLInputElement;
+    private sample_fixation_select: HTMLSelectElement;
+    private sample_fixative_select: HTMLSelectElement;
+    private sample_eecc_textarea: HTMLTextAreaElement;
+    private sample_notes_textarea: HTMLTextAreaElement;
+    private sample_submit_btn: HTMLButtonElement;
 
-    constructor() {
+    private message_div: HTMLDivElement;
+
+    private main_div: HTMLDivElement;
+
+    constructor() 
+    {
         this.initializeElements();
         this.setupEventListeners();
         this.loadSampleTypes();
     }
 
-    private initializeElements(): void {
-        this.adminToggle = document.getElementById('adminToggle') as HTMLButtonElement;
-        this.adminPanel = document.getElementById('adminPanel') as HTMLDivElement;
-        this.sampleForm = document.getElementById('sampleForm') as HTMLFormElement;
-        this.sampleTypeSelect = document.getElementById('sampleType') as HTMLSelectElement;
-        this.newSampleTypeInput = document.getElementById('newSampleType') as HTMLInputElement;
-        this.addSampleTypeButton = document.getElementById('addSampleType') as HTMLButtonElement;
-        this.messageDiv = document.getElementById('message') as HTMLDivElement;
-
-        if (!this.adminToggle || !this.adminPanel || !this.sampleForm || 
-            !this.sampleTypeSelect || !this.newSampleTypeInput || 
-            !this.addSampleTypeButton || !this.messageDiv) {
-            throw new Error('Required DOM elements not found');
-        }
+    public gen_main_div(): HTMLDivElement
+    {
+        return this.main_div;
     }
 
-    private setupEventListeners(): void {
-        this.adminToggle.addEventListener('click', () => this.toggleAdminMode());
-        this.addSampleTypeButton.addEventListener('click', () => this.addNewSampleType());
-        this.sampleForm.addEventListener('submit', (e) => this.handleFormSubmit(e));
-        
-        // Allow Enter key to add sample type in admin mode
-        this.newSampleTypeInput.addEventListener('keypress', (e) => {
-            if (e.key === 'Enter') {
-                this.addNewSampleType();
-            }
-        });
+    private initializeElements(): void 
+    {
+        this.main_div = document.createElement("div") as HTMLDivElement;
+
+        this.sample_form = document.createElement('form') as HTMLFormElement;
+        this.sample_form.id="sampleForm";
+        this.sample_form.classList.add("sample-form");
+
+        // sample selection input
+        const div0 = this.create_div_group("Sample ID:");
+        this.sample_id_input = document.createElement('input') as HTMLInputElement;
+        this.sample_id_input.id = 'sampleId';
+        this.sample_id_input.type = 'text';
+        div0.appendChild(this.sample_id_input);
+        this.sample_form.appendChild(div0);
+
+        // sample name input
+        const div1 = this.create_div_group("Sample Name:");
+        this.sample_name_input = document.createElement('input') as HTMLInputElement;
+        this.sample_name_input.id = 'sampleName';
+        this.sample_name_input.type = 'text';
+        div1.appendChild(this.sample_name_input);
+        this.sample_form.appendChild(div1);
+
+        // sample type input
+        const div2 = this.create_div_group("Sample Type:");
+        this.sample_type_select = document.createElement('select') as HTMLSelectElement;
+        this.sample_type_select.id = 'sampleType';
+        this.sample_type_select.innerHTML = '<option value="">Select a sample type...</option>';
+        div2.appendChild(this.sample_name_input);
+        this.sample_form.appendChild(div2);
+
+        // sample Origin input
+        const div3 = this.create_div_group("Sample Origin:");
+        this.sample_origin_select = document.createElement('select') as HTMLSelectElement;
+        this.sample_origin_select.id = 'sampleOrigin';
+        this.sample_origin_select.innerHTML = '<option value="">Select a sample origin...</option>';
+        div3.appendChild(this.sample_origin_select);
+        this.sample_form.appendChild(div3);
+
+        const div4 = this.create_div_group("Sample Source:");
+        this.sample_source_select = document.createElement('select') as HTMLSelectElement;
+        this.sample_source_select.id = 'sampleSource';
+        this.sample_source_select.innerHTML = '<option value="">Select a sample origin...</option>';
+        div4.appendChild(this.sample_source_select);
+        this.sample_form.appendChild(div4);
+
+        const div5 = this.create_div_group("Thickness (microns):");
+        this.sample_thickness_input = document.createElement('input') as HTMLInputElement;
+        this.sample_thickness_input.id = 'sampleThickness';
+        this.sample_thickness_input.type = 'text';
+        div5.appendChild(this.sample_thickness_input);
+        this.sample_form.appendChild(div5);
+
+        const div6 = this.create_div_group("Cell Line:");
+        this.sample_cell_line_input = document.createElement('input') as HTMLInputElement;
+        this.sample_cell_line_input.id = 'sampleCellLine';
+        this.sample_cell_line_input.type = 'text';
+        div6.appendChild(this.sample_cell_line_input);
+        this.sample_form.appendChild(div6);
+
+        const div7 = this.create_div_group("Cell Line:");
+        this.sample_is_cancer_input = document.createElement('input') as HTMLInputElement;
+        this.sample_is_cancer_input.id = 'isCancer';
+        this.sample_is_cancer_input.type = 'checkbox';
+        div7.appendChild(this.sample_is_cancer_input);
+        this.sample_form.appendChild(div7);
+
+        const div8 = this.create_div_group("Sample Condition:");
+        this.sample_condition_select = document.createElement('select') as HTMLSelectElement;
+        this.sample_condition_select.id = 'sampleCondition';
+        this.sample_condition_select.innerHTML = '<option value="">Select a sample condition...</option>';
+        div8.appendChild(this.sample_condition_select);
+        this.sample_form.appendChild(div8);
+
+        const div9 = this.create_div_group("Treatment Details:");
+        this.sample_treatment_input = document.createElement('input') as HTMLInputElement;
+        this.sample_treatment_input.id = 'sampleTreatment';
+        this.sample_treatment_input.type = 'text';
+        div9.appendChild(this.sample_treatment_input);
+        this.sample_form.appendChild(div9);
+
+        const div10 = this.create_div_group("Sample Fixation:");
+        this.sample_fixation_select = document.createElement('select') as HTMLSelectElement;
+        this.sample_fixation_select.id = 'sampleFixation';
+        this.sample_fixation_select.innerHTML = '<option value="">Select a sample fixation...</option>';
+        div10.appendChild(this.sample_fixation_select);
+        this.sample_form.appendChild(div10);
+
+        const div11 = this.create_div_group("Sample Fixative:");
+        this.sample_fixative_select = document.createElement('select') as HTMLSelectElement;
+        this.sample_fixative_select.id = 'sampleFixative';
+        this.sample_fixative_select.innerHTML = '<option value="">Select a sample fixative...</option>';
+        div11.appendChild(this.sample_fixative_select);
+        this.sample_form.appendChild(div11);
+
+        const div12 = this.create_div_group("External Elemental Content Change:");
+        this.sample_eecc_textarea = document.createElement('textarea') as HTMLTextAreaElement;
+        this.sample_eecc_textarea.id = 'sampleEECC';
+        div12.appendChild(this.sample_eecc_textarea);
+        this.sample_form.appendChild(div12);
+
+        const div13 = this.create_div_group("Other Notes:");
+        this.sample_notes_textarea = document.createElement('textarea') as HTMLTextAreaElement;
+        this.sample_notes_textarea.id = 'otherNotes';
+        div13.appendChild(this.sample_notes_textarea);
+        this.sample_form.appendChild(div13);
+
+        this.sample_submit_btn = document.createElement('button') as HTMLButtonElement;
+        this.sample_form.appendChild(this.sample_submit_btn);
+
+        this.main_div.appendChild(this.message_div);
+        this.main_div.appendChild(this.sample_form);
     }
 
-    private toggleAdminMode(): void {
-        this.adminMode = !this.adminMode;
-        
-        if (this.adminMode) {
-            this.adminPanel.classList.remove('hidden');
-            this.adminToggle.textContent = 'Exit Admin Mode';
-            this.adminToggle.classList.add('active');
-        } else {
-            this.adminPanel.classList.add('hidden');
-            this.adminToggle.textContent = 'Admin Mode';
-            this.adminToggle.classList.remove('active');
-        }
+    private create_div_group(label_str: string): HTMLDivElement
+    {
+        const div = document.createElement('div') as HTMLDivElement;
+        div.classList.add("sample-form-group");
+        const label2 = document.createElement('label') as HTMLLabelElement;
+        label2.innerText = label_str;
+        div.appendChild(label2);
+        return div;
     }
 
-    private async loadSampleTypes(): Promise<void> {
-        try {
+    private setupEventListeners(): void 
+    {
+        //this.adminToggle.addEventListener('click', () => this.toggleAdminMode());
+        //this.addSampleTypeButton.addEventListener('click', () => this.addNewSampleType());
+        //this.sampleForm.addEventListener('submit', (e) => this.handleFormSubmit(e));    
+    }
+
+    private async loadSampleTypes(): Promise<void> 
+    {
+        try 
+        {
             const response = await fetch('/api/bio_sample_types');
             
-            if (!response.ok) {
+            if (!response.ok) 
+            {
                 throw new Error(`HTTP error! status: ${response.status}`);
             }
             
-            this.sampleTypes = await response.json();
+            this.sample_types = await response.json();
             this.populateSampleTypeSelect();
             this.showMessage('Sample types loaded successfully', 'success');
-        } catch (error) {
+        }
+        catch (error) 
+        {
             console.error('Error loading sample types:', error);
             this.showMessage('Failed to load sample types. Using default values.', 'error');
             
             // Fallback sample types for development/testing
-            this.sampleTypes = [
+            this.sample_types = [
                 { id: '1', type_name: 'Blood' },
                 { id: '2', type_name: 'Tissue' },
                 { id: '3', type_name: 'Urine' },
@@ -99,34 +216,41 @@ class SampleManagementApp {
         }
     }
 
-    private populateSampleTypeSelect(): void {
+    private populateSampleTypeSelect(): void 
+    {
         // Clear existing options except the first one
-        this.sampleTypeSelect.innerHTML = '<option value="">Select a sample type...</option>';
+        this.sample_type_select.innerHTML = '<option value="">Select a sample type...</option>';
         
-        this.sampleTypes.forEach(sampleType => {
-            const option = document.createElement('option');
+        this.sample_types.forEach(sampleType => 
+        {
+            const option = document.createElement('option') as HTMLOptionElement;
             option.value = sampleType.id;
             option.textContent = sampleType.type_name;
-            this.sampleTypeSelect.appendChild(option);
+            this.sample_type_select.appendChild(option);
         });
     }
-
-    private async addNewSampleType(): Promise<void> {
+/*
+    private async addNewSampleType(): Promise<void> 
+    {
         const newTypeName = this.newSampleTypeInput.value.trim();
         
-        if (!newTypeName) {
+        if (!newTypeName) 
+        {
             this.showMessage('Please enter a sample type name', 'error');
             return;
         }
 
         // Check if sample type already exists
-        if (this.sampleTypes.some(type => type.name.toLowerCase() === newTypeName.toLowerCase())) {
+        if (this.sampleTypes.some(type => type.name.toLowerCase() === newTypeName.toLowerCase())) 
+        {
             this.showMessage('Sample type already exists', 'error');
             return;
         }
 
-        try {
-            const response = await fetch('/api/sample_types', {
+        try 
+        {
+            const response = await fetch('/api/sample_types', 
+            {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
@@ -134,7 +258,8 @@ class SampleManagementApp {
                 body: JSON.stringify({ name: newTypeName })
             });
 
-            if (!response.ok) {
+            if (!response.ok) 
+            {
                 throw new Error(`HTTP error! status: ${response.status}`);
             }
 
@@ -143,7 +268,9 @@ class SampleManagementApp {
             this.populateSampleTypeSelect();
             this.newSampleTypeInput.value = '';
             this.showMessage(`Sample type "${newTypeName}" added successfully`, 'success');
-        } catch (error) {
+        } 
+        catch (error) 
+        {
             console.error('Error adding sample type:', error);
             
             // Fallback for development/testing
@@ -207,20 +334,25 @@ class SampleManagementApp {
             this.showMessage('Failed to submit sample. Please try again.', 'error');
         }
     }
-
-    private showMessage(text: string, type: 'success' | 'error'): void {
-        this.messageDiv.textContent = text;
-        this.messageDiv.className = `message ${type}`;
-        this.messageDiv.classList.remove('hidden');
+*/
+    private showMessage(text: string, type: 'success' | 'error'): void 
+    {
+        this.message_div.textContent = text;
+        this.message_div.className = `message ${type}`;
+        this.message_div.classList.remove('hidden');
         
         // Auto-hide message after 5 seconds
-        setTimeout(() => {
-            this.messageDiv.classList.add('hidden');
+        setTimeout(() => 
+        {
+            this.message_div.classList.add('hidden');
         }, 5000);
     }
+        
 }
 
 // Initialize the application when the DOM is loaded
-document.addEventListener('DOMContentLoaded', () => {
-    new SampleManagementApp();
+document.addEventListener('DOMContentLoaded', () => 
+{
+    let sapp = new SampleManagementApp();
+    gen_index('app', sapp.gen_main_div());
 });
