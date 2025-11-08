@@ -1,5 +1,6 @@
 import { get_cookie } from "./cookies";
 import { show_toast } from "./toast"
+import { gen_index } from './general-helper';
 
  interface Dataset_Struct 
  {
@@ -21,7 +22,7 @@ interface Proposal_Struct
     datasets: Array<Dataset_Struct>;
 }
 
-export class ProposalManagementApp 
+class ProposalManagementApp 
 {
     private proposals_json: Array<Proposal_Struct> | null = null;;
 
@@ -37,38 +38,7 @@ export class ProposalManagementApp
 
     constructor() 
     {
-        this.initializeElements();
-        this.setupEventListeners();
-        this.loadProposals();
-    }
-
-    public gen_main_div(): HTMLDivElement
-    {
-        return this.main_div;
-    }
-
-    private initializeElements(): void 
-    {
-        this.create_admin_controls();
-        
-        this.main_div = document.createElement("div") as HTMLDivElement;
-        this.main_div.id = "center";
-        this.main_div.appendChild(this.admin_div);
-        
-        this.proposals_table = document.createElement("table") as HTMLTableElement;
-        this.proposals_table.id = "proposals-table";
-        this.proposals_table.className = "animated-table";
-    
-        this.datasets_table = document.createElement("table") as HTMLTableElement;
-        this.datasets_table.id = "datasets-table";
-        this.datasets_table.className = "animated-table";
-
-        this.main_div.appendChild(this.proposals_table);
-        this.main_div.appendChild(this.datasets_table);
-    }
-
-    private create_admin_controls(): void
-    {
+        // admin controls
         this.admin_div = document.createElement("div") as HTMLDivElement;
 
         this.badge_label = document.createElement("label") as HTMLLabelElement;
@@ -83,6 +53,30 @@ export class ProposalManagementApp
         this.admin_div.appendChild(this.badge_label);
         this.admin_div.appendChild(this.badge_input);
         this.admin_div.appendChild(this.update_btn);
+
+        // main layout
+        this.main_div = document.createElement("div") as HTMLDivElement;
+        this.main_div.id = "center";
+        this.main_div.appendChild(this.admin_div);
+        
+        this.proposals_table = document.createElement("table") as HTMLTableElement;
+        this.proposals_table.id = "proposals-table";
+        this.proposals_table.className = "animated-table";
+    
+        this.datasets_table = document.createElement("table") as HTMLTableElement;
+        this.datasets_table.id = "datasets-table";
+        this.datasets_table.className = "animated-table";
+
+        this.main_div.appendChild(this.proposals_table);
+        this.main_div.appendChild(this.datasets_table);
+
+        this.setupEventListeners();
+        this.loadProposals();
+    }
+
+    public gen_main_div(): HTMLDivElement
+    {
+        return this.main_div;
     }
 
     private setupEventListeners(): void
@@ -462,13 +456,14 @@ export class ProposalManagementApp
     }
 
 };
-/*
+
 // Initialize the application when the DOM is loaded
 document.addEventListener('DOMContentLoaded', () => 
-{
-    new SampleManagementApp();
+{   
+    let papp = new ProposalManagementApp();
+    gen_index('app', papp.gen_main_div());
 });
-*/
+
 
 /*
 function fill_generic_table(data: JSON)

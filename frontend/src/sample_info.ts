@@ -43,18 +43,6 @@ class SampleManagementApp
 
     constructor() 
     {
-        this.initializeElements();
-        this.setupEventListeners();
-        this.loadSampleTypes();
-    }
-
-    public gen_main_div(): HTMLDivElement
-    {
-        return this.main_div;
-    }
-
-    private initializeElements(): void 
-    {
         this.main_div = document.createElement("div") as HTMLDivElement;
         this.message_div = document.createElement("div") as HTMLDivElement;
 
@@ -168,6 +156,14 @@ class SampleManagementApp
 
         this.main_div.appendChild(this.message_div);
         this.main_div.appendChild(this.sample_form);
+
+        this.setupEventListeners();
+        this.loadSampleTypes();
+    }
+
+    public gen_main_div(): HTMLDivElement
+    {
+        return this.main_div;
     }
 
     private create_div_group(label_str: string): HTMLDivElement
