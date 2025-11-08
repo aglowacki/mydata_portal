@@ -30,6 +30,8 @@
   );
 }
 
+tr:hover { background-color: darkblue; }
+
 h1 {
   font-size: 10vmin;
   font-weight: 300;
