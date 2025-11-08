@@ -82,6 +82,8 @@ export class LoginFormApp
 
     private initializeElements(): void 
     {
+        this.main_div = document.createElement("div") as HTMLDivElement;
+
         this.login_form = document.createElement("form") as HTMLFormElement;
         this.login_form.setAttribute('id', 'loginForm');
         this.login_form.classList.add("login_center");
