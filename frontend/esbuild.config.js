@@ -2,7 +2,7 @@
 
     esbuild.build({
         entryPoints: ['src/xrf-map-plot.ts',
-            'src/proposals-index.ts',
+            'src/proposals.ts',
             'src/sample_info.ts',
             'src/index.ts'
         ],
