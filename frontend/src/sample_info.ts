@@ -85,7 +85,7 @@ class SampleManagementApp
         const div4 = this.create_div_group("Sample Source:");
         this.sample_source_select = document.createElement('select') as HTMLSelectElement;
         this.sample_source_select.id = 'sampleSource';
-        this.sample_source_select.innerHTML = '<option value="">Select a sample origin...</option>';
+        this.sample_source_select.innerHTML = '<option value="">Select a sample source...</option>';
         div4.appendChild(this.sample_source_select);
         this.sample_form.appendChild(div4);
 
