@@ -65,6 +65,7 @@ async fn main()
         .route("/api/get_user_proposals_with_datasets/{user_id}", get(database::get_user_proposals_with_datasets))
         .route("/api/get_syncotron_runs", get(database::get_syncotron_runs))
         .route("/api/bio_sample_types", get(database::get_bio_sample_types))
+        .route("/api/get_bio_sample_meta_data_groups", get(database::get_bio_sample_meta_data_groups))
         .route("/api/get_beamline_log/{beamline_id}", get(beamline_controls::get_beamline_log))
         .route("/api/get_available_scans/{beamline_id}", get(beamline_controls::get_available_scans))
         .layer((

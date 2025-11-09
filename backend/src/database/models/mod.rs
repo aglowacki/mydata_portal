@@ -22,6 +22,9 @@ use crate::database::schema::{beamline_contacts,
                                 experimenter_proposal_links,
                                 proposal_dataset_links,
                                 proposals,
+                                sample_origins,
+                                sample_sources,
+                                sample_sub_origins,
                                 scan_types,
                                 syncotron_runs,
                                 user_access_controls,
@@ -74,26 +77,34 @@ pub struct Beamline {
     pub link: String,
 }
 
-#[derive(Queryable, Debug, Identifiable)]
+#[derive(Queryable, Debug, Identifiable, Selectable, QueryableByName, serde::Serialize)]
+#[diesel(primary_key(id))]
 pub struct BioSampleCondition {
     pub id: i32,
     pub name: String,
 }
 
-#[derive(Queryable, Debug, Identifiable)]
+#[derive(Queryable, Debug, Identifiable, Selectable, QueryableByName, serde::Serialize)]
+#[diesel(belongs_to(BioSampleFixative))]
+#[diesel(primary_key(id))]
 pub struct BioSampleFixation {
     pub id: i32,
     pub name: String,
     pub fixative_id: i32,
 }
 
-#[derive(Queryable, Debug, Identifiable)]
+#[derive(Queryable, Debug, Identifiable, Selectable, QueryableByName, serde::Serialize)]
+#[diesel(primary_key(id))]
 pub struct BioSampleFixative {
     pub id: i32,
     pub name: String,
 }
 
-#[derive(Queryable, Debug, Identifiable)]
+#[derive(Queryable, Debug, Identifiable, Selectable, QueryableByName, serde::Serialize)]
+#[diesel(belongs_to(BioSampleType))]
+#[diesel(belongs_to(SampleOrigin))]
+#[diesel(belongs_to(SampleSubOrigin))]
+#[diesel(primary_key(id))]
 pub struct BioSampleTypeOriginSubOriginLink {
     pub id: i32,
     pub bio_sample_type_id: i32,
@@ -102,12 +113,42 @@ pub struct BioSampleTypeOriginSubOriginLink {
 }
 
 #[derive(Queryable, Debug, Identifiable, Selectable, QueryableByName, serde::Serialize)]
+#[diesel(primary_key(id))]
 pub struct BioSampleType {
     pub id: i32,
     pub type_name: String,
 }
 
+#[derive(Queryable, Debug, Identifiable, Selectable, QueryableByName, serde::Serialize)]
+#[diesel(primary_key(id))]
+pub struct SampleOrigin {
+    pub id: i32,
+    pub name: String,
+}
+
+#[derive(Queryable, Debug, Identifiable, Selectable, QueryableByName, serde::Serialize)]
+#[diesel(primary_key(id))]
+pub struct SampleSubOrigin {
+    pub id: i32,
+    pub name: String,
+}
+
+#[derive(Queryable, Debug, Identifiable, Selectable, QueryableByName, serde::Serialize)]
+#[diesel(primary_key(id))]
+pub struct SampleSource {
+    pub id: i32,
+    pub name: String,
+}
+
 #[derive(Queryable, Debug, Identifiable)]
+#[diesel(belongs_to(BioSampleType))]
+#[diesel(belongs_to(SampleOrigin))]
+#[diesel(belongs_to(SampleSubOrigin))]
+#[diesel(belongs_to(SampleSource))]
+#[diesel(belongs_to(Proposal))]
+#[diesel(belongs_to(BioSampleCondition))]
+#[diesel(belongs_to(BioSampleFixation))]
+#[diesel(primary_key(id))]
 pub struct BioSample {
     pub id: i32,
     pub proposal_id: i32,
@@ -212,4 +253,19 @@ pub struct ProposalWithDatasets
     #[serde(flatten)]
     pub proposal: Proposal,
     pub datasets: Vec<Dataset>,
+}
+
+#[derive(serde::Serialize)]
+pub struct BioSampleMetaDataGrouping
+{
+    //#[serde(flatten)]
+    pub conditions: Vec<BioSampleCondition>,
+    pub fixations: Vec<BioSampleFixation>,
+    pub fixatives: Vec<BioSampleFixative>,
+    pub sample_types: Vec<BioSampleType>,
+    pub sample_origins: Vec<SampleOrigin>,
+    pub sample_sub_origins: Vec<SampleSubOrigin>,
+    pub samples_sources: Vec<SampleSource>,
+    
+    //pub suboriginlinks: Vec<BioSampleTypeOriginSubOriginLink>,
 }

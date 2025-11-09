@@ -206,6 +206,62 @@ pub async fn get_bio_sample_types(
     Ok(Json(res))
 }
 
+#[axum_macros::debug_handler]
+pub async fn get_bio_sample_meta_data_groups(
+    State(state): State<appstate::AppState>,
+    //claims: auth::Claims,
+    DatabaseConnection(mut conn): DatabaseConnection,
+) -> Result<Json<models::BioSampleMetaDataGrouping>, (StatusCode, String)> 
+{
+       
+    let conditions: Vec<_> = schema::bio_sample_conditions::table.select(models::BioSampleCondition::as_select())
+    .distinct()
+    .load(&mut conn)
+    .await
+    .map_err(internal_error)?;
+    
+    let fixations: Vec<_> = schema::bio_sample_fixations::table.select(models::BioSampleFixation::as_select())
+    .distinct()
+    .load(&mut conn)
+    .await
+    .map_err(internal_error)?;
+    
+    let fixatives: Vec<_> = schema::bio_sample_fixatives::table.select(models::BioSampleFixative::as_select())
+    .distinct()
+    .load(&mut conn)
+    .await
+    .map_err(internal_error)?;
+
+    let sample_types: Vec<_> = schema::bio_sample_types::table.select(models::BioSampleType::as_select())
+    .distinct()
+    .load(&mut conn)
+    .await
+    .map_err(internal_error)?;
+
+    let sample_origins: Vec<_> = schema::sample_origins::table.select(models::SampleOrigin::as_select())
+    .distinct()
+    .load(&mut conn)
+    .await
+    .map_err(internal_error)?;
+
+    let sample_sub_origins: Vec<_> = schema::sample_sub_origins::table.select(models::SampleSubOrigin::as_select())
+    .distinct()
+    .load(&mut conn)
+    .await
+    .map_err(internal_error)?;
+
+    let samples_sources: Vec<_> = schema::sample_sources::table.select(models::SampleSource::as_select())
+    .distinct()
+    .load(&mut conn)
+    .await
+    .map_err(internal_error)?;
+    
+    Ok(Json(models::BioSampleMetaDataGrouping{conditions, fixations, fixatives, sample_types, sample_origins, sample_sub_origins, samples_sources}))
+
+
+}
+
+
 /// Utility function for mapping any error into a `500 Internal Server Error`
 /// response.
 fn internal_error<E>(err: E) -> (StatusCode, String)
