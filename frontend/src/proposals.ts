@@ -92,42 +92,8 @@ class ProposalManagementApp
         {
             lres.json().then( data => 
             {
-                if (!Array.isArray(data) || data.length === 0) 
-                {
-                    console.log("Resply is empty array");
-                    const row = this.proposals_table.insertRow();
-                    const cell = row.insertCell();
-                    return;
-                }
-                const headers = Object.keys(data[0]);
-                // Create table header
-                const headerRow = this.proposals_table.insertRow();
-                headers.forEach(header => 
-                {
-                    const th = document.createElement("th");
-                
-                    th.innerText = header;
-                });
-
-                data.forEach(item => 
-                {
-                    const row = this.proposals_table.insertRow();
-                    row.className = "new-row";
-                    headers.forEach(header => 
-                    {
-                        const cell = row.insertCell();
-                        if (Object.prototype.toString.call(item[header]) === '[object Array]') // if array then show count
-                        {
-                            cell.innerText = item[header].length;
-                        }
-                        else
-                        {
-                            cell.innerText = item[header];
-                        }
-                    });
-                    row.offsetWidth; 
-                    row.classList.add("visible");
-                });
+                this.proposals_json = data;
+                this.fill_proposals_table(this.proposals_json);
             });
         })
         .catch(error => 

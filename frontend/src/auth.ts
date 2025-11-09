@@ -71,17 +71,6 @@ export class LoginFormApp
 
     constructor() 
     {
-        this.initializeElements();
-        this.setupEventListeners();
-    }
-
-    public gen_main_div(): HTMLDivElement
-    {
-        return this.main_div;
-    }
-
-    private initializeElements(): void 
-    {
         this.main_div = document.createElement("div") as HTMLDivElement;
 
         this.login_form = document.createElement("form") as HTMLFormElement;
@@ -121,6 +110,13 @@ export class LoginFormApp
         this.login_form.appendChild(this.submit_button);
 
         this.main_div.appendChild(this.login_form);
+
+        this.setupEventListeners();
+    }
+
+    public gen_main_div(): HTMLDivElement
+    {
+        return this.main_div;
     }
 
     private setupEventListeners(): void
