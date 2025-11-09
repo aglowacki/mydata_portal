@@ -1,13 +1,7 @@
 
-form.sample-form {
-  padding: 10px;
-/*
-  display: flex;
-  position: absolute;
-  flex-direction: column;
-  right: 0px;
-  top: 0px;
-  padding: 10px;
-  */
+.sample-form-group {
+  display: grid;
+  grid-template-columns: 200px 1fr;
+  gap: 4px;
 }
 
