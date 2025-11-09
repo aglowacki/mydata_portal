@@ -323,7 +323,7 @@ class ProposalManagementApp
             cell_status.innerText = item.status;
 
             const cell_num = row.insertCell();
-            cell_num.innerText = item.datasets.length.toString();
+            cell_num.innerText = item.datasets?.length.toString();
 
             row.offsetWidth;
             row.classList.add("visible");
