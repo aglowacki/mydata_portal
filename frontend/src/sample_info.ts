@@ -144,7 +144,7 @@ class SampleManagementApp
         div6.appendChild(this.sample_cell_line_input);
         this.sample_form.appendChild(div6);
 
-        const div7 = this.create_div_group("Cell Line:");
+        const div7 = this.create_div_group("Is Cancer:");
         this.sample_is_cancer_input = document.createElement('input') as HTMLInputElement;
         this.sample_is_cancer_input.id = 'isCancer';
         this.sample_is_cancer_input.type = 'checkbox';
