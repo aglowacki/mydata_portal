@@ -1,23 +1,63 @@
 import { gen_index } from './general-helper';
 
-interface SampleType 
+interface BioSampleType 
 {
     id: string;
     type_name: string;
 }
 
-interface Sample 
+interface BioSampleCondition 
 {
-    sampleId: string;
-    sampleName: string;
-    sampleType: string;
-    isGood: boolean;
-    otherNotes: string;
+    id: string;
+    name: string;
+}
+
+interface BioSampleFixation 
+{
+    id: string;
+    name: string;
+    fixative_id: number;
+}
+
+interface BioSampleFixative 
+{
+    id: string;
+    name: string;
+}
+
+interface SampleOrigin 
+{
+    id: string;
+    name: string;
+}
+
+interface SampleSubOrigin 
+{
+    id: string;
+    name: string;
+}
+
+interface SampleSource
+{
+    id: string;
+    name: string;
+}
+
+interface SampleMetaDataGroups 
+{    
+    conditions: Array<BioSampleCondition>,
+    fixations: Array<BioSampleFixation>,
+    fixatives: Array<BioSampleFixative>,
+    sample_types: Array<BioSampleType>,
+    sample_origins: Array<SampleOrigin>,
+    sample_sub_origins: Array<SampleSubOrigin>,
+    samples_sources: Array<SampleSource>,
 }
 
 class SampleManagementApp 
 {
-    private sample_types: SampleType[] = [];
+    //private sample_types: BioSampleType[] = [];
+    private sample_meta_data_groups: SampleMetaDataGroups | null;
 
     // DOM Elements
     private sample_form: HTMLFormElement;
@@ -43,6 +83,7 @@ class SampleManagementApp
 
     constructor() 
     {
+        this.sample_meta_data_groups = null;
         this.main_div = document.createElement("div") as HTMLDivElement;
         this.message_div = document.createElement("div") as HTMLDivElement;
 
@@ -158,7 +199,7 @@ class SampleManagementApp
         this.main_div.appendChild(this.sample_form);
 
         this.setupEventListeners();
-        this.loadSampleTypes();
+        this.loadSampleMetaDataGroups();
     }
 
     public gen_main_div(): HTMLDivElement
@@ -183,6 +224,87 @@ class SampleManagementApp
         //this.sampleForm.addEventListener('submit', (e) => this.handleFormSubmit(e));    
     }
 
+    private async loadSampleMetaDataGroups(): Promise<void>
+    {
+        try 
+        {
+            const response = await fetch('/api/get_bio_sample_meta_data_groups');
+            
+            if (!response.ok) 
+            {
+                throw new Error(`HTTP error! status: ${response.status}`);
+            }
+            
+            this.sample_meta_data_groups = await response.json();
+            this.populateSampleMetaDataSelect();
+            this.showMessage('Sample meta data groups loaded successfully', 'success');
+        }
+        catch (error) 
+        {
+            console.error('Error loading sample types:', error);
+            this.showMessage('Failed to load sample types. Using default values.', 'error');
+        }
+    }
+
+    private populateSampleMetaDataSelect(): void 
+    {
+        // Clear existing options except the first one
+        this.sample_type_select.innerHTML = '<option value="">Select a sample type...</option>';
+        this.sample_origin_select.innerHTML = '<option value="">Select a sample type...</option>';
+        this.sample_source_select.innerHTML = '<option value="">Select a sample type...</option>';
+        this.sample_condition_select.innerHTML = '<option value="">Select a sample type...</option>';
+        this.sample_fixation_select.innerHTML = '<option value="">Select a sample type...</option>';
+        this.sample_fixative_select.innerHTML = '<option value="">Select a sample type...</option>';
+        
+        this.sample_meta_data_groups?.sample_types.forEach(sampleType => 
+        {
+            const option = document.createElement('option') as HTMLOptionElement;
+            option.value = sampleType.id;
+            option.textContent = sampleType.type_name;
+            this.sample_type_select.appendChild(option);
+        });
+
+        this.sample_meta_data_groups?.sample_origins.forEach(val => 
+        {
+            const option = document.createElement('option') as HTMLOptionElement;
+            option.value = val.id;
+            option.textContent = val.name;
+            this.sample_origin_select.appendChild(option);
+        });
+
+        this.sample_meta_data_groups?.samples_sources.forEach(val => 
+        {
+            const option = document.createElement('option') as HTMLOptionElement;
+            option.value = val.id;
+            option.textContent = val.name;
+            this.sample_source_select.appendChild(option);
+        });
+
+        this.sample_meta_data_groups?.conditions.forEach(val => 
+        {
+            const option = document.createElement('option') as HTMLOptionElement;
+            option.value = val.id;
+            option.textContent = val.name;
+            this.sample_condition_select.appendChild(option);
+        });
+
+        this.sample_meta_data_groups?.fixations.forEach(val => 
+        {
+            const option = document.createElement('option') as HTMLOptionElement;
+            option.value = val.id;
+            option.textContent = val.name;
+            this.sample_fixation_select.appendChild(option);
+        });
+
+        this.sample_meta_data_groups?.fixatives.forEach(val => 
+        {
+            const option = document.createElement('option') as HTMLOptionElement;
+            option.value = val.id;
+            option.textContent = val.name;
+            this.sample_fixative_select.appendChild(option);
+        });
+    }
+/*
     private async loadSampleTypes(): Promise<void> 
     {
         try 
@@ -227,7 +349,7 @@ class SampleManagementApp
             this.sample_type_select.appendChild(option);
         });
     }
-/*
+
     private async addNewSampleType(): Promise<void> 
     {
         const newTypeName = this.newSampleTypeInput.value.trim();
