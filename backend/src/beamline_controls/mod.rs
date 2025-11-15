@@ -12,21 +12,20 @@ use redis::Commands;
 use super::appstate;
 use crate::{auth};
 
-
+const KEY_AVAILABLE_SCANS: &str = "_AVAILABLE_SCANS";
 
 #[derive(Debug, Serialize, Clone)]
 pub struct Plan
 {
     name: String,
-
 }
 
 #[axum_macros::debug_handler]
 pub async fn get_available_scans(
-    Path(user_id): Path<i32>,
+    Path(beamline_id): Path<String>,
     State(state): State<appstate::AppState>,
-    claims: auth::Claims
-) -> Result<Json<Vec<Plan>>, (StatusCode, String)> 
+    //claims: auth::Claims
+) -> Result<Json<String>, (StatusCode, String)> 
 {
     /*
     let result = schema::users::table.find(claims.get_badge()).first::<models::User>(&mut conn).await.map_err(internal_error);
@@ -34,12 +33,13 @@ pub async fn get_available_scans(
     {
         Ok(user) => user,
         Err(error) => panic!("Problem opening the file: {error:?}"),
-    }
+    };
     */
-/*
-    if is_admin_or_staff(&claims, &mut conn).await
+    /*
+    if database::is_admin_or_staff(&claims, &mut conn).await
     {   
-        
+        let mut conn = state.redis_client.get_connection().unwrap();
+        let items: Vec<String> = conn.lrange(beamline_id, range_start, range_end).expect("Error getting logs");
         Ok(Json(res))    
     }
     else 
@@ -47,9 +47,12 @@ pub async fn get_available_scans(
         let err_msg = "Need to be Admin or Staff to get plans by other user.".to_string();
         Err((StatusCode::FORBIDDEN, err_msg))
     }
-    */
-    let plans = vec![Plan{name: "abc".to_string()}];
-    Ok(Json(plans)) 
+    */  
+    let mut conn = state.redis_client.get_connection().unwrap();
+    let get_id = beamline_id+KEY_AVAILABLE_SCANS;
+    let str_plans: String = conn.get(get_id).expect("{msg: \"Error getting logs\"}");
+    //let plans = vec![Plan{name: "abc".to_string()}];
+    Ok(Json(str_plans)) 
 }
 
 #[axum_macros::debug_handler]

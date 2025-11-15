@@ -213,7 +213,7 @@ pub async fn get_bio_sample_meta_data_groups(
     DatabaseConnection(mut conn): DatabaseConnection,
 ) -> Result<Json<models::BioSampleMetaDataGrouping>, (StatusCode, String)> 
 {
-       
+
     let conditions: Vec<_> = schema::bio_sample_conditions::table.select(models::BioSampleCondition::as_select())
     .distinct()
     .load(&mut conn)
