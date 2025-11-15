@@ -189,7 +189,8 @@ pub async fn get_syncotron_runs(
 
     Ok(Json(res))
 }
-
+/*
+// depricated for get_bio_sample_meta_data_groups
 #[axum_macros::debug_handler]
 pub async fn get_bio_sample_types(
     State(state): State<appstate::AppState>,
@@ -205,7 +206,7 @@ pub async fn get_bio_sample_types(
 
     Ok(Json(res))
 }
-
+*/
 #[axum_macros::debug_handler]
 pub async fn get_bio_sample_meta_data_groups(
     State(state): State<appstate::AppState>,
