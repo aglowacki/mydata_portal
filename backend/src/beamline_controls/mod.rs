@@ -65,7 +65,7 @@ pub async fn get_beamline_log(
     let range_start = params.get("range_start").copied().unwrap_or(-50); // get last 50 logs
     let range_end = params.get("range_end").copied().unwrap_or(-1); 
     let mut conn = state.redis_client.get_connection().unwrap();
-    let get_id = format!("{}{}", defines::KEY_WAITING, beamline_id);
+    let get_id = format!("{}{}", defines::KEY_LOGS, beamline_id);
     let items: Vec<String> = conn.lrange(get_id, range_start, range_end).expect("Error getting logs");
     
     Ok(Json(items)) 
