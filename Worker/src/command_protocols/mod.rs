@@ -6,6 +6,7 @@ use std::collections::{HashMap};
 #[derive(Serialize, Deserialize, Debug)]
 pub struct BeamlineCommand 
 {
+    // task_id: uuid
     beamline_id: String,
     //queue_time: String,
     pub status: String,
