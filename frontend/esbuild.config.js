@@ -4,6 +4,7 @@
         entryPoints: ['src/xrf-map-plot.ts',
             'src/proposals.ts',
             'src/sample_info.ts',
+            'src/beamline.ts',
             'src/index.ts'
         ],
         bundle: true,
