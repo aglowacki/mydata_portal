@@ -7,12 +7,7 @@ use std::time::Duration;
 use chrono::{DateTime, Utc};
 
 use crate::{command_protocols};
-
-const KEY_AVAILABLE_SCANS: &str = "AVAILABLE_SCANS_";
-const KEY_LOGS: &str = "LOGS_";
-const KEY_WAITING: &str = "WAITING_";
-const KEY_PROCESSING: &str = "PROCESSING_";
-const KEY_DONE: &str = "DONE_";
+use defines;
 
 pub struct ControlClient
 {
@@ -37,7 +32,7 @@ impl ControlClient
             log_topic: String::from(config.zmq_log_topic.clone()),
             protocol: String::from(config.protocol.clone()),
             bealine_id: String::from(config.beamline_id.clone()),
-            bealine_id_log: format!("{}{}", KEY_LOGS, config.beamline_id),
+            bealine_id_log: format!("{}{}", defines::KEY_LOGS, config.beamline_id),
             subscriber: context.socket(zmq::SUB).expect("Failed to create SUB socket"),
             cmd_channel: context.socket(zmq::REQ).expect("Failed to create CMD socket"),
         }
@@ -121,9 +116,9 @@ impl ClientMap
 
         Self
         {
-            redis_key_cmd_queue_waiting: format!("{}{}", KEY_WAITING, config.redis_config.redis_cmd_queue.to_string()),
-            redis_key_cmd_queue_processing: format!("{}{}", KEY_PROCESSING, config.redis_config.redis_cmd_queue.to_string()),
-            redis_key_cmd_queue_done: format!("{}{}", KEY_DONE, config.redis_config.redis_cmd_queue.to_string()),
+            redis_key_cmd_queue_waiting: format!("{}{}", defines::KEY_WAITING, config.redis_config.redis_cmd_queue.to_string()),
+            redis_key_cmd_queue_processing: format!("{}{}", defines::KEY_PROCESSING, config.redis_config.redis_cmd_queue.to_string()),
+            redis_key_cmd_queue_done: format!("{}{}", defines::KEY_DONE, config.redis_config.redis_cmd_queue.to_string()),
             client_map: c_map,
             poll_map: p_map,
             poll_list: p_list,
@@ -183,7 +178,7 @@ impl ClientMap
     {
         for (name, client) in self.client_map.iter_mut()
         {
-            let rkey = format!("{}{}", KEY_AVAILABLE_SCANS, name);
+            let rkey = format!("{}{}", defines::KEY_AVAILABLE_SCANS, name);
             let mut command = command_protocols::BeamlineCommand::gen_get_avail_scans(name);
             process_protocol_command(&client, &mut command);
             match command.reply

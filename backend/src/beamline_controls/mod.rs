@@ -12,12 +12,7 @@ use redis::Commands;
 use super::appstate;
 use crate::{auth};
 
-// TODO MOVE this to shared crate so worker and backend share
-const KEY_AVAILABLE_SCANS: &str = "AVAILABLE_SCANS_";
-const KEY_LOGS: &str = "LOGS_";
-const KEY_WAITING: &str = "WAITING_";
-const KEY_PROCESSING: &str = "PROCESSING_";
-const KEY_DONE: &str = "DONE_";
+use defines;
 
 #[derive(Debug, Serialize, Clone)]
 pub struct Plan
@@ -54,7 +49,7 @@ pub async fn get_available_scans(
     }
     */  
     let mut conn = state.redis_client.get_connection().unwrap();
-    let get_id = format!("{}{}", KEY_AVAILABLE_SCANS, beamline_id);
+    let get_id = format!("{}{}", defines::KEY_AVAILABLE_SCANS, beamline_id);
     let str_plans: String = conn.get(get_id).expect("{msg: \"Error getting logs\"}");
     Ok(Json(str_plans)) 
 }
@@ -70,7 +65,7 @@ pub async fn get_beamline_log(
     let range_start = params.get("range_start").copied().unwrap_or(-50); // get last 50 logs
     let range_end = params.get("range_end").copied().unwrap_or(-1); 
     let mut conn = state.redis_client.get_connection().unwrap();
-    let get_id = format!("{}{}", KEY_WAITING, beamline_id);
+    let get_id = format!("{}{}", defines::KEY_WAITING, beamline_id);
     let items: Vec<String> = conn.lrange(get_id, range_start, range_end).expect("Error getting logs");
     
     Ok(Json(items)) 
