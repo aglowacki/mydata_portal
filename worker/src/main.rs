@@ -6,6 +6,7 @@ use clap::Parser;
 //use std::sync::{Arc, atomic::{AtomicBool, Ordering}};
 //use std::thread;
 use std::collections::HashMap;
+use std::time::Instant;
 
 mod config;
 mod beamline_controls;
@@ -46,6 +47,9 @@ fn main()
     println!("Updating Redis with available scans");
     client_map.update_available_scans(&mut redis_conn);
 
+    let mut heartbeat_start = Instant::now();
+    let ten_seconds_dur = Duration::new(10, 0);
+    
     println!("Polling for messages...");
     // Poll for messages in a loop
     loop 
@@ -54,7 +58,11 @@ fn main()
         client_map.poll_logs(&mut redis_conn);
         // poll redis command queue
         client_map.poll_cmd_queue(&mut redis_conn);
-        // Sleep 
-       //std::thread::sleep(Duration::from_millis(10));
+        // check if we should set heartbeat
+       if heartbeat_start.elapsed() > ten_seconds_dur
+       {
+            client_map.send_heartbeat(&mut redis_conn);
+            heartbeat_start = Instant::now();
+       }
     }
 }
