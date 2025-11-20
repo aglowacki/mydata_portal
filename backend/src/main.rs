@@ -69,6 +69,7 @@ async fn main()
         .route("/api/get_bio_sample_meta_data_groups", get(database::get_bio_sample_meta_data_groups))
         .route("/api/get_beamline_log/{beamline_id}", get(beamline_controls::get_beamline_log))
         .route("/api/get_available_scans/{beamline_id}", get(beamline_controls::get_available_scans))
+        .route("/api/get_beamline_worker_task_queue_done/{beamline_id}", get(beamline_controls::get_worker_task_queue_done))
         .layer((
             TraceLayer::new_for_http(),
             // Graceful shutdown will wait for outstanding requests to complete. Add a timeout so

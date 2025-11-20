@@ -7,6 +7,7 @@ edition = "2021"
 
 [dependencies]
 defines = { path = "../defines" }
+beamline_worker = { path = "../beamline_worker" }
 axum = { version = "0.8.4", features = ["tracing"] }
 axum-extra = { version = "0.10.1", features = ["typed-header"] }
 jsonwebtoken = "9.3"
