@@ -6,7 +6,7 @@
 		"sourceMap": true,
 		"outDir": "static",
 		//"allowJs": true,
-		//"checkJs": true,
+		"checkJs": true,
 		"forceConsistentCasingInFileNames": true,
 		"resolveJsonModule": true,
 		"skipLibCheck": true,
