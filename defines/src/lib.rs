@@ -1,6 +1,6 @@
-pub const KEY_AVAILABLE_SCANS: &str = "AVAILABLE_SCANS_";
-pub const KEY_LOGS: &str = "LOGS_";
-pub const KEY_WAITING: &str = "WAITING_";
-pub const KEY_PROCESSING: &str = "PROCESSING_";
-pub const KEY_DONE: &str = "DONE_";
-
+pub const KEY_BEAMLINE_AVAILABLE_SCANS: &str = "BEAMLINE_AVAILABLE_SCANS_";
+pub const KEY_BEAMLINE_SCAN_LOGS: &str = "BEAMLINE_SCAN_LOGS_";
+pub const KEY_TASK_QUEUE_WAITING: &str = "TASK_QUEUE_WAITING_";
+pub const KEY_TASK_QUEUE_PROCESSING: &str = "TASK_QUEUE_PROCESSING_";
+pub const KEY_TASK_QUEUE_DONE: &str = "TASK_QUEUE_DONE_";
+pub const KEY_WORKER_HEARTBEAT: &str = "WORKER_HEARTBEAT_";
