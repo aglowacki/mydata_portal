@@ -5,7 +5,6 @@
 		"moduleResolution": "node",
 		"sourceMap": true,
 		"outDir": "static",
-		//"allowJs": true,
 		"checkJs": true,
 		"forceConsistentCasingInFileNames": true,
 		"resolveJsonModule": true,
