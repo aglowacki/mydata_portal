@@ -107,6 +107,7 @@
             //console.log(nlogs);
             this.main_div.innerText = "";
 
+            //nlogs?.reverse();
             let htmlList = document.createElement("ul") as HTMLUListElement;
             nlogs?.forEach((item: Beamline_Log) => 
             {
@@ -134,7 +135,7 @@
             this.beamline_id = beam_id;
             this.fetchAvailableScans().then(scans => 
             {
-                //this.logs = logs
+                this.available_scans = scans;
                 this.populateScans(scans);
             }
             );
@@ -180,7 +181,7 @@
                 {
                     //console.log(key, scans.plans_allowed[key]);
                     let list_item = document.createElement("li") as HTMLLIElement;
-                    list_item.textContent  = scans.plans_allowed[key].name;
+                    list_item.textContent  = key; //scans.plans_allowed[key].name;
                     htmlList.appendChild(list_item);
                 });
                 
