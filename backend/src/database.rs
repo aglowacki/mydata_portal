@@ -257,7 +257,14 @@ pub async fn get_bio_sample_meta_data_groups(
     .await
     .map_err(internal_error)?;
     
-    Ok(Json(models::BioSampleMetaDataGrouping{conditions, fixations, fixatives, sample_types, sample_origins, sample_sub_origins, samples_sources}))
+    let sample_type_origin_links: Vec<_> = schema::bio_sample_type_origin_sub_origin_links::table.select(models::BioSampleTypeOriginSubOriginLink::as_select())
+    .distinct()
+    .load(&mut conn)
+    .await
+    .map_err(internal_error)?;
+
+
+    Ok(Json(models::BioSampleMetaDataGrouping{conditions, fixations, fixatives, sample_types, sample_origins, sample_sub_origins, samples_sources, sample_type_origin_links}))
 
 
 }

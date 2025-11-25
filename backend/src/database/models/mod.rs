@@ -266,6 +266,7 @@ pub struct BioSampleMetaDataGrouping
     pub sample_origins: Vec<SampleOrigin>,
     pub sample_sub_origins: Vec<SampleSubOrigin>,
     pub samples_sources: Vec<SampleSource>,
+    pub sample_type_origin_links: Vec<BioSampleTypeOriginSubOriginLink>
     
     //pub suboriginlinks: Vec<BioSampleTypeOriginSubOriginLink>,
 }
