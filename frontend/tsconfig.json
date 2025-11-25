@@ -11,6 +11,8 @@
 		"resolveJsonModule": true,
 		"skipLibCheck": true,
 		"strict": true,
+		"noImplicitAny": true,
+    	"noImplicitThis": true,
 		"baseUrl": "src",
 		"paths":{
 			"echarts":["node_modules/echarts/*"],
