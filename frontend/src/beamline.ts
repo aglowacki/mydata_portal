@@ -6,7 +6,7 @@
         msg: string;
     }
 
-    type Beamline_Logs = Beamline_Log[];
+    type Beamline_Logs = Array<Beamline_Log>;
 
 
     interface ParameterKind 
@@ -79,7 +79,7 @@
             return this.main_div;
         }
 
-        private async fetcLogs(): Promise<Beamline_Log[]>
+        private async fetcLogs(): Promise<Beamline_Logs | null>
         {
             try 
             {
@@ -91,12 +91,13 @@
                 }
                 
                 //this.logs = await response.json();
-                const json_repl: Beamline_Log[] = await response.json();
+                const json_repl: Beamline_Logs = await response.json();
                 return json_repl;
             }
             catch (error) 
             {
                 console.error('Error loading sample types:', error);
+                return null;
                 //this.showMessage('Failed to load sample types. Using default values.', 'error');
             }
         }
@@ -144,7 +145,7 @@
             return this.main_div;
         }
 
-        private async fetchAvailableScans(): Promise<ScanApiResponse>
+        private async fetchAvailableScans(): Promise<ScanApiResponse | null>
         {
             try 
             {
@@ -163,6 +164,7 @@
             {
                 console.error('Error loading sample types:', error);
                 //this.showMessage('Failed to load sample types. Using default values.', 'error');
+                return null;
             }
         }
 
