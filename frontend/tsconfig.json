@@ -17,5 +17,7 @@
 			"echarts":["node_modules/echarts/*"],
 		},
 	},
-	"lib": ["es2023"]
+	"lib": ["es2023"],
+	"include": ["src/**/*.ts"],
+  	"exclude": ["node_modules", "**/*.spec.ts", "esbuild.config.js"]
 }
