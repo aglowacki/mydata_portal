@@ -73,7 +73,9 @@ async fn main()
         .route("/api/get_beamline_worker_task_queue_waiting/{beamline_id}", get(beamline_controls::get_beamline_worker_task_queue_waiting))
         .route("/api/get_beamline_worker_task_queue_processing/{beamline_id}", get(beamline_controls::get_beamline_worker_task_queue_processing))
         .route("/api/get_beamline_worker_task_queue_done/{beamline_id}", get(beamline_controls::get_beamline_worker_task_queue_done))
+        .route("/api/get_beamline_worker_task_queues/{beamline_id}", get(beamline_controls::get_beamline_worker_task_queues))
         .route("/api/get_beamline_worker_heartbeat/{beamline_id}", get(beamline_controls::get_beamline_worker_heartbeat))
+        .route("/api/queue_beamline_worker_task/{beamline_id}", post(beamline_controls::queue_beamline_worker_task))
         
         .layer((
             TraceLayer::new_for_http(),

@@ -77,6 +77,27 @@ async fn is_admin_or_staff(claims: &auth::Claims, conn: &mut PooledConnection<'s
     }
 }
 
+pub async fn set_user_access_control(claims: &mut auth::Claims, conn: &mut PooledConnection<'static, AsyncDieselConnectionManager<AsyncPgConnection>>) -> bool
+{
+    let asking_user: Vec<models::UserAccessControl> = schema::user_access_controls::table.select(models::UserAccessControl::as_select())
+    .inner_join(schema::users::table.on(schema::user_access_controls::id.eq(schema::users::user_access_control_id)))
+    .filter(schema::users::badge.eq(claims.get_badge()))
+    .load(conn)
+    .await
+    .map_err(internal_error).unwrap_or(Vec::new());
+    
+    if asking_user.len() > 0
+    {
+        claims.uac = asking_user[0].level.clone();
+        println!("{}", &asking_user[0].level);
+        return true;
+    }
+    else 
+    {
+        return false;    
+    }
+}
+
 #[axum_macros::debug_handler]
 pub async fn get_user_proposals(
     State(state): State<appstate::AppState>,

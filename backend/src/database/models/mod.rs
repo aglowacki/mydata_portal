@@ -58,7 +58,7 @@ pub struct SyncotronRun {
     pub end_timestamp: DateTime<Utc>,
 }
 
-#[derive(Queryable, Debug, Identifiable)]
+#[derive(Queryable, Debug, Selectable, QueryableByName, Identifiable)]
 #[diesel(primary_key(id))]
 pub struct UserAccessControl {
     pub id: i32,
