@@ -10,3 +10,7 @@ pub const KEY_WORKER_HEARTBEAT: &str = "WORKER_HEARTBEAT_";
 pub const STR_QUEUED: &str = "QUEUED";
 pub const STR_PROCESSING: &str = "PROCESSING";
 pub const STR_DONE: &str = "DONE";
+
+pub const STR_ADMIN: &str = "Admin";
+pub const STR_STAFF: &str = "Staff";
+pub const STR_USER: &str = "User";
