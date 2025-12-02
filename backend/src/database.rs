@@ -38,6 +38,9 @@ where
     }
 }
 
+
+
+
 /*
 #[axum_macros::debug_handler]
 pub async fn list_users(
@@ -55,8 +58,48 @@ pub async fn list_users(
 }
 */
 
-
-
+#[axum_macros::debug_handler]
+pub async fn authorize_user(
+    State(state): State<appstate::AppState>,
+    DatabaseConnection(mut conn): DatabaseConnection,
+    Json(payload): Json<auth::AuthPayload>,
+) -> Result<Json<auth::AuthBody>, auth::AuthError>
+{
+    if payload.client_id.is_empty() || payload.client_secret.is_empty() 
+    {
+        return Err(auth::AuthError::MissingCredentials);
+    }
+    let result = auth::authorize_ldap(&payload.client_id, &payload.client_secret).await;
+    match result
+    { 
+        Ok(mut claims) =>
+        {
+            let result = schema::users::table
+            .inner_join(schema::user_access_controls::table.on(schema::user_access_controls::id.eq(schema::users::user_access_control_id)))
+            .filter(schema::users::badge.eq(claims.get_badge()))
+            .load::<(models::User, models::UserAccessControl)>(&mut conn)
+            .await.map_err(internal_error).unwrap_or(Vec::new());
+        
+            if result.len() > 0 
+            {
+                claims.uac = result[0].1.level.clone();
+                // Send the authorized token
+                match claims.encode_to_string()
+                {
+                    Ok(token) => Ok(Json(auth::AuthBody::new(token))),
+                    Err(_) => Err(auth::AuthError::WrongCredentials),
+                }
+            }
+            else 
+            {
+                return Err(auth::AuthError::WrongCredentials)
+            }
+            
+        },
+        Err(_) => return Err(auth::AuthError::WrongCredentials),
+    }
+}
+/*
 async fn is_admin_or_staff(claims: &auth::Claims, conn: &mut PooledConnection<'static, AsyncDieselConnectionManager<AsyncPgConnection>>) -> bool
 {
     let asking_user: Vec<models::User> = schema::users::table.select(models::User::as_select())
@@ -97,7 +140,7 @@ pub async fn set_user_access_control(claims: &mut auth::Claims, conn: &mut Poole
         return false;    
     }
 }
-
+*/
 #[axum_macros::debug_handler]
 pub async fn get_user_proposals(
     State(state): State<appstate::AppState>,
@@ -125,16 +168,7 @@ pub async fn get_user_proposals_as(
     DatabaseConnection(mut conn): DatabaseConnection,
 ) -> Result<Json<Vec<models::Proposal>>, (StatusCode, String)> 
 {
-    /*
-    let result = schema::users::table.find(claims.get_badge()).first::<models::User>(&mut conn).await.map_err(internal_error);
-    let asking_user = match result
-    {
-        Ok(user) => user,
-        Err(error) => panic!("Problem opening the file: {error:?}"),
-    }
-    */
-
-    if is_admin_or_staff(&claims, &mut conn).await
+    if claims.uac == defines::STR_ADMIN || claims.uac == defines::STR_STAFF
     {   
         let res: Vec<_> = schema::proposals::table.select(models::Proposal::as_select())
         .inner_join(schema::experimenter_proposal_links::table.on(schema::proposals::id.eq(schema::experimenter_proposal_links::proposal_id)))
@@ -161,7 +195,7 @@ pub async fn get_user_proposals_with_datasets(
     DatabaseConnection(mut conn): DatabaseConnection,
 ) -> Result<Json<Vec<models::ProposalWithDatasets>>, (StatusCode, String)> 
 {
-    if is_admin_or_staff(&claims, &mut conn).await
+    if claims.uac == defines::STR_ADMIN || claims.uac == defines::STR_STAFF
     {   
         let user_proposals: Vec<_> = schema::proposals::table.select(models::Proposal::as_select())
         .inner_join(schema::experimenter_proposal_links::table.on(schema::proposals::id.eq(schema::experimenter_proposal_links::proposal_id)))
