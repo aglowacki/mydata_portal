@@ -1,8 +1,9 @@
 
 use axum::{
+    body::Body,
     extract::{FromRef, FromRequestParts, Query, State},
     http::{request::Parts, StatusCode},
-    response::Json,
+    response::{IntoResponse,Json,Response},
     extract::Path,
 };
 use std::collections::HashMap;
@@ -14,7 +15,7 @@ use crate::{auth};
 
 
 use defines;
-use beamline_worker::command_protocols::BeamlineCommand;
+use beamline_worker::command_protocols::{BeamlineCommand, BeamlineTaskQueues};
 
 #[derive(Debug, Serialize, Clone)]
 pub struct Plan
@@ -62,6 +63,49 @@ pub async fn get_available_scans(
     let get_id = format!("{}{}", defines::KEY_BEAMLINE_AVAILABLE_SCANS, beamline_id);
     let str_plans: String = conn.get(get_id).expect("{msg: \"Error getting available scans\"}");
     Ok(str_plans) 
+}
+
+// Beamline tasks -------------------------------------------------------------------------------------------------
+
+#[axum_macros::debug_handler]
+pub async fn queue_beamline_worker_task(
+    Path(beamline_id): Path<String>,
+    State(state): State<appstate::AppState>,
+    claims: auth::Claims,
+    Json(payload): Json<BeamlineCommand>
+) -> impl IntoResponse
+{
+    println!("{}",&payload);
+    let command =  BeamlineCommand::gen_queued_from_command(&beamline_id, claims.get_username(), &payload);
+    println!("{}",&command);
+    let task_payload = serde_json::to_string(&command);
+    match task_payload
+    {
+        Ok(task_str) => 
+        {
+            let mut conn = state.redis_client.get_connection().unwrap();
+            let set_id = format!("{}{}", defines::KEY_TASK_QUEUE_WAITING, beamline_id);
+            let result: redis::RedisResult<()> = conn.rpush(&set_id, &task_str);
+            match result 
+            {
+                Ok(_) => Response::builder()
+                .status(StatusCode::CREATED)
+                .body(Body::from("Task queued successfully"))
+                .unwrap(),
+                Err(err) => Response::builder()
+                .status(StatusCode::EXPECTATION_FAILED)
+                .body(Body::from("Task failed to queued"))
+                .unwrap(),
+            }
+        }
+        Err(b_err) => 
+        {
+            Response::builder()
+                .status(StatusCode::EXPECTATION_FAILED)
+                .body(Body::from(b_err.to_string()))
+                .unwrap()
+        }
+    }
 }
 
 #[axum_macros::debug_handler]
@@ -205,6 +249,64 @@ pub async fn get_beamline_worker_task_queue_done(
         beamline_queue.push(ll);
     }
     Ok(Json(beamline_queue)) 
+}
+
+#[axum_macros::debug_handler]
+pub async fn get_beamline_worker_task_queues(
+    Path(beamline_id): Path<String>,
+    Query(params) : Query<HashMap<String ,isize>>,
+    State(state): State<appstate::AppState>,
+    //claims: auth::Claims
+) -> Result<Json<BeamlineTaskQueues>, (StatusCode, String)> 
+{
+    /*
+    let result = schema::users::table.find(claims.get_badge()).first::<models::User>(&mut conn).await.map_err(internal_error);
+    let asking_user = match result
+    {
+        Ok(user) => user,
+        Err(error) => panic!("Problem opening the file: {error:?}"),
+    };
+    */
+    /*
+    if database::is_admin_or_staff(&claims, &mut conn).await
+    {   
+        let mut conn = state.redis_client.get_connection().unwrap();
+        let items: Vec<String> = conn.lrange(beamline_id, range_start, range_end).expect("Error getting logs");
+        Ok(Json(res))    
+    }
+    else 
+    {
+        let err_msg = "Need to be Admin or Staff to get plans by other user.".to_string();
+        Err((StatusCode::FORBIDDEN, err_msg))
+    }
+    */
+    let range_start = params.get("range_start").copied().unwrap_or(0);
+    let range_end = params.get("range_end").copied().unwrap_or(-1); 
+    let mut conn = state.redis_client.get_connection().unwrap();
+
+    let get_wait_id = format!("{}{}", defines::KEY_TASK_QUEUE_WAITING, beamline_id);
+    let queued_items: Vec<String> = conn.lrange(get_wait_id, range_start, range_end).expect("Error getting task queue queued");
+    let get_proc_id = format!("{}{}", defines::KEY_TASK_QUEUE_PROCESSING, beamline_id);
+    let proc_items: Vec<String> = conn.lrange(get_proc_id, range_start, range_end).expect("Error getting task queue processing");
+    let get_done_id = format!("{}{}", defines::KEY_TASK_QUEUE_DONE, beamline_id);
+    let done_items: Vec<String> = conn.lrange(get_done_id, range_start, range_end).expect("Error getting task queue done");
+    let mut beamline_queues: BeamlineTaskQueues = BeamlineTaskQueues::new(&beamline_id);
+    for val in queued_items.iter() 
+    {
+        let ll: BeamlineCommand = serde_json::from_str(val).expect("Error parsing beamline task queues.");
+        beamline_queues.queued.push(ll);
+    }
+    for val in proc_items.iter() 
+    {
+        let ll: BeamlineCommand = serde_json::from_str(val).expect("Error parsing beamline task queues.");
+        beamline_queues.processing.push(ll);
+    }
+    for val in done_items.iter() 
+    {
+        let ll: BeamlineCommand = serde_json::from_str(val).expect("Error parsing beamline task queues.");
+        beamline_queues.done.push(ll);
+    }
+    Ok(Json(beamline_queues)) 
 }
 
 #[axum_macros::debug_handler]
