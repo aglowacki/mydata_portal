@@ -143,8 +143,7 @@ diesel::table! {
 }
 
 diesel::table! {
-    proposal_dataset_links (id) {
-        id -> Int4,
+    proposal_dataset_links (dataset_id, proposal_id) {
         dataset_id -> Int4,
         proposal_id -> Int4,
     }
