@@ -15,8 +15,7 @@ use axum_extra::{
 use std::env;
 use once_cell::sync::Lazy;
 use ldap3::{LdapConnAsync, Scope, SearchEntry};
-
-//use crate::{database};
+use std::time::{SystemTime, UNIX_EPOCH};
 
 struct Keys 
 {
@@ -45,7 +44,7 @@ pub struct Claims
     employee_type: String,
     sn: String,
     pub uac: String, // user access controll from DB
-    exp: usize,
+    exp: u64,
 }
 
 impl Claims
@@ -59,6 +58,11 @@ impl Claims
     {
         return self.sn.clone();
     }
+
+    pub fn encode_to_string(&self) -> Result<String, jsonwebtoken::errors::Error>
+    {
+        return encode(&Header::default(), self, &KEYS.encoding);//.map_err(|_| "");
+    }
 }
 
 #[derive(Debug, Serialize)]
@@ -71,8 +75,8 @@ pub struct AuthBody
 #[derive(Debug, Deserialize)]
 pub struct AuthPayload 
 {
-    client_id: String,
-    client_secret: String,
+    pub client_id: String,
+    pub client_secret: String,
 }
 
 #[derive(Debug)]
@@ -137,7 +141,7 @@ impl Display for Claims
 
 impl AuthBody 
 {
-    fn new(access_token: String) -> Self 
+    pub fn new(access_token: String) -> Self 
     {
         Self 
         {
@@ -152,7 +156,7 @@ static KEYS: Lazy<Keys> = Lazy::new(||
     let secret = std::env::var("JWT_SECRET").expect("JWT_SECRET must be set");
     Keys::new(secret.as_bytes())
 });
-
+/* 
 async fn auth(username: &str, password: &str, claims: &mut Claims) -> Result<bool, ldap3::result::LdapError> 
 {
     let mut dn = String::new();
@@ -266,4 +270,94 @@ pub async fn authorize(Json(payload): Json<AuthPayload>,
 
     // Send the authorized token
     Ok(Json(AuthBody::new(token)))
+}
+*/
+
+pub async fn authorize_ldap(username: &str, password: &str) -> Result<Claims, ldap3::result::LdapError> 
+{
+    let mut dn = String::new();
+    let svc_user = env::var("SVC_USER").unwrap();
+    let svc_pass = env::var("SVC_PASS").unwrap();
+    let full_attr_str = env::var("AD_ATTR_VEC").unwrap();
+    let attr_parts = full_attr_str.split(":");
+    let attrs_vec = attr_parts.collect::<Vec<&str>>();
+    let ad_url = env::var("AD_URL").unwrap();
+    let ad_search_dn = env::var("AD_SEARCH_DN").unwrap();
+    let mut ad_filter = String::new();
+    ad_filter.push_str("(&(objectClass=person)(cn=");
+    ad_filter.push_str(username);
+    ad_filter.push_str("*))");
+    println!("ad_url {}", ad_url);
+    let (conn, mut ldap) = LdapConnAsync::new(&ad_url).await?;
+    ldap3::drive!(conn);
+    let _ = ldap.simple_bind(&svc_user, &svc_pass).await.unwrap();
+    let mut stream = ldap
+        .streaming_search(
+            &ad_search_dn,
+            Scope::Subtree,
+            &ad_filter,
+            &attrs_vec
+        )
+        .await?;
+
+    let mut claims = Claims
+    {
+        employee_id : "-1".to_owned(),
+        mail : "-1".to_owned(),
+        department : "-1".to_owned(),
+        employee_type : "-1".to_owned(),
+        sn : "-1".to_owned(),
+        uac: "-1".to_owned(),
+        // Mandatory expiry time as UTC timestamp
+        exp : 0,
+    }; 
+
+    while let Some(entry) = stream.next().await? 
+    {
+        let se = SearchEntry::construct(entry);
+        println!("{:?}", se);
+        dn = se.dn;
+        
+        if se.attrs.contains_key("employeeNumber")
+        {
+            claims.employee_id = se.attrs["employeeNumber"][0].to_owned();
+        }
+        else if se.attrs.contains_key("employeeID")
+        {
+            claims.employee_id = se.attrs["employeeID"][0].to_owned();
+        }
+        if se.attrs.contains_key("department")
+        {
+            claims.department = se.attrs["department"][0].to_owned();
+        }
+        if se.attrs.contains_key("employeeType")
+        {
+            claims.employee_type =  se.attrs["employeeType"][0].to_owned();
+        }
+        claims.mail = se.attrs["mail"][0].to_owned();
+        claims.sn = se.attrs["sn"][0].to_owned();
+        // Mandatory expiry time as UTC timestamp
+        claims.exp = 2000000000; // May 2033
+
+        break;
+    }
+    let _res = stream.finish().await;
+    let msgid = stream.ldap_handle().last_id();
+    ldap.abandon(msgid).await?;
+
+    let res = ldap.simple_bind(&dn, &password).await.unwrap();
+    let _ = ldap.unbind();
+    if res.rc == 0
+    {
+        match SystemTime::now().duration_since(UNIX_EPOCH)
+        {
+            Ok(n) => claims.exp = n.as_secs() + 3600, // add 1 hours of auth
+            Err(_) => claims.exp = 0,
+        }
+        Ok(claims)
+    }
+    else 
+    {
+        Err(ldap3::result::LdapError::EndOfStream)
+    }
 }
