@@ -18,6 +18,8 @@ mod models;
 use super::appstate;
 use crate::{auth};
 
+use diesel::pg::Pg;
+
 // we can also write a custom extractor that grabs a connection from the pool
 // which setup is appropriate depends on your application
 pub struct DatabaseConnection(bb8::PooledConnection<'static, AsyncDieselConnectionManager<AsyncPgConnection>>,);
@@ -205,18 +207,31 @@ pub async fn get_user_proposals_with_datasets(
         .await
         .map_err(internal_error)?;
         
-        let mut proposals_with_datasets = Vec::new();
+        let mut proposals_with_datasets: Vec<models::ProposalWithDatasets> = Vec::new();
         for proposal in user_proposals        
         {
-            let datasets = schema::datasets::table.select(models::Dataset::as_select())
+            let datasets = schema::datasets::table
             .inner_join(schema::proposal_dataset_links::table.on(schema::datasets::id.eq(schema::proposal_dataset_links::dataset_id)))
+            .inner_join(schema::beamlines::table.on(schema::beamlines::id.eq(schema::datasets::beamline_id)))
+            .inner_join(schema::syncotron_runs::table.on(schema::syncotron_runs::id.eq(schema::datasets::syncotron_run_id)))
             .filter(schema::proposal_dataset_links::proposal_id.eq(proposal.id))
             .distinct()
-            .load(&mut conn)
+            .load::<(models::Dataset, models::ProposalDatasetLink, models::Beamline, models::SyncotronRun)>(&mut conn)
             .await
-            .map_err(internal_error)?;
+            .map_err(internal_error).unwrap_or(Vec::new());
         
-            proposals_with_datasets.push( models::ProposalWithDatasets { proposal, datasets } );
+            let mut dwd: Vec<models::DatasetWithDetails> = Vec::new();
+            for dset in datasets
+            {
+                dwd.push(models::DatasetWithDetails {
+                    id: dset.0.id.clone(),
+                    path: dset.0.path.clone(),
+                    acquisition_timestamp: dset.0.acquisition_timestamp,
+                    beamline: dset.2.acronym,
+                    syncotron_run: dset.3.name, 
+                });
+            }
+            proposals_with_datasets.push( models::ProposalWithDatasets { proposal, datasets: dwd } );
         }
         
         Ok(Json(proposals_with_datasets))
