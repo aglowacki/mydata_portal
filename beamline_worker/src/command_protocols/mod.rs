@@ -1,21 +1,41 @@
 use serde::{Deserialize, Serialize};
 use chrono::{DateTime, Utc};
+use tokio::task::Id;
+use std::fmt;
 use std::collections::{HashMap};
 
 // base command to know which beamline to send to
-#[derive(Serialize, Deserialize, Debug)]
+#[derive(Serialize, Deserialize, Debug, )]
 pub struct BeamlineCommand 
 {
     // task_id: uuid
     beamline_id: String,
-    //queue_time: String,
     pub status: String,
     cmd: String,
     args: HashMap<String,String>,
+    pub username: Option<String>,
     pub reply: Option<String>,
     pub proc_start_time: Option<DateTime<Utc>>,
     pub proc_end_time: Option<DateTime<Utc>>,
     original_str: Option<String>,
+}
+
+// base command to know which beamline to send to
+#[derive(Serialize, Deserialize, Debug)]
+pub struct BeamlineTaskQueues 
+{
+    pub beamline_id: String,
+    pub queued: Vec<BeamlineCommand>,
+    pub processing: Vec<BeamlineCommand>,
+    pub done: Vec<BeamlineCommand>,
+}
+
+impl fmt::Display for BeamlineCommand 
+{
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result 
+    {
+        write!(f, "beamline: {}, status: {}, username: {:?}, cmd: {}, args: {:?}", self.beamline_id, self.status, self.username, self.cmd, self.args)
+    }
 }
 
 impl BeamlineCommand
@@ -28,13 +48,28 @@ impl BeamlineCommand
             status: "BAD_CMD".to_string(),
             cmd: "".to_string(),
             args: HashMap::new(),
+            username: None,
             reply: None,
             proc_start_time: Some(Utc::now()),
             proc_end_time: Some(Utc::now()),
             original_str: Some(cmd_str.clone()),
         }
     }
-
+    pub fn gen_queued_from_command(beam_id: &str, user: String, command: &BeamlineCommand) -> Self
+    {
+        Self
+        {
+            beamline_id: beam_id.to_string(),
+            status: defines::STR_QUEUED.to_string(),
+            cmd: command.cmd.clone(),
+            args: command.args.clone(),
+            username: Some(user),
+            reply: None,
+            proc_start_time: Some(Utc::now()),
+            proc_end_time: Some(Utc::now()),
+            original_str: command.original_str.clone(),
+        }
+    }
     pub fn is_valid(&self) -> bool
     {
         if self.status == "BAD_CMD"
@@ -69,6 +104,7 @@ impl BeamlineCommand
             status: "QUEUED".to_string(),
             cmd: "plans_allowed".to_string(),
             args: arg_hash,
+            username: None,
             reply: None,
             proc_start_time: None,
             proc_end_time: None,
@@ -76,6 +112,20 @@ impl BeamlineCommand
         }
     }
 
+}
+
+impl BeamlineTaskQueues
+{
+    pub fn new(Id: &String) -> Self
+    {
+        Self
+        {
+            beamline_id: Id.clone(),
+            queued: Vec::new(),
+            processing: Vec::new(),
+            done: Vec::new(),
+        }
+    }
 }
 
 pub trait Command
