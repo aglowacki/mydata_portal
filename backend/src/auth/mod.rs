@@ -16,6 +16,7 @@ use std::env;
 use once_cell::sync::Lazy;
 use ldap3::{LdapConnAsync, Scope, SearchEntry};
 
+//use crate::{database};
 
 struct Keys 
 {
@@ -43,6 +44,7 @@ pub struct Claims
     department: String,
     employee_type: String,
     sn: String,
+    pub uac: String, // user access controll from DB
     exp: usize,
 }
 
@@ -51,6 +53,11 @@ impl Claims
     pub fn get_badge(&self) -> i32
     {
         return self.employee_id.parse::<i32>().unwrap();
+    }
+
+    pub fn get_username(&self) -> String
+    {
+        return self.sn.clone();
     }
 }
 
@@ -219,7 +226,9 @@ async fn auth(username: &str, password: &str, claims: &mut Claims) -> Result<boo
     }
 }
 
-pub async fn authorize(Json(payload): Json<AuthPayload>) -> Result<Json<AuthBody>, AuthError> 
+pub async fn authorize(Json(payload): Json<AuthPayload>,
+//database::DatabaseConnection(mut conn): database::DatabaseConnection
+) -> Result<Json<AuthBody>, AuthError> 
 {
     // Check if the user sent the credentials
     if payload.client_id.is_empty() || payload.client_secret.is_empty() 
@@ -228,11 +237,12 @@ pub async fn authorize(Json(payload): Json<AuthPayload>) -> Result<Json<AuthBody
     }
     let mut claims = Claims
     {
-        employee_id : "0".to_owned(),
-        mail : "0".to_owned(),
-        department : "0".to_owned(),
-        employee_type : "0".to_owned(),
-        sn : "0".to_owned(),
+        employee_id : "-1".to_owned(),
+        mail : "-1".to_owned(),
+        department : "-1".to_owned(),
+        employee_type : "-1".to_owned(),
+        sn : "-1".to_owned(),
+        uac: "-1".to_owned(),
         // Mandatory expiry time as UTC timestamp
         exp : 2000000000,
 
@@ -242,10 +252,13 @@ pub async fn authorize(Json(payload): Json<AuthPayload>) -> Result<Json<AuthBody
     {
         return Err(AuthError::WrongCredentials);
     }
-    if claims.employee_id == "0"
+    if claims.employee_id == "-1"
     {
         return Err(AuthError::WrongCredentials);
     }
+    // TODO: get user access control
+    //database::set_user_access_control(&mut claims, &mut conn);
+
     //println!("Claims {}", claims);
     // Create the authorization token
     let token: String = encode(&Header::default(), &claims, &KEYS.encoding)
