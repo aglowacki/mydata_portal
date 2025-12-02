@@ -6,3 +6,7 @@ pub const KEY_TASK_QUEUE_WAITING: &str = "TASK_QUEUE_WAITING_";
 pub const KEY_TASK_QUEUE_PROCESSING: &str = "TASK_QUEUE_PROCESSING_";
 pub const KEY_TASK_QUEUE_DONE: &str = "TASK_QUEUE_DONE_";
 pub const KEY_WORKER_HEARTBEAT: &str = "WORKER_HEARTBEAT_";
+
+pub const STR_QUEUED: &str = "QUEUED";
+pub const STR_PROCESSING: &str = "PROCESSING";
+pub const STR_DONE: &str = "DONE";
