@@ -34,6 +34,7 @@ use crate::database::schema::{beamline_contacts,
 
 #[derive(Queryable, Debug, Identifiable)]
 #[diesel(primary_key(id))]
+#[diesel(table_name = experiment_roles)]
 #[diesel(check_for_backend(diesel::pg::Pg))]
 pub struct ExperimentRole {
     pub id: i32,
@@ -43,6 +44,7 @@ pub struct ExperimentRole {
 
 #[derive(Queryable, Debug, Identifiable)]
 #[diesel(primary_key(id))]
+#[diesel(table_name = scan_types)]
 pub struct ScanType {
     pub id: i32,
     pub name: String,
@@ -51,6 +53,7 @@ pub struct ScanType {
 
 #[derive(Queryable, Debug, Selectable, Identifiable, serde::Serialize)]
 #[diesel(primary_key(id))]
+#[diesel(table_name = syncotron_runs)]
 pub struct SyncotronRun {
     pub id: i32,
     pub name: String,
@@ -60,6 +63,7 @@ pub struct SyncotronRun {
 
 #[derive(Queryable, Debug, Selectable, QueryableByName, Identifiable)]
 #[diesel(primary_key(id))]
+#[diesel(table_name = user_access_controls)]
 pub struct UserAccessControl {
     pub id: i32,
     pub level: String,
@@ -68,6 +72,7 @@ pub struct UserAccessControl {
 
 #[derive(Queryable, Debug, Identifiable)]
 #[diesel(primary_key(id))]
+#[diesel(table_name = beamlines)]
 pub struct Beamline {
     pub id: i32,
     pub name: String,
@@ -79,14 +84,16 @@ pub struct Beamline {
 
 #[derive(Queryable, Debug, Identifiable, Selectable, QueryableByName, serde::Serialize)]
 #[diesel(primary_key(id))]
+#[diesel(table_name = bio_sample_conditions)]
 pub struct BioSampleCondition {
     pub id: i32,
     pub name: String,
 }
 
 #[derive(Queryable, Debug, Identifiable, Selectable, QueryableByName, serde::Serialize)]
-#[diesel(belongs_to(BioSampleFixative))]
+#[diesel(belongs_to(BioSampleFixative, foreign_key=fixative_id))]
 #[diesel(primary_key(id))]
+#[diesel(table_name = bio_sample_fixations)]
 pub struct BioSampleFixation {
     pub id: i32,
     pub name: String,
@@ -95,16 +102,18 @@ pub struct BioSampleFixation {
 
 #[derive(Queryable, Debug, Identifiable, Selectable, QueryableByName, serde::Serialize)]
 #[diesel(primary_key(id))]
+#[diesel(table_name = bio_sample_fixatives)]
 pub struct BioSampleFixative {
     pub id: i32,
     pub name: String,
 }
 
 #[derive(Queryable, Debug, Identifiable, Selectable, QueryableByName, serde::Serialize)]
-#[diesel(belongs_to(BioSampleType))]
-#[diesel(belongs_to(SampleOrigin))]
-#[diesel(belongs_to(SampleSubOrigin))]
+#[diesel(belongs_to(BioSampleType, foreign_key=bio_sample_type_id))]
+#[diesel(belongs_to(SampleOrigin, foreign_key=origin_id))]
+#[diesel(belongs_to(SampleSubOrigin, foreign_key=sub_origin_id))]
 #[diesel(primary_key(id))]
+#[diesel(table_name = bio_sample_type_origin_sub_origin_links)]
 pub struct BioSampleTypeOriginSubOriginLink {
     pub id: i32,
     pub bio_sample_type_id: i32,
@@ -114,6 +123,7 @@ pub struct BioSampleTypeOriginSubOriginLink {
 
 #[derive(Queryable, Debug, Identifiable, Selectable, QueryableByName, serde::Serialize)]
 #[diesel(primary_key(id))]
+#[diesel(table_name = bio_sample_types)]
 pub struct BioSampleType {
     pub id: i32,
     pub type_name: String,
@@ -121,6 +131,7 @@ pub struct BioSampleType {
 
 #[derive(Queryable, Debug, Identifiable, Selectable, QueryableByName, serde::Serialize)]
 #[diesel(primary_key(id))]
+#[diesel(table_name = sample_origins)]
 pub struct SampleOrigin {
     pub id: i32,
     pub name: String,
@@ -128,6 +139,7 @@ pub struct SampleOrigin {
 
 #[derive(Queryable, Debug, Identifiable, Selectable, QueryableByName, serde::Serialize)]
 #[diesel(primary_key(id))]
+#[diesel(table_name = sample_sub_origins)]
 pub struct SampleSubOrigin {
     pub id: i32,
     pub name: String,
@@ -135,20 +147,22 @@ pub struct SampleSubOrigin {
 
 #[derive(Queryable, Debug, Identifiable, Selectable, QueryableByName, serde::Serialize)]
 #[diesel(primary_key(id))]
+#[diesel(table_name = sample_sources)]
 pub struct SampleSource {
     pub id: i32,
     pub name: String,
 }
 
 #[derive(Queryable, Debug, Identifiable)]
-#[diesel(belongs_to(BioSampleType))]
-#[diesel(belongs_to(SampleOrigin))]
-#[diesel(belongs_to(SampleSubOrigin))]
-#[diesel(belongs_to(SampleSource))]
-#[diesel(belongs_to(Proposal))]
-#[diesel(belongs_to(BioSampleCondition))]
-#[diesel(belongs_to(BioSampleFixation))]
+#[diesel(belongs_to(BioSampleType, foreign_key=type_id))]
+#[diesel(belongs_to(SampleOrigin, foreign_key=origin_id))]
+#[diesel(belongs_to(SampleSubOrigin, foreign_key=sub_origin_id))]
+#[diesel(belongs_to(SampleSource, foreign_key=source_id))]
+#[diesel(belongs_to(Proposal, foreign_key=proposal_id))]
+#[diesel(belongs_to(BioSampleCondition, foreign_key=condition_id))]
+#[diesel(belongs_to(BioSampleFixation, foreign_key=fixation_id))]
 #[diesel(primary_key(id))]
+#[diesel(table_name = bio_samples)]
 pub struct BioSample {
     pub id: i32,
     pub proposal_id: i32,
@@ -169,6 +183,7 @@ pub struct BioSample {
 
 #[derive(Queryable, Debug, Identifiable, Selectable, Serialize, Clone)]
 #[diesel(primary_key(id))]
+#[diesel(table_name = proposals)]
 pub struct Proposal {
     pub id: i32,
     pub title: String,
@@ -178,9 +193,10 @@ pub struct Proposal {
 }
 
 #[derive(Queryable, Debug, Identifiable, Selectable, QueryableByName, Associations, serde::Serialize)]
-#[diesel(belongs_to(UserAccessControl))]
+#[diesel(belongs_to(UserAccessControl, foreign_key=user_access_control_id))]
 #[diesel(primary_key(badge))]
 #[diesel(check_for_backend(diesel::pg::Pg))]
+#[diesel(table_name = users)]
 pub struct User {
     pub badge: i32,
     pub username: String,
@@ -192,7 +208,8 @@ pub struct User {
 }
 
 #[derive(Queryable, Debug, Identifiable, Associations)]
-#[diesel(belongs_to(Beamline), belongs_to(User, foreign_key=user_badge))]
+#[diesel(belongs_to(Beamline, foreign_key=beamline_id), belongs_to(User, foreign_key=user_badge))]
+#[diesel(table_name = beamline_contacts)]
 pub struct BeamlineContact {
     pub user_badge: Option<i32>,
     pub beamline_id: Option<i32>,
@@ -200,8 +217,9 @@ pub struct BeamlineContact {
 }
 
 #[derive(Queryable, Debug, Identifiable, Associations, Selectable, QueryableByName, serde::Serialize)]
-#[diesel(belongs_to(ScanType), belongs_to(SyncotronRun), belongs_to(Beamline))]
+#[diesel(belongs_to(ScanType, foreign_key=beamline_id), belongs_to(SyncotronRun, foreign_key=syncotron_run_id), belongs_to(Beamline, foreign_key=scan_type_id))]
 #[diesel(primary_key(id))]
+#[diesel(table_name = datasets)]
 pub struct Dataset {
     pub id: i32,
     pub path: String,
@@ -212,8 +230,9 @@ pub struct Dataset {
 }
 
 #[derive(Queryable, Debug, Identifiable, Associations)]
-#[diesel(belongs_to(Dataset))]
+#[diesel(belongs_to(Dataset, foreign_key=dataset_id))]
 #[diesel(primary_key(id))]
+#[diesel(table_name = data_analysis)]
 pub struct DataAnalysi {
     pub id: i32,
     pub path: String,
@@ -227,6 +246,7 @@ pub struct DataAnalysi {
 #[diesel(belongs_to(User, foreign_key=user_badge), belongs_to(Proposal), belongs_to(ExperimentRole))]
 #[diesel(primary_key(id))]
 #[diesel(check_for_backend(diesel::pg::Pg))]
+#[diesel(table_name = experimenter_proposal_links)]
 pub struct ExperimenterProposalLink { 
     pub user_badge: i32,
     pub proposal_id: i32,
@@ -236,9 +256,10 @@ pub struct ExperimenterProposalLink {
 
 
 #[derive(Queryable, Debug, Associations, Identifiable, Selectable, QueryableByName)]
-#[diesel(belongs_to(Dataset), belongs_to(Proposal))]
+#[diesel(belongs_to(Dataset, foreign_key=dataset_id), belongs_to(Proposal, foreign_key=proposal_id))]
 #[diesel(primary_key(id))]
 #[diesel(check_for_backend(diesel::pg::Pg))]
+#[diesel(table_name = proposal_dataset_links)]
 pub struct ProposalDatasetLink {
     pub dataset_id: i32,
     pub proposal_id: i32,
