@@ -7,9 +7,9 @@ import { gen_index } from './general-helper';
     id: number;
     path: string;
     acquisition_timestamp: number;
-    beamline_id: number;
-    syncotron_run_id: number;
-    scan_type_id: number;
+    beamline: number;
+    syncotron_run: number;
+    //scan_type_id: number;
 }
 
 interface Proposal_Struct 
@@ -245,13 +245,13 @@ class ProposalManagementApp
             cell_aq.innerText = item.acquisition_timestamp.toString();
 
             const cell_beam = row.insertCell();
-            cell_beam.innerText = item.beamline_id.toString();
+            cell_beam.innerText = item.beamline.toString();
 
             const cell_sync = row.insertCell();
-            cell_sync.innerText = item.syncotron_run_id.toString();
+            cell_sync.innerText = item.syncotron_run.toString();
 
-            const cell_st = row.insertCell();
-            cell_st.innerText = item.scan_type_id.toString();
+            //const cell_st = row.insertCell();
+            //cell_st.innerText = item.scan_type_id.toString();
 
             row.offsetWidth;
             row.classList.add("visible");

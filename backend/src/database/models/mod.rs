@@ -32,7 +32,7 @@ use crate::database::schema::{beamline_contacts,
                                 };
 
 
-#[derive(Queryable, Debug, Identifiable)]
+#[derive(Queryable, Debug, Identifiable, Selectable, QueryableByName)]
 #[diesel(primary_key(id))]
 #[diesel(table_name = experiment_roles)]
 #[diesel(check_for_backend(diesel::pg::Pg))]
@@ -42,7 +42,7 @@ pub struct ExperimentRole {
 }
 
 
-#[derive(Queryable, Debug, Identifiable)]
+#[derive(Queryable, Debug, Identifiable, Selectable, QueryableByName)]
 #[diesel(primary_key(id))]
 #[diesel(table_name = scan_types)]
 pub struct ScanType {
@@ -51,7 +51,7 @@ pub struct ScanType {
     pub description: Option<String>,
 }
 
-#[derive(Queryable, Debug, Selectable, Identifiable, serde::Serialize)]
+#[derive(Queryable, Debug, Selectable, Identifiable, QueryableByName, serde::Serialize)]
 #[diesel(primary_key(id))]
 #[diesel(table_name = syncotron_runs)]
 pub struct SyncotronRun {
@@ -70,7 +70,7 @@ pub struct UserAccessControl {
     pub description: String,
 }
 
-#[derive(Queryable, Debug, Identifiable)]
+#[derive(Queryable, Debug, Identifiable, Selectable, QueryableByName)]
 #[diesel(primary_key(id))]
 #[diesel(table_name = beamlines)]
 pub struct Beamline {
@@ -217,7 +217,7 @@ pub struct BeamlineContact {
 }
 
 #[derive(Queryable, Debug, Identifiable, Associations, Selectable, QueryableByName, serde::Serialize)]
-#[diesel(belongs_to(ScanType, foreign_key=beamline_id), belongs_to(SyncotronRun, foreign_key=syncotron_run_id), belongs_to(Beamline, foreign_key=scan_type_id))]
+#[diesel(belongs_to(ScanType, foreign_key=scan_type_id), belongs_to(SyncotronRun, foreign_key=syncotron_run_id), belongs_to(Beamline, foreign_key=beamline_id))]
 #[diesel(primary_key(id))]
 #[diesel(table_name = datasets)]
 pub struct Dataset {
@@ -257,23 +257,33 @@ pub struct ExperimenterProposalLink {
 
 #[derive(Queryable, Debug, Associations, Identifiable, Selectable, QueryableByName)]
 #[diesel(belongs_to(Dataset, foreign_key=dataset_id), belongs_to(Proposal, foreign_key=proposal_id))]
-#[diesel(primary_key(id))]
+#[diesel(primary_key(dataset_id, proposal_id))]
 #[diesel(check_for_backend(diesel::pg::Pg))]
 #[diesel(table_name = proposal_dataset_links)]
 pub struct ProposalDatasetLink {
     pub dataset_id: i32,
     pub proposal_id: i32,
-    pub id: i32,
 }
 
 // ------------------------- joined -------------------------
+
+#[derive(serde::Serialize)]
+pub struct DatasetWithDetails
+{
+    pub id: i32,
+    pub path: String,
+    pub acquisition_timestamp: NaiveDateTime,
+    pub beamline: String,
+    pub syncotron_run: String,
+    //pub scan_type_name: String,
+}
 
 #[derive(serde::Serialize)]
 pub struct ProposalWithDatasets
 {
     #[serde(flatten)]
     pub proposal: Proposal,
-    pub datasets: Vec<Dataset>,
+    pub datasets: Vec<DatasetWithDetails>,
 }
 
 #[derive(serde::Serialize)]
