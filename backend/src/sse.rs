@@ -11,6 +11,8 @@ pub async fn redis_event_listener(state: appstate::AppState)
 {
     let mut pubsub = state.redis_client.get_async_pubsub().await.unwrap();
     pubsub.subscribe("events").await.unwrap();
+    // TODO: load database to see what events to subscribe to
+    //pubsub.subscribe("BEAMLINE_SCAN_LOGS_sec0").await.unwrap();
 
     println!("Subscribed to Redis channel: events");
     let mut stream_msg = pubsub.on_message();
@@ -42,7 +44,7 @@ pub async fn sse_handler(State(state): State<appstate::AppState>) -> Sse<impl fu
             {
                 println!("Sending sse event: {}", msg);
                 // Wrap each message in a Server‐Sent Event
-                let event = Event::default().data(msg);
+                let event: Event = Event::default().data(msg);
                 Some(Ok(event))
             }
             // On lagging or closed channel, just skip
