@@ -74,6 +74,12 @@
         done: Array<BeamlineTask>,
     }
 
+    class ScanPlan
+    {
+
+
+    }
+
     class BeamlineLogWidget
     {
 
@@ -367,7 +373,7 @@
             this.fetchAvailableScans().then(scans => 
             {
                 this.available_scans = scans;
-                this.populateScans(scans);
+                //this.populateAvailableScans(scans);
             }
             );
         }
@@ -423,7 +429,7 @@
             }
         }
 */
-        private populateScans(scans: ScanApiResponse | null): void
+        private populateAvailableScans(scans: ScanApiResponse | null): void
         {
             console.log(scans);
             this.queued_div.innerText = "";
@@ -541,7 +547,9 @@
 // Initialize the application when the DOM is loaded
 document.addEventListener('DOMContentLoaded', () => 
 {
-    let beamline_id = 'sec0';
+    const queryString = window.location.search;
+    const urlParams = new URLSearchParams(queryString);
+    let beamline_id = urlParams.get('beamline_id')?.toString() ?? 'sec0';
     let blw = new BeamlineWidget(beamline_id);
     gen_index('app', blw.gen_main_div());
 });
