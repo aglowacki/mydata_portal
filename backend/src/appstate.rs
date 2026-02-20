@@ -7,28 +7,20 @@ use tokio::sync::broadcast;
 
 pub type DieselPool = bb8::Pool<AsyncDieselConnectionManager<AsyncPgConnection>>;
 
+#[derive(Clone, Debug)]
+pub struct RedisMessage {
+    pub channel: String,
+    pub payload: String,
+}
+
 #[derive(Clone)]
 pub struct AppState 
 {
     pub diesel_pool: DieselPool,
     pub redis_client: redis::Client,
-    pub sse_tx: broadcast::Sender::<String>,
+    pub sse_tx: broadcast::Sender::<RedisMessage>,
 }
-/*
-impl AppState
-{
-    pub async fn new(diesel_config: AsyncDieselConnectionManager::<diesel_async::AsyncPgConnection>, redis_config: &str) -> Self
-    {
-        
-        Self 
-        {   
-            diesel_pool: bb8::Pool::builder().build(diesel_config).await.unwrap(),
-            redis_client: redis::Client::open(redis_config).unwrap(),
-            sse_tx: tx,
-        }
-    }
-}
-*/
+
 impl FromRef<AppState> for DieselPool 
 {
     fn from_ref(state: &AppState) -> DieselPool 

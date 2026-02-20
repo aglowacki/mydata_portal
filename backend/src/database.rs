@@ -14,7 +14,7 @@ use diesel_async::{
 use bb8::PooledConnection;
 
 mod schema;
-mod models;
+pub mod models;
 use super::appstate;
 use crate::{auth};
 
@@ -41,6 +41,17 @@ where
 }
 
 
+pub async fn get_beamlines(state: &appstate::AppState,) -> Vec<models::Beamline>
+{
+    let pool = appstate::DieselPool::from_ref(state);
+    let mut conn = pool.get_owned().await.unwrap();
+    
+    let beamlines = schema::beamlines::table.select(models::Beamline::as_select())
+        .load(&mut conn)
+        .await
+        .unwrap_or(Vec::new());
+    return beamlines;
+}
 
 
 /*

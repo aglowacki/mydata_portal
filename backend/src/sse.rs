@@ -1,59 +1,63 @@
 use axum::response::sse::{Event, Sse, KeepAlive};
-use axum::extract::State;
+use axum::extract::{Path, State};
 use std::{convert::Infallible};
 use futures::stream::StreamExt;
 use tokio_stream::wrappers::BroadcastStream;
 use std::time::Duration;
+use futures::future;
 
-use super::appstate;
+use crate::database::{get_beamlines};
+use super::database::models::Beamline;
+use super::appstate::{self, RedisMessage};
 
 pub async fn redis_event_listener(state: appstate::AppState) 
 {
-    let mut pubsub = state.redis_client.get_async_pubsub().await.unwrap();
-    pubsub.subscribe("events").await.unwrap();
-    // TODO: load database to see what events to subscribe to
-    //pubsub.subscribe("BEAMLINE_SCAN_LOGS_sec0").await.unwrap();
+    //let mut conn: bb8::PooledConnection<'_, diesel_async::pooled_connection::AsyncDieselConnectionManager<diesel_async::AsyncPgConnection>> = state.diesel_pool.get_owned().await.unwrap();
+    let beamlines: Vec<Beamline> = get_beamlines(&state).await;
+    let mut channel_names: Vec<String> = Vec::new();
 
-    println!("Subscribed to Redis channel: events");
+    println!("Subscribed to Redis channels: "); 
+    for beamline in &beamlines
+    {
+        let mut chan =  String::from("BEAMLINE_SCAN_LOGS_");
+        chan.push_str(&beamline.acronym.clone());
+        println!("{}", chan);
+        channel_names.push(chan);
+    }
+
+    let mut pubsub = state.redis_client.get_async_pubsub().await.unwrap();
+    pubsub.subscribe(&channel_names).await.unwrap();
     let mut stream_msg = pubsub.on_message();
     while let Some(msg) = stream_msg.next().await 
     {  
-        if let Ok(payload) = msg.get_payload::<String>() 
-        {
-            println!("Received Redis event: {}", payload);
-
-            // Broadcast the event to all connected clients
-            let _ = state.sse_tx.send(payload);
-        }
+        let channel = msg.get_channel_name().to_string();
+        let payload: String = msg.get_payload().unwrap();
+        let _ = state.sse_tx.send(RedisMessage { channel, payload });
     }
 }
 
 /// SSE handler: each client gets its own subscription to the broadcast channel.
-//async fn sse_handler(State(tx): State<Arc<broadcast::Sender<String>>>) -> Sse<impl futures::Stream<Item = Result<Event, Infallible>>> 
-pub async fn sse_handler(State(state): State<appstate::AppState>) -> Sse<impl futures::Stream<Item = Result<Event, Infallible>>> 
+pub async fn sse_handler(
+    Path(beamline_id): Path<String>,
+    State(state): State<appstate::AppState>
+) -> Sse<impl futures::Stream<Item = Result<Event, Infallible>>> 
 {
     // Subscribe to our broadcast channel
     let rx =  state.sse_tx.subscribe();
 
     // Wrap it into a Stream of SSE Events
-    let stream = BroadcastStream::new(rx).filter_map(|result| async move 
+    let stream = BroadcastStream::new(rx).filter_map( move |result| 
     {
-        match result 
+        let target = beamline_id.clone();    
+        // Return a Future using future::ready
+        future::ready(match result 
         {
-            Ok(msg) => 
+            Ok(msg) if msg.channel == target => 
             {
-                println!("Sending sse event: {}", msg);
-                // Wrap each message in a Server‐Sent Event
-                let event: Event = Event::default().data(msg);
-                Some(Ok(event))
+                Some(Ok(Event::default().data(msg.payload)))
             }
-            // On lagging or closed channel, just skip
-            Err(b_err) => 
-            {
-                println!("Error sse event: {}", b_err);
-                None
-            }
-        }
+            _ => None,
+        })
     });
 
     Sse::new(stream).keep_alive(KeepAlive::new().interval(Duration::from_secs(10)).text("ping"))

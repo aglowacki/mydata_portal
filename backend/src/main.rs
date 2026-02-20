@@ -13,7 +13,6 @@ use axum::{
 
 use tokio::net::TcpListener;
 use tokio::signal;
-use tokio::time::sleep;
 use tokio::sync::broadcast;
 
 use tower_http::timeout::TimeoutLayer;
@@ -21,6 +20,8 @@ use tower_http::trace::TraceLayer;
 
 use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt};
 use diesel_async::pooled_connection::AsyncDieselConnectionManager;
+
+use crate::appstate::RedisMessage;
 
 //use std::sync::Arc;
 
@@ -44,14 +45,14 @@ async fn main()
         .with(tracing_subscriber::fmt::layer().without_time())
         .init();
 
-    let (sse_tx, _rx) = broadcast::channel::<String>(100);
+    let (sse_tx, _rx) = broadcast::channel::<RedisMessage>(100);
     tracing::debug!("successfully connected to redis and pinged it");
     let db_url = std::env::var("DATABASE_URL").unwrap();
     // set up connection pool
     let db_config = AsyncDieselConnectionManager::<diesel_async::AsyncPgConnection>::new(db_url);
     let diesel_pool = bb8::Pool::builder().build(db_config).await.unwrap();
     let redis_client = redis::Client::open("redis://localhost").unwrap();
-    let app_state = appstate::AppState { diesel_pool, redis_client, sse_tx };
+    let app_state = appstate::AppState { diesel_pool, redis_client, sse_tx, };
 
     tokio::spawn(sse::redis_event_listener(app_state.clone()));
 
