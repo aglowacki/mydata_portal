@@ -132,8 +132,8 @@
             this.main_div.appendChild(this.logs_div);
             this.main_div.appendChild(this.tasks_div);
 
-            
-            this.beamline_event_source = new EventSource("api/sse", { withCredentials: true} );
+            let sse_url = "api/sse?beamline_id="+beam_id;
+            this.beamline_event_source = new EventSource(sse_url, { withCredentials: true} );
             this.beamline_event_source.onopen = (event) => 
             {
                 console.log('SSE connection established.', event);
