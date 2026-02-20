@@ -132,7 +132,7 @@
             this.main_div.appendChild(this.logs_div);
             this.main_div.appendChild(this.tasks_div);
 
-            let sse_url = "api/sse?beamline_id="+beam_id;
+            let sse_url = "api/sse/"+beam_id;
             this.beamline_event_source = new EventSource(sse_url, { withCredentials: true} );
             this.beamline_event_source.onopen = (event) => 
             {
