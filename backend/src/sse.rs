@@ -48,11 +48,12 @@ pub async fn sse_handler(
     // Wrap it into a Stream of SSE Events
     let stream = BroadcastStream::new(rx).filter_map( move |result| 
     {
-        let target = beamline_id.clone();    
+        let mut chan =  String::from("BEAMLINE_SCAN_LOGS_");
+        chan.push_str(&beamline_id.clone());
         // Return a Future using future::ready
         future::ready(match result 
         {
-            Ok(msg) if msg.channel == target => 
+            Ok(msg) if msg.channel == chan => 
             {
                 Some(Ok(Event::default().data(msg.payload)))
             }
