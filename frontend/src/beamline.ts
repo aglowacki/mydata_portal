@@ -142,8 +142,9 @@
             this.beamline_event_source.onmessage = (event) => 
             {
                 console.log("Received SSE message:", event.data);
+                const jsonData = JSON.parse(event.data);
+                const blog = jsonData as BeamlineLog;
                 // append to logs
-                const blog: BeamlineLog = event.data as BeamlineLog;
                 this.appendLog(blog);
             };
 
