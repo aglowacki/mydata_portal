@@ -10,7 +10,7 @@
             "host": "127.0.0.1",
             "zmq_log_topic": "QS_Console",
             "beamline_id": "BeamlineId",
-            "protocol": "bluesky"
+            "protocol": "BlueSky"
         }
     ]
 }
