@@ -142,6 +142,8 @@
             this.beamline_event_source.onmessage = (event) => 
             {
                 console.log("Received SSE message:", event.data);
+                // append to logs
+                this.appendLog(event.data as BeamlineLog);
             };
 
             this.beamline_event_source.onerror = (error) => 
@@ -242,6 +244,18 @@
                 htmlList.appendChild(list_item);
             });
             this.logs_div.appendChild(htmlList);
+        }
+
+        private appendLog(item: BeamlineLog | null): void
+        {
+            if(item)
+            {
+                let htmlList = document.createElement("ul") as HTMLUListElement;
+                let list_item = document.createElement("li") as HTMLLIElement;
+                list_item.textContent  = item.msg;
+                htmlList.appendChild(list_item);
+                this.logs_div.appendChild(htmlList);
+            }
         }
 
         private populateTasks(bTasks: BeamlineTasks | null): void
