@@ -143,7 +143,7 @@
             {
                 console.log("Received SSE message:", event.data);
                 // append to logs
-                this.appendLog(event.data as BeamlineLog);
+                this.appendLog(event.data.json as BeamlineLog);
             };
 
             this.beamline_event_source.onerror = (error) => 
