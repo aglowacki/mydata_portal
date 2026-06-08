@@ -195,7 +195,7 @@ tracing-subscriber = { version = "0.3", features = ["env-filter", "fmt"] }
 use anyhow::{anyhow, Context, Result};
 use chrono::{DateTime, Utc};
 use clap::Parser;
-use redis::AsyncCommands;
+use redis::{AsyncCommands, RedisResult};
 use serde::{Deserialize, Serialize};
 use std::collections::{HashMap, HashSet};
 use std::path::{Path, PathBuf};
@@ -207,6 +207,7 @@ use tokio::signal;
 use tokio::sync::watch;
 use tokio::time::{sleep, Duration};
 use tracing::{error, info, warn};
+use std::env;
 
 #[derive(Parser, Debug)]
 #[command(author, version, about = "Async Redis-backed job worker with crash recovery")]
@@ -332,6 +333,9 @@ async fn main() -> Result<()> {
     let worker_id = format!("worker-{}-{}", std::process::id(), Utc::now().timestamp_millis());
     info!(worker_id = %worker_id, "worker starting");
 
+    let redis_user = env::var("REDIS_USER").unwrap_or("default".to_string());
+    let redis_pass = env::var("REDIS_PASS").expect("REDIS_PASS must be set");
+
     let client = redis::Client::open(config.redis_url.as_str())
         .with_context(|| format!("failed to create redis client for {}", config.redis_url))?;
 
@@ -344,6 +348,20 @@ async fn main() -> Result<()> {
         .get_multiplexed_tokio_connection()
         .await
         .context("failed to connect to redis for recovery loop")?;
+
+
+    // AUTH with username and password (Redis 6+ ACL)
+    let auth_result: redis::RedisResult<String> = redis::cmd("AUTH")
+        .arg(&redis_user)
+        .arg(&redis_pass)
+        .query_async(&mut work_conn)
+        .await;
+
+    match auth_result {
+        Ok(response) => println!("Auth response: {}", response),
+        Err(err) => error!(error = %err, "Authentication failed: {}",err),
+         //Err(format!("Authentication failed: {}", e).into()),
+    }
 
     advertise_command(&client, &config).await?;
 
