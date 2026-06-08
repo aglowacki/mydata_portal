@@ -363,7 +363,7 @@ async fn main() -> Result<()> {
          //Err(format!("Authentication failed: {}", e).into()),
     }
 
-    advertise_command(&client, &config).await?;
+    advertise_command(&mut work_conn, &config).await?;
 
     let (shutdown_tx, shutdown_rx) = watch::channel(false);
 
@@ -440,14 +440,10 @@ async fn ensure_dirs(config: &Config) -> Result<()> {
 }
 
 async fn advertise_command(
-    client: &redis::Client,
+    conn: &mut redis::aio::MultiplexedConnection,
     config: &Config,
 ) -> Result<()> {
-    let mut conn = client
-        .get_multiplexed_tokio_connection()
-        .await
-        .context("failed to connect to redis for command advertisement")?;
-
+    
     let payload = CommandAdvertisement {
         version: config.command.version.clone(),
         program: config.command.program.clone(),
@@ -461,7 +457,7 @@ async fn advertise_command(
     let subscribers: i64 = redis::cmd("PUBLISH")
         .arg(&config.advertising.channel)
         .arg(&payload_json)
-        .query_async(&mut conn)
+        .query_async(conn)
         .await
         .with_context(|| {
             format!(
