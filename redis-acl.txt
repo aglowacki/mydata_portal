@@ -1,0 +1,1 @@
+acl setuser runner on >PASSWORD +set +get +publish +brpoplpush +del +lrem +srem +lpush +smembers ~runner*
