@@ -344,7 +344,7 @@ async fn main() -> Result<()> {
         .await
         .context("failed to connect to redis for work loop")?;
 
-    let recovery_conn = client
+    let mut recovery_conn = client
         .get_multiplexed_tokio_connection()
         .await
         .context("failed to connect to redis for recovery loop")?;
@@ -355,6 +355,19 @@ async fn main() -> Result<()> {
         .arg(&redis_user)
         .arg(&redis_pass)
         .query_async(&mut work_conn)
+        .await;
+
+    match auth_result {
+        Ok(response) => println!("Auth response: {}", response),
+        Err(err) => error!(error = %err, "Authentication failed: {}",err),
+         //Err(format!("Authentication failed: {}", e).into()),
+    }
+    
+    // AUTH with username and password (Redis 6+ ACL)
+    let auth_result: redis::RedisResult<String> = redis::cmd("AUTH")
+        .arg(&redis_user)
+        .arg(&redis_pass)
+        .query_async(&mut recovery_conn)
         .await;
 
     match auth_result {
