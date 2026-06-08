@@ -344,12 +344,6 @@ async fn main() -> Result<()> {
         .await
         .context("failed to connect to redis for work loop")?;
 
-    let mut recovery_conn = client
-        .get_multiplexed_tokio_connection()
-        .await
-        .context("failed to connect to redis for recovery loop")?;
-
-
     // AUTH with username and password (Redis 6+ ACL)
     let auth_result: redis::RedisResult<String> = redis::cmd("AUTH")
         .arg(&redis_user)
@@ -360,20 +354,6 @@ async fn main() -> Result<()> {
     match auth_result {
         Ok(response) => println!("Auth response: {}", response),
         Err(err) => error!(error = %err, "Authentication failed: {}",err),
-         //Err(format!("Authentication failed: {}", e).into()),
-    }
-    
-    // AUTH with username and password (Redis 6+ ACL)
-    let auth_result: redis::RedisResult<String> = redis::cmd("AUTH")
-        .arg(&redis_user)
-        .arg(&redis_pass)
-        .query_async(&mut recovery_conn)
-        .await;
-
-    match auth_result {
-        Ok(response) => println!("Auth response: {}", response),
-        Err(err) => error!(error = %err, "Authentication failed: {}",err),
-         //Err(format!("Authentication failed: {}", e).into()),
     }
 
     advertise_command(&mut work_conn, &config).await?;
@@ -416,8 +396,6 @@ async fn main() -> Result<()> {
     if let Err(err) = recovery_handle.await {
         error!(error = %err, "recovery task join failed");
     }
-
-    drop(recovery_conn);
 
     info!("worker stopped");
     Ok(())
@@ -635,6 +613,21 @@ async fn heartbeat_loop(
         .get_multiplexed_tokio_connection()
         .await
         .context("failed to connect redis for heartbeat loop")?;
+
+    let redis_user = env::var("REDIS_USER").unwrap_or("default".to_string());
+    let redis_pass = env::var("REDIS_PASS").expect("REDIS_PASS must be set");
+
+    // AUTH with username and password (Redis 6+ ACL)
+    let auth_result: redis::RedisResult<String> = redis::cmd("AUTH")
+        .arg(&redis_user)
+        .arg(&redis_pass)
+        .query_async(&mut conn)
+        .await;
+
+    match auth_result {
+        Ok(response) => println!("Auth response: {}", response),
+        Err(err) => error!(error = %err, "Authentication failed: {}",err),
+    }
 
     let meta_key = format!("{}{}", job_key_prefix, job_id);
 
@@ -912,6 +905,22 @@ async fn recovery_loop(
         .await
         .context("failed to connect redis for recovery loop")?;
 
+
+    let redis_user = env::var("REDIS_USER").unwrap_or("default".to_string());
+    let redis_pass = env::var("REDIS_PASS").expect("REDIS_PASS must be set");
+
+    // AUTH with username and password (Redis 6+ ACL)
+    let auth_result: redis::RedisResult<String> = redis::cmd("AUTH")
+        .arg(&redis_user)
+        .arg(&redis_pass)
+        .query_async(&mut conn)
+        .await;
+
+    match auth_result {
+        Ok(response) => println!("Auth response: {}", response),
+        Err(err) => error!(error = %err, "Authentication failed: {}",err),
+    }
+    
     info!(
         worker_id = %worker_id,
         stale_after_secs = config.recovery.stale_after_secs,
