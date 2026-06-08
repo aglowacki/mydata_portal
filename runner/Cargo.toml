@@ -11,3 +11,11 @@ serde = { version ="1.0.214", features = ["derive"] }
 chrono = { version = "0.4.38", features = ["serde"] } 
 serde_yaml = "0.9.34"
 zmq = "0.10.0"
+
+anyhow = "1"
+clap = { version = "4", features = ["derive"] }
+redis = { version = "0.25", features = ["tokio-comp"] }
+serde_json = "1"
+tokio = { version = "1", features = ["full"] }
+tracing = "0.1"
+tracing-subscriber = { version = "0.3", features = ["env-filter", "fmt"] }

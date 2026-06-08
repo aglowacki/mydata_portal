@@ -1,0 +1,36 @@
+{
+  "redis_url": "redis://127.0.0.1/",
+  "queues": {
+    "queued": "job_queue",
+    "processing": "processing_queue",
+    "finished": "finished_queue",
+    "dead_letter": "dead_letter_queue"
+  },
+  "command": {
+    "version": "v2.0.5",
+    "program": "/Users/aglowacki/src/XRF-Maps/bin/xrf_maps",
+    "allowed_args": [
+      "--dir",
+      "--fit",
+      "--detector-range",
+      "--quantify-with"
+    ],
+    "working_dir": null,
+    "stdout_dir": "logs/stdout",
+    "stderr_dir": "logs/stderr"
+  },
+  "worker": {
+    "max_retries": 3,
+    "poll_timeout_secs": 5,
+    "heartbeat_interval_secs": 10
+  },
+  "recovery": {
+    "processing_set_key": "processing_jobs",
+    "job_key_prefix": "jobmeta:",
+    "stale_after_secs": 60,
+    "scan_interval_secs": 15
+  },
+  "advertising": {
+    "channel": "job_commands"
+  }
+}
