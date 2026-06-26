@@ -12,5 +12,16 @@
             "beamline_id": "BeamlineId",
             "protocol": "BlueSky"
         }
+    ],
+  "ioc_config":
+  {
+    "hash_key": "SIM1",
+    "connect_timeout_secs": 10,
+    "reconnect_backoff_secs": 2,
+    "pvs": [
+      { "label": "gain", "pv": "SIM1:cam1:Gain" },
+      { "label": "dims", "pv": "SIM1:Image1:Dims" },
+      { "label": "enable_callback", "pv": "SIM1:PVA1:EnableCallback" }
     ]
+  }
 }
