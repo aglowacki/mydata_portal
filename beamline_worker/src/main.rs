@@ -107,7 +107,18 @@ fn main() -> Result<()> {
         running.store(false, Ordering::SeqCst);
     }
 
-    // Wait for the EPICS thread to flush and exit.
+    // Wait for the EPICS thread to flush and exit, but only briefly: its CA subscriptions
+    // are torn down by dropping the runtime, which runs epics_ca's C destructors
+    // (ca_clear_channel / ca_context_destroy). If that native teardown stalls, a plain
+    // join() would hang the process forever, so we bound the wait and force-exit instead.
+    let shutdown_deadline = Instant::now() + Duration::from_secs(5);
+    while !epics_handle.is_finished() {
+        if Instant::now() >= shutdown_deadline {
+            warn!("EPICS monitor did not exit in time; forcing shutdown");
+            std::process::exit(0);
+        }
+        std::thread::sleep(Duration::from_millis(50));
+    }
     match epics_handle.join() {
         Ok(Ok(())) => {}
         Ok(Err(e)) => warn!(error = %e, "EPICS monitor terminated with error"),

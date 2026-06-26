@@ -40,6 +40,12 @@ impl ControlClient
 
     pub fn connect(&self)
     {
+        // LINGER = 0 so closing the sockets / terminating the context on shutdown never
+        // blocks waiting to flush undelivered messages. Without this, a REQ request that
+        // was queued but never answered (e.g. a timed-out command, or an unreachable
+        // BlueSky peer) makes zmq_ctx_term hang forever and the process never exits.
+        self.subscriber.set_linger(0).expect("Failed to set SUB linger");
+        self.cmd_channel.set_linger(0).expect("Failed to set CMD linger");
         println!("Connecting to ZeroMQ PUB at {}", self.log_address);
         self.subscriber.connect(&self.log_address).expect("Failed to connect to PUB socket");
         self.subscriber.set_subscribe(self.log_topic.as_bytes()).expect("Failed to subscribe");
