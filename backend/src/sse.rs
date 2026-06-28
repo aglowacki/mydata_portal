@@ -45,20 +45,29 @@ pub async fn sse_handler(
     // Subscribe to our broadcast channel
     let rx =  state.sse_tx.subscribe();
 
+    // Watch for the server shutdown signal so we can end this stream on
+    // Ctrl+C instead of hanging until the client disconnects.
+    let mut shutdown_rx = state.shutdown_rx.clone();
+
     // Wrap it into a Stream of SSE Events
-    let stream = BroadcastStream::new(rx).filter_map( move |result| 
+    let stream = BroadcastStream::new(rx).filter_map( move |result|
     {
         let mut chan =  String::from("BEAMLINE_SCAN_LOGS_");
         chan.push_str(&beamline_id.clone());
         // Return a Future using future::ready
-        future::ready(match result 
+        future::ready(match result
         {
-            Ok(msg) if msg.channel == chan => 
+            Ok(msg) if msg.channel == chan =>
             {
                 Some(Ok(Event::default().data(msg.payload)))
             }
             _ => None,
         })
+    })
+    // End the stream once the shutdown signal is sent (or the sender drops).
+    .take_until(async move
+    {
+        let _ = shutdown_rx.wait_for(|&signaled| signaled).await;
     });
 
     Sse::new(stream).keep_alive(KeepAlive::new().interval(Duration::from_secs(10)).text("ping"))

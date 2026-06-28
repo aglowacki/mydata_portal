@@ -13,7 +13,7 @@ use axum::{
 
 use tokio::net::TcpListener;
 use tokio::signal;
-use tokio::sync::broadcast;
+use tokio::sync::{broadcast, watch};
 
 use tower_http::timeout::TimeoutLayer;
 use tower_http::trace::TraceLayer;
@@ -46,13 +46,16 @@ async fn main()
         .init();
 
     let (sse_tx, _rx) = broadcast::channel::<RedisMessage>(100);
+    // Broadcast a shutdown signal to long-lived connections (e.g. SSE streams)
+    // so they terminate on Ctrl+C instead of blocking graceful shutdown.
+    let (shutdown_tx, shutdown_rx) = watch::channel(false);
     tracing::debug!("successfully connected to redis and pinged it");
     let db_url = std::env::var("DATABASE_URL").unwrap();
     // set up connection pool
     let db_config = AsyncDieselConnectionManager::<diesel_async::AsyncPgConnection>::new(db_url);
     let diesel_pool = bb8::Pool::builder().build(db_config).await.unwrap();
     let redis_client = redis::Client::open("redis://localhost").unwrap();
-    let app_state = appstate::AppState { diesel_pool, redis_client, sse_tx, };
+    let app_state = appstate::AppState { diesel_pool, redis_client, sse_tx, shutdown_rx, };
 
     tokio::spawn(sse::redis_event_listener(app_state.clone()));
 
@@ -93,12 +96,12 @@ async fn main()
 
     // Run the server with graceful shutdown
     axum::serve(listener, app)
-        .with_graceful_shutdown(shutdown_signal())
+        .with_graceful_shutdown(shutdown_signal(shutdown_tx))
         .await
         .unwrap();
 }
 
-async fn shutdown_signal() 
+async fn shutdown_signal(shutdown_tx: watch::Sender<bool>)
 {
     let ctrl_c = async 
     {
@@ -119,11 +122,15 @@ async fn shutdown_signal()
     #[cfg(not(unix))]
     let terminate = std::future::pending::<()>();
 
-    tokio::select! 
+    tokio::select!
     {
         _ = ctrl_c => {},
         _ = terminate => {},
     }
+
+    // Notify long-lived connections (SSE streams) to close so graceful
+    // shutdown doesn't hang waiting for clients to disconnect.
+    let _ = shutdown_tx.send(true);
 }
 
 async fn user_info(claims: auth::Claims) -> Result<Json<auth::Claims>, auth::AuthError> 
