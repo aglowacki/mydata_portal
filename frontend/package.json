@@ -4,6 +4,9 @@
   "description": "## Creating a project",
   "main": "index.js",
   "scripts": {
+    "typecheck": "tsc",
+    "bundle": "node esbuild.config.js",
+    "build": "tsc && node esbuild.config.js && chmod -R 775 static",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "keywords": [],
