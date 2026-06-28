@@ -1,23 +1,33 @@
 {
-	"compilerOptions": {
+	"compilerOptions": 
+  {
 		"esModuleInterop": true,
-		"target": "es6",
-		"moduleResolution": "node",
-		"sourceMap": true,
+    "target": "ES2022",
+    "lib": ["ES2022", "DOM", "DOM.Iterable"],
+    "module": "ESNext",
+    "moduleResolution": "bundler",
+    "sourceMap": true,
 		"outDir": "static",
 		"checkJs": true,
+    "noUncheckedIndexedAccess": true,
+    "noImplicitOverride": true,
 		"forceConsistentCasingInFileNames": true,
 		"resolveJsonModule": true,
+    "isolatedModules": true,
+    "verbatimModuleSyntax": true,
+    "noEmit": true,
 		"skipLibCheck": true,
 		"strict": true,
 		"noImplicitAny": true,
-    	"noImplicitThis": true,
-		"baseUrl": "src",
-		"paths":{
-			"echarts":["node_modules/echarts/*"],
-		},
+   	"noImplicitThis": true,
+		"paths":
+      {
+      "@/*": ["./src/*"],
+      "echarts":["./node_modules/echarts/*"],
+	  	},
 	},
 	"lib": ["es2023"],
 	"include": ["src/**/*.ts"],
-  	"exclude": ["node_modules", "**/*.spec.ts", "esbuild.config.js"]
+  	"exclude": ["node_modules", "**/*.spec.ts", "esbuild.config.js, dist"]
 }
+
