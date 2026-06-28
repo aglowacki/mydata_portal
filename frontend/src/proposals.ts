@@ -218,7 +218,7 @@ class ProposalManagementApp
             console.log("No datasets for this proposal");
             return;
         }
-        const headers = Object.keys(data.datasets[0]);
+        const headers = Object.keys(data.datasets[0]!);
         // Create table header
         const thead = this.datasets_table.createTHead();
         headers.forEach(header => 
@@ -290,7 +290,7 @@ class ProposalManagementApp
             console.log("Resply is empty array");
             return;
         }
-        const headers = Object.keys(data[0]);
+        const headers = Object.keys(data[0]!);
         // Create table header
         const thead = this.proposals_table.createTHead();
         headers.forEach(header => 

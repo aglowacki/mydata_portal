@@ -7,7 +7,7 @@ export function has_cookie(cookieName: string): boolean
 export function get_cookie(name: string): string 
 {
     const match = document.cookie.match(new RegExp(name + '=([^;]+)'));
-    return match ? decodeURIComponent(match[1]) : "null";
+    return match && match[1] ? decodeURIComponent(match[1]) : "null";
 }
 
 export function set_cookie(name: string, val: string) 

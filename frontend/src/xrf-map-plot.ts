@@ -1,17 +1,20 @@
 import * as echarts from 'echarts/core';
 import {
   TitleComponent,
-  TitleComponentOption,
   TooltipComponent,
-  TooltipComponentOption,
   GridComponent,
+  VisualMapComponent
+} from 'echarts/components';
+import type {
+  TitleComponentOption,
+  TooltipComponentOption,
   GridComponentOption,
-  VisualMapComponent,
   VisualMapComponentOption
 } from 'echarts/components';
-import { ScatterChart, ScatterSeriesOption } from 'echarts/charts';
+import { ScatterChart } from 'echarts/charts';
 import { UniversalTransition } from 'echarts/features';
-import { HeatmapChart, HeatmapSeriesOption } from 'echarts/charts';
+import { HeatmapChart } from 'echarts/charts';
+import type { ScatterSeriesOption, HeatmapSeriesOption } from 'echarts/charts';
 import { CanvasRenderer } from 'echarts/renderers';
 import { get_cookie } from "./cookies";
 import { show_toast } from "./toast"
