@@ -10,7 +10,18 @@ type User = {
 
 interface LoginResponse {
     access_token: string;
-    token_type: string; 
+    token_type: string;
+}
+
+// Mirrors the backend Claims struct returned by /api/user_info
+export interface Claims {
+    employee_id: string;
+    mail: string;
+    department: string;
+    employee_type: string;
+    sn: string;
+    uac: string;
+    exp: number;
 }
 
 
@@ -58,6 +69,13 @@ export async function check_user(): Promise<Response>
         throw error;
     }
 
+}
+
+// Fetch the current user's claims, reusing check_user()'s authenticated request.
+export async function get_user_info(): Promise<Claims>
+{
+    const response = await check_user();
+    return await response.json() as Claims;
 }
 
 export class LoginFormApp

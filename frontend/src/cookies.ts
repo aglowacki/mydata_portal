@@ -21,3 +21,9 @@ export function set_cookie(name: string, val: string)
     // Set it
     document.cookie = name+"="+value+"; expires="+date.toUTCString()+"; path=/";
 }
+
+export function delete_cookie(name: string)
+{
+    // Overwrite with an expiry in the past so the browser drops it
+    document.cookie = name+"=; expires=Thu, 01 Jan 1970 00:00:00 GMT; path=/";
+}

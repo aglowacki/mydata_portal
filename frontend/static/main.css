@@ -74,6 +74,9 @@ body {
 header {
   padding: 2rem;
   grid-column: 1 / 4;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
 }
 
 .left-sidebar {
@@ -147,7 +150,129 @@ form.nav.right {
     );
   }
 }
-        
+
+/* ----------------- user theme override (theme.ts) ----------------- */
+/* A stored user choice (data-theme on <html>) beats the OS preference above. */
+:root[data-theme="dark"] {
+  --text: hsl(var(--hue) calc(var(--saturation) / 2) 85%);
+  --surface: hsl(var(--hue) var(--saturation) 5%);
+}
+
+:root[data-theme="dark"] b {
+  color: hsl(var(--hue) var(--saturation) 75%);
+}
+
+:root[data-theme="light"] {
+  --text: hsl(var(--hue) var(--saturation) 10%);
+  --surface: hsl(var(--hue) calc(var(--saturation) / 2) 95%);
+}
+
+:root[data-theme="light"] b {
+  color: hsl(var(--hue) var(--saturation) 30%);
+}
+
+/* ----------------- user menu (header.ts) ----------------- */
+.user-menu {
+  position: relative;
+  display: inline-block;
+}
+
+.user-avatar {
+  width: 42px;
+  height: 42px;
+  border-radius: 50%;
+  border: none;
+  background: var(--brand);
+  color: var(--surface);
+  font-size: 16px;
+  font-weight: 600;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.user-avatar:hover {
+  filter: brightness(1.1);
+}
+
+.user-dropdown {
+  display: none;
+  position: absolute;
+  right: 0;
+  top: calc(100% + 8px);
+  min-width: 180px;
+  margin: 0;
+  padding: 6px 0;
+  list-style: none;
+  background: var(--surface);
+  color: var(--text);
+  border: 1px solid var(--brand);
+  border-radius: 8px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.25);
+  z-index: 1000;
+}
+
+.user-dropdown.open {
+  display: block;
+}
+
+.user-dropdown li {
+  margin: 0;
+  padding: 0;
+}
+
+.user-dropdown li a,
+.user-dropdown li button {
+  display: block;
+  width: 100%;
+  box-sizing: border-box;
+  padding: 10px 16px;
+  background: none;
+  border: none;
+  text-align: left;
+  font: inherit;
+  color: var(--text);
+  text-decoration: none;
+  cursor: pointer;
+}
+
+.user-dropdown li a:hover,
+.user-dropdown li button:hover {
+  background: var(--brand);
+  color: var(--surface);
+}
+
+/* ----------------- profile page (profile.ts) ----------------- */
+.profile-card {
+  margin: 2rem auto;
+  max-width: 480px;
+  padding: 1.5rem 2rem;
+  border: 1px solid var(--brand);
+  border-radius: 10px;
+}
+
+.profile-card h2 {
+  margin-top: 0;
+}
+
+.profile-card table {
+  border-collapse: collapse;
+  width: 100%;
+}
+
+.profile-card th,
+.profile-card td {
+  padding: 8px 12px;
+  text-align: left;
+  vertical-align: top;
+}
+
+.profile-card th {
+  width: 40%;
+  font-weight: 600;
+}
+
 /* ----------------- table.ts ------------------*/
 .animated-table {
   width: 100%;

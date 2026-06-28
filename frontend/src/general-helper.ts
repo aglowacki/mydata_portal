@@ -2,9 +2,11 @@ import { LoginFormApp, check_user } from './auth';
 import { gen_header } from "./header";
 import { gen_left_sidebar } from "./left-sidebar";
 import { gen_footer } from "./footer";
+import { apply_theme } from "./theme";
 
 export function gen_index(id: string, center_element: HTMLElement)
-{   
+{
+    apply_theme();
     const app = document.getElementById(id);
 
     check_user().then(response => 

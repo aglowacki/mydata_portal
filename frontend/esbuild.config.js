@@ -5,6 +5,7 @@
             'src/proposals.ts',
             'src/sample_info.ts',
             'src/beamline.ts',
+            'src/profile.ts',
             'src/index.ts'
         ],
         bundle: true,
