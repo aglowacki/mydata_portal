@@ -418,6 +418,10 @@ pub async fn upsert_bio_sample(
     {
         return fail("A sample fixation must be selected.");
     }
+    if payload.dataset_ids.is_empty()
+    {
+        return fail("Select at least one dataset to assign this sample to.");
+    }
 
     // ---- authorization: user must be on the proposal (unless admin/staff) ----
     if claims.uac != defines::STR_ADMIN && claims.uac != defines::STR_STAFF
@@ -439,8 +443,24 @@ pub async fn upsert_bio_sample(
         }
     }
 
-    // ---- insert or update ----
-    match payload.id
+    // ---- the selected datasets must belong to the proposal ----
+    let valid_count: i64 = match schema::proposal_dataset_links::table
+        .filter(schema::proposal_dataset_links::proposal_id.eq(payload.sample.proposal_id))
+        .filter(schema::proposal_dataset_links::dataset_id.eq_any(&payload.dataset_ids))
+        .count()
+        .get_result(&mut conn)
+        .await
+    {
+        Ok(c) => c,
+        Err(err) => return fail(&format!("Failed to verify datasets: {}", err)),
+    };
+    if valid_count != payload.dataset_ids.len() as i64
+    {
+        return fail("One or more selected datasets do not belong to the proposal.");
+    }
+
+    // ---- insert or update the sample row ----
+    let (sample_id, base_msg) = match payload.id
     {
         Some(id) =>
         {
@@ -451,14 +471,10 @@ pub async fn upsert_bio_sample(
                 .await;
             match res
             {
-                Ok(updated_id) => Json(models::BioSampleUpsertResponse {
-                    success: true,
-                    id: Some(updated_id),
-                    message: format!("Sample {} updated successfully.", updated_id),
-                }),
+                Ok(updated_id) => (updated_id, format!("Sample {} updated successfully.", updated_id)),
                 Err(diesel::result::Error::NotFound) =>
-                    fail(&format!("No sample found with id {}.", id)),
-                Err(err) => fail(&format!("Failed to update sample: {}", err)),
+                    return fail(&format!("No sample found with id {}.", id)),
+                Err(err) => return fail(&format!("Failed to update sample: {}", err)),
             }
         }
         None =>
@@ -470,15 +486,103 @@ pub async fn upsert_bio_sample(
                 .await;
             match res
             {
-                Ok(new_id) => Json(models::BioSampleUpsertResponse {
-                    success: true,
-                    id: Some(new_id),
-                    message: format!("Sample created successfully (id {}).", new_id),
-                }),
-                Err(err) => fail(&format!("Failed to create sample: {}", err)),
+                Ok(new_id) => (new_id, format!("Sample created successfully (id {}).", new_id)),
+                Err(err) => return fail(&format!("Failed to create sample: {}", err)),
             }
         }
+    };
+
+    // ---- reconcile dataset links (one sample per dataset) ----
+    // Drop this sample's links that are no longer selected.
+    if let Err(err) = diesel::delete(
+            schema::bio_sample_dataset_links::table
+                .filter(schema::bio_sample_dataset_links::bio_sample_id.eq(sample_id))
+                .filter(schema::bio_sample_dataset_links::dataset_id.ne_all(&payload.dataset_ids)))
+        .execute(&mut conn)
+        .await
+    {
+        return fail(&format!("Sample saved but failed to update dataset links: {}", err));
     }
+
+    // Link (or reassign) each selected dataset to this sample.
+    for ds_id in &payload.dataset_ids
+    {
+        let res = diesel::insert_into(schema::bio_sample_dataset_links::table)
+            .values((
+                schema::bio_sample_dataset_links::dataset_id.eq(*ds_id),
+                schema::bio_sample_dataset_links::bio_sample_id.eq(sample_id),
+            ))
+            .on_conflict(schema::bio_sample_dataset_links::dataset_id)
+            .do_update()
+            .set(schema::bio_sample_dataset_links::bio_sample_id.eq(sample_id))
+            .execute(&mut conn)
+            .await;
+        if let Err(err) = res
+        {
+            return fail(&format!("Sample saved but failed to link dataset {}: {}", ds_id, err));
+        }
+    }
+
+    Json(models::BioSampleUpsertResponse {
+        success: true,
+        id: Some(sample_id),
+        message: format!("{} Linked to {} dataset(s).", base_msg, payload.dataset_ids.len()),
+    })
+}
+
+/// Return the datasets linked to a proposal, with display details and the id of
+/// the sample currently assigned to each (if any). Used by the sample form's
+/// dataset picker. Restricted to the proposal's experimenters and Admin/Staff.
+#[axum_macros::debug_handler]
+pub async fn get_proposal_datasets(
+    Path(proposal_id): Path<i32>,
+    State(state): State<appstate::AppState>,
+    claims: auth::Claims,
+    DatabaseConnection(mut conn): DatabaseConnection,
+) -> Result<Json<Vec<models::ProposalDataset>>, (StatusCode, String)>
+{
+    if claims.uac != defines::STR_ADMIN && claims.uac != defines::STR_STAFF
+    {
+        let owned: i64 = schema::experimenter_proposal_links::table
+            .filter(schema::experimenter_proposal_links::user_badge.eq(claims.get_badge()))
+            .filter(schema::experimenter_proposal_links::proposal_id.eq(proposal_id))
+            .count()
+            .get_result(&mut conn)
+            .await
+            .map_err(internal_error)?;
+        if owned == 0
+        {
+            return Err((StatusCode::FORBIDDEN, "You are not associated with the selected proposal.".to_string()));
+        }
+    }
+
+    let rows = schema::datasets::table
+        .inner_join(schema::proposal_dataset_links::table.on(schema::datasets::id.eq(schema::proposal_dataset_links::dataset_id)))
+        .inner_join(schema::beamlines::table.on(schema::beamlines::id.eq(schema::datasets::beamline_id)))
+        .inner_join(schema::syncotron_runs::table.on(schema::syncotron_runs::id.eq(schema::datasets::syncotron_run_id)))
+        .left_join(schema::bio_sample_dataset_links::table.on(schema::bio_sample_dataset_links::dataset_id.eq(schema::datasets::id)))
+        .filter(schema::proposal_dataset_links::proposal_id.eq(proposal_id))
+        .select((
+            models::Dataset::as_select(),
+            models::Beamline::as_select(),
+            models::SyncotronRun::as_select(),
+            schema::bio_sample_dataset_links::bio_sample_id.nullable(),
+        ))
+        .distinct()
+        .load::<(models::Dataset, models::Beamline, models::SyncotronRun, Option<i32>)>(&mut conn)
+        .await
+        .map_err(internal_error)?;
+
+    let datasets = rows.into_iter().map(|(d, b, s, sample_id)| models::ProposalDataset {
+        id: d.id,
+        path: d.path,
+        acquisition_timestamp: d.acquisition_timestamp,
+        beamline: b.acronym,
+        syncotron_run: s.name,
+        bio_sample_id: sample_id,
+    }).collect();
+
+    Ok(Json(datasets))
 }
 
 

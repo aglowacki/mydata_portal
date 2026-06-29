@@ -50,6 +50,13 @@ diesel::table! {
 }
 
 diesel::table! {
+    bio_sample_dataset_links (dataset_id) {
+        dataset_id -> Int4,
+        bio_sample_id -> Int4,
+    }
+}
+
+diesel::table! {
     bio_sample_type_origin_sub_origin_links (id) {
         id -> Int4,
         bio_sample_type_id -> Int4,
@@ -236,6 +243,8 @@ diesel::table! {
 
 diesel::joinable!(beamline_contacts -> beamlines (beamline_id));
 diesel::joinable!(beamline_contacts -> users (user_badge));
+diesel::joinable!(bio_sample_dataset_links -> datasets (dataset_id));
+diesel::joinable!(bio_sample_dataset_links -> bio_samples (bio_sample_id));
 diesel::joinable!(bio_sample_fixations -> bio_sample_fixatives (fixative_id));
 diesel::joinable!(bio_sample_type_origin_sub_origin_links -> bio_sample_types (bio_sample_type_id));
 diesel::joinable!(bio_sample_type_origin_sub_origin_links -> sample_origins (origin_id));
@@ -266,6 +275,7 @@ diesel::allow_tables_to_appear_in_same_query!(
     beamline_contacts,
     beamlines,
     bio_sample_conditions,
+    bio_sample_dataset_links,
     bio_sample_fixations,
     bio_sample_fixatives,
     bio_sample_type_origin_sub_origin_links,

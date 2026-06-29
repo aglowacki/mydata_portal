@@ -11,6 +11,7 @@ use serde::{Serialize, Deserialize};
 use crate::database::schema::{beamline_contacts,
                                 beamlines,
                                 bio_sample_conditions,
+                                bio_sample_dataset_links,
                                 bio_sample_fixations,
                                 bio_sample_fixatives,
                                 bio_sample_type_origin_sub_origin_links,
@@ -204,11 +205,25 @@ pub struct NewBioSample {
     pub notes: Option<String>,
 }
 
+/// Links a dataset (scan) to the bio sample it captured. The primary key is
+/// `dataset_id`, enforcing at most one sample per dataset.
+#[derive(Queryable, Debug, Identifiable, Insertable, Selectable, Associations)]
+#[diesel(belongs_to(BioSample, foreign_key=bio_sample_id))]
+#[diesel(belongs_to(Dataset, foreign_key=dataset_id))]
+#[diesel(primary_key(dataset_id))]
+#[diesel(table_name = bio_sample_dataset_links)]
+pub struct BioSampleDatasetLink {
+    pub dataset_id: i32,
+    pub bio_sample_id: i32,
+}
+
 /// Payload sent by the sample form. When `id` is present the matching row is
-/// updated, otherwise a new sample is inserted.
+/// updated, otherwise a new sample is inserted. `dataset_ids` are the datasets
+/// the sample information applies to.
 #[derive(Deserialize, Debug)]
 pub struct BioSampleUpsert {
     pub id: Option<i32>,
+    pub dataset_ids: Vec<i32>,
     #[serde(flatten)]
     pub sample: NewBioSample,
 }
@@ -316,6 +331,20 @@ pub struct DatasetWithDetails
     pub beamline: String,
     pub syncotron_run: String,
     //pub scan_type_name: String,
+}
+
+/// A dataset belonging to a proposal, with display details and the id of the
+/// sample currently linked to it (if any), used by the sample form's dataset
+/// picker.
+#[derive(serde::Serialize)]
+pub struct ProposalDataset
+{
+    pub id: i32,
+    pub path: String,
+    pub acquisition_timestamp: NaiveDateTime,
+    pub beamline: String,
+    pub syncotron_run: String,
+    pub bio_sample_id: Option<i32>,
 }
 
 #[derive(serde::Serialize)]

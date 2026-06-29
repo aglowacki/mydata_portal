@@ -8,6 +8,16 @@ interface Proposal
     title: string;
 }
 
+interface ProposalDataset
+{
+    id: number;
+    path: string;
+    acquisition_timestamp: string;
+    beamline: string;
+    syncotron_run: string;
+    bio_sample_id: number | null;
+}
+
 interface BioSampleType
 {
     id: number;
@@ -93,9 +103,13 @@ class SampleManagementApp
     //private sample_types: BioSampleType[] = [];
     private sample_meta_data_groups: SampleMetaDataGroups | null;
 
+    // datasets fetched for the currently selected proposal
+    private proposal_datasets: Array<ProposalDataset>;
+
     // DOM Elements
     private sample_form: HTMLFormElement;
     private sample_proposal_select: HTMLSelectElement;
+    private sample_datasets_div: HTMLDivElement;
     private sample_id_input: HTMLInputElement;
     private sample_name_input: HTMLInputElement;
     private sample_type_select: HTMLSelectElement;
@@ -137,6 +151,7 @@ class SampleManagementApp
         this.defaultHiddenOptionsStr.push(KEY_OTHER_NOTES);
 
         this.sample_meta_data_groups = null;
+        this.proposal_datasets = new Array();
         this.main_div = document.createElement("div") as HTMLDivElement;
         this.message_div = document.createElement("div") as HTMLDivElement;
 
@@ -149,14 +164,30 @@ class SampleManagementApp
         this.sample_proposal_select = document.createElement('select') as HTMLSelectElement;
         this.sample_proposal_select.id = 'sampleProposal';
         this.sample_proposal_select.innerHTML = '<option value="">Select a proposal...</option>';
+        this.sample_proposal_select.addEventListener('change', (event) =>
+        {
+            let item = event.target as HTMLSelectElement;
+            const value = Number(item?.value);
+            this.loadProposalDatasets(value);
+        });
         div_prop.appendChild(this.sample_proposal_select);
         this.sample_form.appendChild(div_prop);
+
+        // dataset selection - populated once a proposal is chosen
+        const div_ds = this.create_div_group("Datasets:", false);
+        this.sample_datasets_div = document.createElement('div') as HTMLDivElement;
+        this.sample_datasets_div.id = 'sampleDatasets';
+        this.sample_datasets_div.classList.add('sample-datasets-list');
+        this.sample_datasets_div.textContent = 'Select a proposal to list its datasets.';
+        div_ds.appendChild(this.sample_datasets_div);
+        this.sample_form.appendChild(div_ds);
 
         // sample selection input
         const div0 = this.create_div_group("Sample ID:", false);
         this.sample_id_input = document.createElement('input') as HTMLInputElement;
         this.sample_id_input.id = 'sampleId';
         this.sample_id_input.type = 'text';
+        this.sample_id_input.addEventListener('input', () => this.autoCheckDatasetsForSample());
         div0.appendChild(this.sample_id_input);
         this.sample_form.appendChild(div0);
 
@@ -628,6 +659,120 @@ class SampleManagementApp
         }
     }
 
+    private async loadProposalDatasets(proposal_id: number): Promise<void>
+    {
+        if (!(proposal_id > 0))
+        {
+            this.proposal_datasets = [];
+            this.sample_datasets_div.textContent = 'Select a proposal to list its datasets.';
+            return;
+        }
+
+        try
+        {
+            const auth_cookie: string = get_cookie('access_token');
+            const headers = new Headers({
+                'Content-Type': 'application/json',
+                'Accept': 'application/json',
+                'Authorization': auth_cookie,
+            });
+
+            const response = await fetch('/api/get_proposal_datasets/' + proposal_id, { method: 'GET', headers: headers });
+            if (!response.ok)
+            {
+                throw new Error(`HTTP error! status: ${response.status}`);
+            }
+
+            this.proposal_datasets = await response.json();
+            this.renderDatasetCheckboxes();
+        }
+        catch (error)
+        {
+            console.error('Error loading datasets:', error);
+            this.proposal_datasets = [];
+            this.sample_datasets_div.textContent = 'Failed to load datasets for this proposal.';
+        }
+    }
+
+    private renderDatasetCheckboxes(): void
+    {
+        this.sample_datasets_div.innerHTML = '';
+        if (this.proposal_datasets.length === 0)
+        {
+            this.sample_datasets_div.textContent = 'No datasets are associated with this proposal.';
+            return;
+        }
+
+        this.proposal_datasets.forEach(ds =>
+        {
+            const row = document.createElement('div') as HTMLDivElement;
+            row.classList.add('sample-dataset-row');
+
+            const checkbox = document.createElement('input') as HTMLInputElement;
+            checkbox.type = 'checkbox';
+            checkbox.value = String(ds.id);
+            checkbox.id = 'dataset_' + ds.id;
+            checkbox.classList.add('sample-dataset-checkbox');
+
+            const label = document.createElement('label') as HTMLLabelElement;
+            label.htmlFor = checkbox.id;
+            let text = `${ds.path} [${ds.beamline} / ${ds.syncotron_run} / ${ds.acquisition_timestamp}]`;
+            if (ds.bio_sample_id !== null)
+            {
+                text += ` (currently sample #${ds.bio_sample_id})`;
+            }
+            label.textContent = text;
+
+            row.appendChild(checkbox);
+            row.appendChild(label);
+            this.sample_datasets_div.appendChild(row);
+        });
+
+        // Pre-check datasets already linked to the entered sample id (if any).
+        this.autoCheckDatasetsForSample();
+    }
+
+    // Check the datasets currently linked to the sample id typed into the form,
+    // so editing an existing sample starts from its current dataset selection.
+    private autoCheckDatasetsForSample(): void
+    {
+        const id_str = this.sample_id_input.value.trim();
+        if (id_str.length === 0)
+        {
+            return;
+        }
+        const sample_id = Number(id_str);
+        if (!(sample_id > 0))
+        {
+            return;
+        }
+        this.proposal_datasets.forEach(ds =>
+        {
+            if (ds.bio_sample_id === sample_id)
+            {
+                const checkbox = document.getElementById('dataset_' + ds.id) as HTMLInputElement | null;
+                if (checkbox !== null)
+                {
+                    checkbox.checked = true;
+                }
+            }
+        });
+    }
+
+    private getSelectedDatasetIds(): Array<number>
+    {
+        const ids: Array<number> = [];
+        this.proposal_datasets.forEach(ds =>
+        {
+            const checkbox = document.getElementById('dataset_' + ds.id) as HTMLInputElement | null;
+            if (checkbox !== null && checkbox.checked)
+            {
+                ids.push(ds.id);
+            }
+        });
+        return ids;
+    }
+
     private handleFormSubmit(event: Event): void
     {
         event.preventDefault();
@@ -733,6 +878,13 @@ class SampleManagementApp
             thickness = parsed;
         }
 
+        const dataset_ids = this.getSelectedDatasetIds();
+        if (dataset_ids.length === 0)
+        {
+            this.showMessage('Please select at least one dataset.', 'error');
+            return;
+        }
+
         const sub_origin_id = Number(this.sample_sub_origin_select.value);
         const source_id = Number(this.sample_source_select.value);
         const cell_line = this.sample_cell_line_input.value.trim();
@@ -742,6 +894,7 @@ class SampleManagementApp
 
         const payload = {
             id: id,
+            dataset_ids: dataset_ids,
             proposal_id: proposal_id,
             name: name,
             type_id: type_id,
@@ -791,6 +944,9 @@ class SampleManagementApp
                 {
                     this.sample_id_input.value = String(result.id);
                 }
+                // Refresh the dataset list so the "currently sample #N" notes
+                // reflect the new assignments.
+                this.loadProposalDatasets(Number(this.sample_proposal_select.value));
             }
             else
             {

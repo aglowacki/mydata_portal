@@ -16,3 +16,24 @@
 {
   display: none;
 }
+
+.sample-datasets-list
+{
+  max-height: 200px;
+  overflow-y: auto;
+  border: 1px solid #ccc;
+  padding: 4px;
+}
+
+.sample-dataset-row
+{
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.sample-dataset-row label
+{
+  font-family: monospace;
+  font-size: 0.85em;
+}
