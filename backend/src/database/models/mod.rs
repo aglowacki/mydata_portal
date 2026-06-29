@@ -6,8 +6,8 @@
 use chrono::NaiveDateTime;
 use chrono::DateTime;
 use chrono::offset::Utc;
-use diesel::{Queryable, Identifiable, Selectable, QueryableByName, Associations};
-use serde::Serialize;
+use diesel::{Queryable, Identifiable, Selectable, QueryableByName, Associations, Insertable, AsChangeset};
+use serde::{Serialize, Deserialize};
 use crate::database::schema::{beamline_contacts,
                                 beamlines,
                                 bio_sample_conditions,
@@ -169,16 +169,56 @@ pub struct BioSample {
     pub name: String,
     pub type_id: i32,
     pub origin_id: i32,
-    pub sub_origin_id: i32,
-    pub source_id: i32,
-    pub thickness: i32,
+    pub sub_origin_id: Option<i32>,
+    pub source_id: Option<i32>,
+    pub thickness: Option<i32>,
     pub cell_line: Option<String>,
-    pub is_cancer: bool,
+    pub is_cancer: Option<bool>,
     pub condition_id: i32,
     pub treatment_details: Option<String>,
     pub fixation_id: i32,
     pub expected_elemental_content_change: Option<String>,
     pub notes: Option<String>,
+}
+
+/// Columns written when inserting or updating a `bio_samples` row. The `id`
+/// column is omitted (GENERATED ALWAYS AS IDENTITY); the optional fields are
+/// only filled in for the relevant sample types in the frontend form.
+#[derive(Insertable, AsChangeset, Deserialize, Debug)]
+#[diesel(table_name = bio_samples)]
+#[diesel(treat_none_as_null = true)]
+pub struct NewBioSample {
+    pub proposal_id: i32,
+    pub name: String,
+    pub type_id: i32,
+    pub origin_id: i32,
+    pub sub_origin_id: Option<i32>,
+    pub source_id: Option<i32>,
+    pub thickness: Option<i32>,
+    pub cell_line: Option<String>,
+    pub is_cancer: Option<bool>,
+    pub condition_id: i32,
+    pub treatment_details: Option<String>,
+    pub fixation_id: i32,
+    pub expected_elemental_content_change: Option<String>,
+    pub notes: Option<String>,
+}
+
+/// Payload sent by the sample form. When `id` is present the matching row is
+/// updated, otherwise a new sample is inserted.
+#[derive(Deserialize, Debug)]
+pub struct BioSampleUpsert {
+    pub id: Option<i32>,
+    #[serde(flatten)]
+    pub sample: NewBioSample,
+}
+
+/// Status returned to the frontend after an upsert attempt.
+#[derive(Serialize)]
+pub struct BioSampleUpsertResponse {
+    pub success: bool,
+    pub id: Option<i32>,
+    pub message: String,
 }
 
 #[derive(Queryable, Debug, Identifiable, Selectable, Serialize, Clone)]

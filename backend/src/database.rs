@@ -173,6 +173,31 @@ pub async fn get_user_proposals(
     Ok(Json(res))
 }
 
+/// Return every proposal. Restricted to Admin/Staff so they can attach samples
+/// to any proposal from the sample form.
+#[axum_macros::debug_handler]
+pub async fn get_all_proposals(
+    State(state): State<appstate::AppState>,
+    claims: auth::Claims,
+    DatabaseConnection(mut conn): DatabaseConnection,
+) -> Result<Json<Vec<models::Proposal>>, (StatusCode, String)>
+{
+    if claims.uac == defines::STR_ADMIN || claims.uac == defines::STR_STAFF
+    {
+        let res = schema::proposals::table.select(models::Proposal::as_select())
+        .load(&mut conn)
+        .await
+        .map_err(internal_error)?;
+
+        Ok(Json(res))
+    }
+    else
+    {
+        let err_msg = "Need to be Admin or Staff to get all proposals.".to_string();
+        Err((StatusCode::FORBIDDEN, err_msg))
+    }
+}
+
 #[axum_macros::debug_handler]
 pub async fn get_user_proposals_as(
     Path(user_id): Path<i32>,
@@ -348,6 +373,112 @@ pub async fn get_bio_sample_meta_data_groups(
     Ok(Json(models::BioSampleMetaDataGrouping{conditions, fixations, fixatives, sample_types, sample_origins, sample_sub_origins, samples_sources, sample_type_origin_links}))
 
 
+}
+
+/// Insert a new bio sample or update an existing one (when `id` is supplied).
+/// Performs basic validation and verifies the requesting user is associated
+/// with the target proposal (admins/staff may write to any proposal). Always
+/// returns a JSON status the frontend can act on.
+#[axum_macros::debug_handler]
+pub async fn upsert_bio_sample(
+    State(state): State<appstate::AppState>,
+    claims: auth::Claims,
+    DatabaseConnection(mut conn): DatabaseConnection,
+    Json(payload): Json<models::BioSampleUpsert>,
+) -> Json<models::BioSampleUpsertResponse>
+{
+    let fail = |msg: &str| Json(models::BioSampleUpsertResponse {
+        success: false,
+        id: None,
+        message: msg.to_string(),
+    });
+
+    // ---- basic validation ----
+    if payload.sample.name.trim().is_empty()
+    {
+        return fail("Sample name is required.");
+    }
+    if payload.sample.proposal_id <= 0
+    {
+        return fail("A proposal must be selected.");
+    }
+    if payload.sample.type_id <= 0
+    {
+        return fail("A sample type must be selected.");
+    }
+    if payload.sample.origin_id <= 0
+    {
+        return fail("A sample origin must be selected.");
+    }
+    if payload.sample.condition_id <= 0
+    {
+        return fail("A sample condition must be selected.");
+    }
+    if payload.sample.fixation_id <= 0
+    {
+        return fail("A sample fixation must be selected.");
+    }
+
+    // ---- authorization: user must be on the proposal (unless admin/staff) ----
+    if claims.uac != defines::STR_ADMIN && claims.uac != defines::STR_STAFF
+    {
+        let owned: i64 = match schema::experimenter_proposal_links::table
+            .filter(schema::experimenter_proposal_links::user_badge.eq(claims.get_badge()))
+            .filter(schema::experimenter_proposal_links::proposal_id.eq(payload.sample.proposal_id))
+            .count()
+            .get_result(&mut conn)
+            .await
+        {
+            Ok(c) => c,
+            Err(err) => return fail(&format!("Failed to verify proposal access: {}", err)),
+        };
+
+        if owned == 0
+        {
+            return fail("You are not associated with the selected proposal.");
+        }
+    }
+
+    // ---- insert or update ----
+    match payload.id
+    {
+        Some(id) =>
+        {
+            let res = diesel::update(schema::bio_samples::table.find(id))
+                .set(&payload.sample)
+                .returning(schema::bio_samples::id)
+                .get_result::<i32>(&mut conn)
+                .await;
+            match res
+            {
+                Ok(updated_id) => Json(models::BioSampleUpsertResponse {
+                    success: true,
+                    id: Some(updated_id),
+                    message: format!("Sample {} updated successfully.", updated_id),
+                }),
+                Err(diesel::result::Error::NotFound) =>
+                    fail(&format!("No sample found with id {}.", id)),
+                Err(err) => fail(&format!("Failed to update sample: {}", err)),
+            }
+        }
+        None =>
+        {
+            let res = diesel::insert_into(schema::bio_samples::table)
+                .values(&payload.sample)
+                .returning(schema::bio_samples::id)
+                .get_result::<i32>(&mut conn)
+                .await;
+            match res
+            {
+                Ok(new_id) => Json(models::BioSampleUpsertResponse {
+                    success: true,
+                    id: Some(new_id),
+                    message: format!("Sample created successfully (id {}).", new_id),
+                }),
+                Err(err) => fail(&format!("Failed to create sample: {}", err)),
+            }
+        }
+    }
 }
 
 

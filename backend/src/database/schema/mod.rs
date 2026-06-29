@@ -74,12 +74,12 @@ diesel::table! {
         name -> Varchar,
         type_id -> Int4,
         origin_id -> Int4,
-        sub_origin_id -> Int4,
-        source_id -> Int4,
-        thickness -> Int4,
+        sub_origin_id -> Nullable<Int4>,
+        source_id -> Nullable<Int4>,
+        thickness -> Nullable<Int4>,
         #[max_length = 256]
         cell_line -> Nullable<Varchar>,
-        is_cancer -> Bool,
+        is_cancer -> Nullable<Bool>,
         condition_id -> Int4,
         #[max_length = 2000]
         treatment_details -> Nullable<Varchar>,

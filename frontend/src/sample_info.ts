@@ -1,6 +1,14 @@
 import { gen_index } from './general-helper';
+import { get_cookie } from './cookies';
+import { get_user_info } from './auth';
 
-interface BioSampleType 
+interface Proposal
+{
+    id: number;
+    title: string;
+}
+
+interface BioSampleType
 {
     id: number;
     type_name: string;
@@ -87,6 +95,7 @@ class SampleManagementApp
 
     // DOM Elements
     private sample_form: HTMLFormElement;
+    private sample_proposal_select: HTMLSelectElement;
     private sample_id_input: HTMLInputElement;
     private sample_name_input: HTMLInputElement;
     private sample_type_select: HTMLSelectElement;
@@ -134,6 +143,14 @@ class SampleManagementApp
         this.sample_form = document.createElement('form') as HTMLFormElement;
         this.sample_form.id="sampleForm";
         this.sample_form.classList.add("sample-form");
+
+        // proposal selection input
+        const div_prop = this.create_div_group("Proposal:", false);
+        this.sample_proposal_select = document.createElement('select') as HTMLSelectElement;
+        this.sample_proposal_select.id = 'sampleProposal';
+        this.sample_proposal_select.innerHTML = '<option value="">Select a proposal...</option>';
+        div_prop.appendChild(this.sample_proposal_select);
+        this.sample_form.appendChild(div_prop);
 
         // sample selection input
         const div0 = this.create_div_group("Sample ID:", false);
@@ -278,6 +295,7 @@ class SampleManagementApp
 
         this.setupEventListeners();
         this.loadSampleMetaDataGroups();
+        this.loadUserProposals();
     }
 
     public gen_main_div(): HTMLDivElement
@@ -300,11 +318,9 @@ class SampleManagementApp
         return div;
     }
 
-    private setupEventListeners(): void 
+    private setupEventListeners(): void
     {
-        //this.adminToggle.addEventListener('click', () => this.toggleAdminMode());
-        //this.addSampleTypeButton.addEventListener('click', () => this.addNewSampleType());
-        //this.sampleForm.addEventListener('submit', (e) => this.handleFormSubmit(e));    
+        this.sample_form.addEventListener('submit', (e) => this.handleFormSubmit(e));
     }
 
 
@@ -559,12 +575,238 @@ class SampleManagementApp
             option.textContent = val.name;
             this.sample_fixative_select.appendChild(option);
         });
-  */      
+  */
+    }
+
+    private async loadUserProposals(): Promise<void>
+    {
+        try
+        {
+            const auth_cookie: string = get_cookie('access_token');
+            const headers = new Headers({
+                'Content-Type': 'application/json',
+                'Accept': 'application/json',
+                'Authorization': auth_cookie,
+            });
+
+            // Admins/staff can attach samples to any proposal, so load them all;
+            // everyone else only sees the proposals they are associated with.
+            let url = '/api/get_user_proposals';
+            try
+            {
+                const claims = await get_user_info();
+                if (claims.uac === 'Admin' || claims.uac === 'Staff')
+                {
+                    url = '/api/get_all_proposals';
+                }
+            }
+            catch (e)
+            {
+                console.error('Could not determine user role, defaulting to own proposals:', e);
+            }
+
+            const response = await fetch(url, { method: 'GET', headers: headers });
+            if (!response.ok)
+            {
+                throw new Error(`HTTP error! status: ${response.status}`);
+            }
+
+            const proposals: Array<Proposal> = await response.json();
+            this.sample_proposal_select.innerHTML = '<option value="">Select a proposal...</option>';
+            proposals.forEach(proposal =>
+            {
+                const option = document.createElement('option') as HTMLOptionElement;
+                option.value = String(proposal.id);
+                option.textContent = `${proposal.id} - ${proposal.title}`;
+                this.sample_proposal_select.appendChild(option);
+            });
+        }
+        catch (error)
+        {
+            console.error('Error loading proposals:', error);
+            this.showMessage('Failed to load proposals. Please make sure you are logged in.', 'error');
+        }
+    }
+
+    private handleFormSubmit(event: Event): void
+    {
+        event.preventDefault();
+
+        // Basic required-field checks before sending to the backend.
+        const proposal_id = Number(this.sample_proposal_select.value);
+        if (!(proposal_id > 0))
+        {
+            this.showMessage('Please select a proposal.', 'error');
+            return;
+        }
+
+        const name = this.sample_name_input.value.trim();
+        if (name.length === 0)
+        {
+            this.showMessage('Sample Name is required.', 'error');
+            return;
+        }
+
+        const type_id = Number(this.sample_type_select.value);
+        if (!(type_id > 0))
+        {
+            this.showMessage('Please select a sample type.', 'error');
+            return;
+        }
+
+        const origin_id = Number(this.sample_origin_select.value);
+        if (!(origin_id > 0))
+        {
+            this.showMessage('Please select a sample origin.', 'error');
+            return;
+        }
+
+        const condition_id = Number(this.sample_condition_select.value);
+        if (!(condition_id > 0))
+        {
+            this.showMessage('Please select a sample condition.', 'error');
+            return;
+        }
+
+        // The fixation <select> holds a fixation *name*; the fixative <select>
+        // (when shown) holds a fixative id. A bio_sample_fixations row is
+        // uniquely identified by (name, fixative_id), so resolve it back to its
+        // primary key for the database.
+        const fixation_name = this.sample_fixation_select.value;
+        if (fixation_name.length === 0)
+        {
+            this.showMessage('Please select a sample fixation.', 'error');
+            return;
+        }
+        const selected_fixative_id = Number(this.sample_fixative_select.value);
+        let fixation_id = 0;
+        this.sample_meta_data_groups?.fixations.forEach(f =>
+        {
+            if (f.name === fixation_name)
+            {
+                if (selected_fixative_id > 0)
+                {
+                    if (f.fixative_id === selected_fixative_id)
+                    {
+                        fixation_id = f.id;
+                    }
+                }
+                else
+                {
+                    // No fixative was chosen (only "None" was available) - take
+                    // the fixation row directly.
+                    fixation_id = f.id;
+                }
+            }
+        });
+        if (!(fixation_id > 0))
+        {
+            this.showMessage('Please select a sample fixative.', 'error');
+            return;
+        }
+
+        // Optional / conditional fields. Only visible inputs are sent; hidden
+        // ones are treated as not provided (null).
+        const id_str = this.sample_id_input.value.trim();
+        let id: number | null = null;
+        if (id_str.length > 0)
+        {
+            const parsed = Number(id_str);
+            if (!Number.isInteger(parsed) || parsed <= 0)
+            {
+                this.showMessage('Sample ID must be a positive whole number (leave blank to create a new sample).', 'error');
+                return;
+            }
+            id = parsed;
+        }
+
+        let thickness: number | null = null;
+        const thickness_str = this.sample_thickness_input.value.trim();
+        if (thickness_str.length > 0)
+        {
+            const parsed = Number(thickness_str);
+            if (!Number.isInteger(parsed) || parsed < 0)
+            {
+                this.showMessage('Thickness must be a non-negative whole number.', 'error');
+                return;
+            }
+            thickness = parsed;
+        }
+
+        const sub_origin_id = Number(this.sample_sub_origin_select.value);
+        const source_id = Number(this.sample_source_select.value);
+        const cell_line = this.sample_cell_line_input.value.trim();
+        const treatment = this.sample_treatment_textarea.value.trim();
+        const eecc = this.sample_eecc_textarea.value.trim();
+        const notes = this.sample_notes_textarea.value.trim();
+
+        const payload = {
+            id: id,
+            proposal_id: proposal_id,
+            name: name,
+            type_id: type_id,
+            origin_id: origin_id,
+            sub_origin_id: sub_origin_id > 0 ? sub_origin_id : null,
+            source_id: source_id > 0 ? source_id : null,
+            thickness: thickness,
+            cell_line: cell_line.length > 0 ? cell_line : null,
+            is_cancer: this.sample_is_cancer_input.checked,
+            condition_id: condition_id,
+            treatment_details: treatment.length > 0 ? treatment : null,
+            fixation_id: fixation_id,
+            expected_elemental_content_change: eecc.length > 0 ? eecc : null,
+            notes: notes.length > 0 ? notes : null,
+        };
+
+        this.submitSample(payload);
+    }
+
+    private async submitSample(payload: object): Promise<void>
+    {
+        try
+        {
+            const auth_cookie: string = get_cookie('access_token');
+            const headers = new Headers({
+                'Content-Type': 'application/json',
+                'Accept': 'application/json',
+                'Authorization': auth_cookie,
+            });
+
+            const response = await fetch('/api/upsert_bio_sample', {
+                method: 'POST',
+                headers: headers,
+                body: JSON.stringify(payload),
+            });
+
+            if (!response.ok)
+            {
+                throw new Error(`HTTP error! status: ${response.status}`);
+            }
+
+            const result: { success: boolean, id: number | null, message: string } = await response.json();
+            if (result.success)
+            {
+                this.showMessage(result.message, 'success');
+                if (result.id !== null)
+                {
+                    this.sample_id_input.value = String(result.id);
+                }
+            }
+            else
+            {
+                this.showMessage(result.message, 'error');
+            }
+        }
+        catch (error)
+        {
+            console.error('Error submitting sample:', error);
+            this.showMessage('Failed to submit sample. Please try again.', 'error');
+        }
     }
 /*
-    
 
-    private async addNewSampleType(): Promise<void> 
+
+    private async addNewSampleType(): Promise<void>
     {
         const newTypeName = this.newSampleTypeInput.value.trim();
         
