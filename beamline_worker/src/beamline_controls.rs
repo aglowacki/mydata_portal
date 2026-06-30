@@ -14,8 +14,8 @@ pub struct ControlClient
     cmd_address: String,
     log_address: String,
     log_topic: String,
-    bealine_id: String,
-    bealine_id_log: String,
+    beamline_id: String,
+    beamline_id_log: String,
     protocol: String,
     subscriber: zmq::Socket,
     cmd_channel: zmq::Socket,
@@ -31,8 +31,8 @@ impl ControlClient
             log_address: format!("tcp://{}:60625", config.host.to_string()),
             log_topic: String::from(config.zmq_log_topic.clone()),
             protocol: String::from(config.protocol.clone()),
-            bealine_id: String::from(config.beamline_id.clone()),
-            bealine_id_log: format!("{}{}", defines::KEY_BEAMLINE_SCAN_LOGS, config.beamline_id),
+            beamline_id: String::from(config.beamline_id.clone()),
+            beamline_id_log: format!("{}{}", defines::KEY_BEAMLINE_SCAN_LOGS, config.beamline_id),
             subscriber: context.socket(zmq::SUB).expect("Failed to create SUB socket"),
             cmd_channel: context.socket(zmq::REQ).expect("Failed to create CMD socket"),
         }
@@ -158,11 +158,11 @@ impl ClientMap
                                     if message != client.log_topic
                                     {
                                         // Push the message to the Redis list
-                                        let result: redis::RedisResult<()> = redis_conn.rpush(&(client.bealine_id_log), &message);
-                                        let _: redis::RedisResult<()> = redis_conn.publish(&(client.bealine_id_log), &message);
+                                        let result: redis::RedisResult<()> = redis_conn.rpush(&(client.beamline_id_log), &message);
+                                        let _: redis::RedisResult<()> = redis_conn.publish(&(client.beamline_id_log), &message);
                                         match result 
                                         {
-                                            Ok(_) => println!("Message pushed to Redis list: {}", client.bealine_id_log),
+                                            Ok(_) => println!("Message pushed to Redis list: {}", client.beamline_id_log),
                                             Err(err) => eprintln!("Failed to push message to Redis: {}", err),
                                         }
                                     }
