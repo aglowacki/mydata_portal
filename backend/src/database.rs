@@ -273,11 +273,48 @@ pub async fn get_user_proposals_with_datasets(
         Ok(Json(proposals_with_datasets))
 
     }
-    else 
+    else
     {
         let err_msg = "Need to be Admin or Staff to get proposals by other user.".to_string();
         Err((StatusCode::FORBIDDEN, err_msg))
     }
+}
+
+/// Look up the logged-in user's proposals by a property of their datasets:
+/// beamline acronym, beamline old_acronym, or syncotron run name. `field`
+/// selects which column to match; `value` is the exact value to match.
+#[axum_macros::debug_handler]
+pub async fn search_user_proposals(
+    Path((field, value)): Path<(String, String)>,
+    State(state): State<appstate::AppState>,
+    claims: auth::Claims,
+    DatabaseConnection(mut conn): DatabaseConnection,
+) -> Result<Json<Vec<models::Proposal>>, (StatusCode, String)>
+{
+    // Restrict to proposals the user is associated with, joined through their
+    // datasets to the beamline and syncotron run they were collected on.
+    let mut query = schema::proposals::table
+        .inner_join(schema::experimenter_proposal_links::table.on(schema::proposals::id.eq(schema::experimenter_proposal_links::proposal_id)))
+        .inner_join(schema::proposal_dataset_links::table.on(schema::proposals::id.eq(schema::proposal_dataset_links::proposal_id)))
+        .inner_join(schema::datasets::table.on(schema::datasets::id.eq(schema::proposal_dataset_links::dataset_id)))
+        .inner_join(schema::beamlines::table.on(schema::beamlines::id.eq(schema::datasets::beamline_id)))
+        .inner_join(schema::syncotron_runs::table.on(schema::syncotron_runs::id.eq(schema::datasets::syncotron_run_id)))
+        .filter(schema::experimenter_proposal_links::user_badge.eq(claims.get_badge()))
+        .select(models::Proposal::as_select())
+        .distinct()
+        .into_boxed();
+
+    match field.as_str()
+    {
+        "beamline_acronym" => { query = query.filter(schema::beamlines::acronym.eq(value)); }
+        "beamline_old_acronym" => { query = query.filter(schema::beamlines::old_acronym.eq(value)); }
+        "syncotron_run" => { query = query.filter(schema::syncotron_runs::name.eq(value)); }
+        _ => { return Err((StatusCode::BAD_REQUEST, format!("Unknown search field: {}", field))); }
+    }
+
+    let res = query.load(&mut conn).await.map_err(internal_error)?;
+
+    Ok(Json(res))
 }
 
 #[axum_macros::debug_handler]

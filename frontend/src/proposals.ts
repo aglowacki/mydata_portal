@@ -1,8 +1,9 @@
 import { get_cookie } from "./cookies";
 import { show_toast } from "./toast"
 import { gen_index } from './general-helper';
+import { get_user_info } from "./auth";
 
- interface Dataset_Struct 
+ interface Dataset_Struct
  {
     id: number;
     path: string;
@@ -10,6 +11,18 @@ import { gen_index } from './general-helper';
     beamline: number;
     syncotron_run: number;
     //scan_type_id: number;
+}
+
+// Datasets as returned by /api/get_proposal_datasets/{id} (beamline and
+// syncotron_run are resolved to display strings by the backend).
+interface Proposal_Dataset_Struct
+{
+    id: number;
+    path: string;
+    acquisition_timestamp: number;
+    beamline: string;
+    syncotron_run: string;
+    bio_sample_id: number | null;
 }
 
 interface Proposal_Struct 
@@ -33,10 +46,12 @@ class ProposalManagementApp
     private badge_label: HTMLLabelElement;
     private badge_input: HTMLInputElement;
     private update_btn: HTMLButtonElement;
+    private all_proposals_label: HTMLLabelElement;
+    private all_proposals_select: HTMLSelectElement;
 
     private main_div: HTMLDivElement;
 
-    constructor() 
+    constructor()
     {
         // admin controls
         this.admin_div = document.createElement("div") as HTMLDivElement;
@@ -50,9 +65,22 @@ class ProposalManagementApp
         this.update_btn = document.createElement("button") as HTMLButtonElement;
         this.update_btn.innerText = "Update";
 
+        // Admin-only dropdown listing every proposal. Hidden until we confirm
+        // the current user is Admin/Staff (see initAdminControls).
+        this.all_proposals_label = document.createElement("label") as HTMLLabelElement;
+        this.all_proposals_label.innerText = "All Proposals: ";
+        this.all_proposals_label.style.display = "none";
+
+        this.all_proposals_select = document.createElement("select") as HTMLSelectElement;
+        this.all_proposals_select.id = "all_proposals";
+        this.all_proposals_select.innerHTML = '<option value="">Select a proposal...</option>';
+        this.all_proposals_select.style.display = "none";
+
         this.admin_div.appendChild(this.badge_label);
         this.admin_div.appendChild(this.badge_input);
         this.admin_div.appendChild(this.update_btn);
+        this.admin_div.appendChild(this.all_proposals_label);
+        this.admin_div.appendChild(this.all_proposals_select);
 
         // main layout
         this.main_div = document.createElement("div") as HTMLDivElement;
@@ -72,6 +100,7 @@ class ProposalManagementApp
 
         this.setupEventListeners();
         this.loadProposals();
+        this.initAdminControls();
     }
 
     public gen_main_div(): HTMLDivElement
@@ -83,6 +112,139 @@ class ProposalManagementApp
     {
         this.update_btn.addEventListener('click', (event) =>  this.handleUpdateClick(event));
         this.proposals_table.addEventListener('click', (event) =>  this.handleRowSelection(event));
+        this.all_proposals_select.addEventListener('change', (event) =>
+        {
+            const item = event.target as HTMLSelectElement;
+            const proposal_id = Number(item?.value);
+            this.handleAllProposalsSelect(proposal_id);
+        });
+    }
+
+    // Show and populate the all-proposals dropdown only for Admin/Staff users.
+    private async initAdminControls(): Promise<void>
+    {
+        try
+        {
+            const claims = await get_user_info();
+            if (claims.uac === 'Admin' || claims.uac === 'Staff')
+            {
+                this.all_proposals_label.style.display = "";
+                this.all_proposals_select.style.display = "";
+                await this.loadAllProposals();
+            }
+        }
+        catch (error)
+        {
+            console.error('Could not determine user role; hiding admin controls:', error);
+        }
+    }
+
+    private async loadAllProposals(): Promise<void>
+    {
+        try
+        {
+            const auth_cookie: string = get_cookie('access_token');
+            const headers = new Headers({
+                'Content-Type': 'application/json',
+                'Accept': 'application/json',
+                'Authorization': auth_cookie,
+            });
+
+            const response = await fetch('/api/get_all_proposals', { method: 'GET', headers: headers });
+            if (!response.ok)
+            {
+                throw new Error(`HTTP error! status: ${response.status}`);
+            }
+
+            const proposals: Array<Proposal_Struct> = await response.json();
+            this.all_proposals_select.innerHTML = '<option value="">Select a proposal...</option>';
+            proposals.forEach(proposal =>
+            {
+                const option = document.createElement("option") as HTMLOptionElement;
+                option.value = proposal.id.toString();
+                option.textContent = `${proposal.id} - ${proposal.title}`;
+                this.all_proposals_select.appendChild(option);
+            });
+        }
+        catch (error)
+        {
+            console.error('Error loading all proposals:', error);
+            show_toast('Failed to load all proposals.');
+        }
+    }
+
+    private handleAllProposalsSelect(proposal_id: number): void
+    {
+        if (!(proposal_id > 0))
+        {
+            this.datasets_table.innerHTML = "";
+            return;
+        }
+
+        const resp = this.get_proposal_datasets(proposal_id);
+        resp.then(lres =>
+        {
+            lres.json().then((datasets: Array<Proposal_Dataset_Struct>) =>
+            {
+                // Reuse the existing dataset renderer by wrapping the datasets in
+                // the shape it expects. Drop bio_sample_id so the rendered
+                // columns match fill_dataset_table's 5-column layout.
+                const display_datasets = datasets.map(ds =>
+                ({
+                    id: ds.id,
+                    path: ds.path,
+                    acquisition_timestamp: ds.acquisition_timestamp,
+                    beamline: ds.beamline,
+                    syncotron_run: ds.syncotron_run,
+                }));
+                this.fill_dataset_table({ datasets: display_datasets } as unknown as Proposal_Struct);
+            });
+        })
+        .catch(error =>
+        {
+            show_toast(error.message);
+        });
+    }
+
+    private async get_proposal_datasets(proposal_id: number): Promise<Response>
+    {
+        const auth_cookie: string = get_cookie('access_token');
+        const headers = new Headers({
+            'Content-Type': 'application/json',
+            'Accept': 'application/json',
+            'Authorization': auth_cookie,
+        });
+
+        const requestOptions: RequestInit = {
+            method: 'GET',
+            headers: headers,
+        };
+
+        try
+        {
+            const response = await fetch('/api/get_proposal_datasets/' + proposal_id, requestOptions);
+            if (!response.ok)
+            {
+                if (response.status == 502)
+                {
+                    throw new Error(`Backend Auth Serivce unreachable. ${response.status}`);
+                }
+                else if (response.status == 400)
+                {
+                    throw new Error(`Missing credentials. ${response.status}`);
+                }
+                else
+                {
+                    throw new Error(`HTTP error! status: ${response.status}`);
+                }
+            }
+            return response;
+        }
+        catch (error)
+        {
+            console.error('There was a problem with the fetch operation:', error);
+            throw error;
+        }
     }
 
     private loadProposals(): void
