@@ -496,11 +496,12 @@ class SampleManagementApp
 
     private sampleFixationChanged(name: string): void 
     {
+        // Reset the fixative list before repopulating so options from a
+        // previous fixation selection don't accumulate.
         this.sample_fixative_select.innerHTML = '<option value="">Select ...</option>';
         this.setPropVisible(KEY_FIXATIVE, false);
-        let added: boolean = false;
         let fixatives_map: Map<string, number> = new Map();
-        this.sample_meta_data_groups?.fixations.forEach(item => 
+        this.sample_meta_data_groups?.fixations.forEach(item =>
         {
             if(item.name === name)
             {
@@ -513,22 +514,21 @@ class SampleManagementApp
                 });
             }
         });
-        
-        if(fixatives_map.size === 1 && fixatives_map.has(KEY_NONE))
-        {
 
-        }
-        else if (fixatives_map.size > 0)
+        for (let [key, value] of fixatives_map.entries())
         {
-            for (let [key, value] of fixatives_map.entries())
-            {
-                const option = document.createElement('option') as HTMLOptionElement;
-                option.value = String(value);
-                option.textContent = key;
-                this.sample_fixative_select.appendChild(option);   
-            }
-            this.setPropVisible(KEY_FIXATIVE, true);
+            const option = document.createElement('option') as HTMLOptionElement;
+            option.value = String(value);
+            option.textContent = key;
+            this.sample_fixative_select.appendChild(option);
         }
+        // if we only have 1 entry then select it automatically.
+        if (fixatives_map.size == 1)
+        {
+          this.sample_fixative_select.selectedIndex = 1;
+          //this.sample_fixative_select.dispatchEvent(new Event("change"));
+        }
+        this.setPropVisible(KEY_FIXATIVE, true);
     }
 
     private async loadSampleMetaDataGroups(): Promise<void>
@@ -716,11 +716,13 @@ class SampleManagementApp
 
             const label = document.createElement('label') as HTMLLabelElement;
             label.htmlFor = checkbox.id;
-            let text = `${ds.path} [${ds.beamline} / ${ds.syncotron_run} / ${ds.acquisition_timestamp}]`;
-            if (ds.bio_sample_id !== null)
-            {
-                text += ` (currently sample #${ds.bio_sample_id})`;
-            }
+            let text = `${ds.path}`;
+
+            //let text = `${ds.path} [${ds.beamline} / ${ds.syncotron_run} / ${ds.acquisition_timestamp}]`;
+            //if (ds.bio_sample_id !== null)
+            //{
+            //    text += ` (currently sample #${ds.bio_sample_id})`;
+            //}
             label.textContent = text;
 
             row.appendChild(checkbox);
