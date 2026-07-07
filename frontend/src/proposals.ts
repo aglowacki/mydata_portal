@@ -25,7 +25,7 @@ interface Proposal_Dataset_Struct
     bio_sample_id: number | null;
 }
 
-interface Proposal_Struct 
+interface Proposal_Struct
 {
     id: number;
     title: string;
@@ -35,9 +35,27 @@ interface Proposal_Struct
     datasets: Array<Dataset_Struct>;
 }
 
+// Autocomplete values for the search form, as returned by
+// /api/get_proposal_search_options.
+interface Experimenter_Option
+{
+    badge: number;
+    name: string;
+}
+
+interface Proposal_Search_Options
+{
+    runs: Array<string>;
+    beamline_acronyms: Array<string>;
+    experimenters: Array<Experimenter_Option>;
+}
+
 class ProposalManagementApp 
 {
     private proposals_json: Array<Proposal_Struct> | null = null;;
+
+    // Whether the current user is Admin/Staff (set once in initAdminControls).
+    private is_admin: boolean = false;
 
     // DOM Elements
     private proposals_table: HTMLTableElement;
@@ -48,6 +66,20 @@ class ProposalManagementApp
     private update_btn: HTMLButtonElement;
     private all_proposals_label: HTMLLabelElement;
     private all_proposals_select: HTMLSelectElement;
+
+    // Search controls
+    private search_div: HTMLDivElement;
+    private search_run_input: HTMLInputElement;
+    private search_beamline_input: HTMLInputElement;
+    private search_experimenter_label: HTMLLabelElement;
+    private search_experimenter_input: HTMLInputElement;
+    private search_btn: HTMLButtonElement;
+    private search_clear_btn: HTMLButtonElement;
+
+    // Autocomplete option lists for the search inputs.
+    private run_datalist: HTMLDataListElement;
+    private beamline_datalist: HTMLDataListElement;
+    private experimenter_datalist: HTMLDataListElement;
 
     private main_div: HTMLDivElement;
 
@@ -82,11 +114,66 @@ class ProposalManagementApp
         this.admin_div.appendChild(this.all_proposals_label);
         this.admin_div.appendChild(this.all_proposals_select);
 
+        // search controls
+        this.search_div = document.createElement("div") as HTMLDivElement;
+        this.search_div.id = "proposal-search";
+
+        // Autocomplete option lists (populated from the DB by loadSearchOptions).
+        this.run_datalist = document.createElement("datalist") as HTMLDataListElement;
+        this.run_datalist.id = "run_options";
+        this.beamline_datalist = document.createElement("datalist") as HTMLDataListElement;
+        this.beamline_datalist.id = "beamline_options";
+        this.experimenter_datalist = document.createElement("datalist") as HTMLDataListElement;
+        this.experimenter_datalist.id = "experimenter_options";
+
+        const search_run_label = document.createElement("label") as HTMLLabelElement;
+        search_run_label.innerText = "Run: ";
+        this.search_run_input = document.createElement("input") as HTMLInputElement;
+        this.search_run_input.id = "search_run";
+        this.search_run_input.placeholder = "e.g. 2024-2";
+        this.search_run_input.setAttribute("list", this.run_datalist.id);
+
+        const search_beamline_label = document.createElement("label") as HTMLLabelElement;
+        search_beamline_label.innerText = " Beamline Acronym: ";
+        this.search_beamline_input = document.createElement("input") as HTMLInputElement;
+        this.search_beamline_input.id = "search_beamline";
+        this.search_beamline_input.placeholder = "e.g. 2-ID-D";
+        this.search_beamline_input.setAttribute("list", this.beamline_datalist.id);
+
+        // Experimenter search is Admin/Staff only; hidden until confirmed.
+        this.search_experimenter_label = document.createElement("label") as HTMLLabelElement;
+        this.search_experimenter_label.innerText = " Experimenter: ";
+        this.search_experimenter_label.style.display = "none";
+        this.search_experimenter_input = document.createElement("input") as HTMLInputElement;
+        this.search_experimenter_input.id = "search_experimenter";
+        this.search_experimenter_input.placeholder = "badge or name";
+        this.search_experimenter_input.style.display = "none";
+        this.search_experimenter_input.setAttribute("list", this.experimenter_datalist.id);
+
+        this.search_btn = document.createElement("button") as HTMLButtonElement;
+        this.search_btn.innerText = "Search";
+
+        this.search_clear_btn = document.createElement("button") as HTMLButtonElement;
+        this.search_clear_btn.innerText = "Clear";
+
+        this.search_div.appendChild(search_run_label);
+        this.search_div.appendChild(this.search_run_input);
+        this.search_div.appendChild(search_beamline_label);
+        this.search_div.appendChild(this.search_beamline_input);
+        this.search_div.appendChild(this.search_experimenter_label);
+        this.search_div.appendChild(this.search_experimenter_input);
+        this.search_div.appendChild(this.search_btn);
+        this.search_div.appendChild(this.search_clear_btn);
+        this.search_div.appendChild(this.run_datalist);
+        this.search_div.appendChild(this.beamline_datalist);
+        this.search_div.appendChild(this.experimenter_datalist);
+
         // main layout
         this.main_div = document.createElement("div") as HTMLDivElement;
         this.main_div.id = "center";
         this.main_div.appendChild(this.admin_div);
-        
+        this.main_div.appendChild(this.search_div);
+
         this.proposals_table = document.createElement("table") as HTMLTableElement;
         this.proposals_table.id = "proposals-table";
         this.proposals_table.className = "animated-table";
@@ -101,6 +188,7 @@ class ProposalManagementApp
         this.setupEventListeners();
         this.loadProposals();
         this.initAdminControls();
+        this.loadSearchOptions();
     }
 
     public gen_main_div(): HTMLDivElement
@@ -118,6 +206,21 @@ class ProposalManagementApp
             const proposal_id = Number(item?.value);
             this.handleAllProposalsSelect(proposal_id);
         });
+
+        this.search_btn.addEventListener('click', () => this.searchProposals());
+        this.search_clear_btn.addEventListener('click', () => this.clearSearch());
+        // Pressing Enter in any search field runs the search.
+        [this.search_run_input, this.search_beamline_input, this.search_experimenter_input].forEach(input =>
+        {
+            input.addEventListener('keydown', (event) =>
+            {
+                if ((event as KeyboardEvent).key === 'Enter')
+                {
+                    event.preventDefault();
+                    this.searchProposals();
+                }
+            });
+        });
     }
 
     // Show and populate the all-proposals dropdown only for Admin/Staff users.
@@ -128,8 +231,12 @@ class ProposalManagementApp
             const claims = await get_user_info();
             if (claims.uac === 'Admin' || claims.uac === 'Staff')
             {
+                this.is_admin = true;
                 this.all_proposals_label.style.display = "";
                 this.all_proposals_select.style.display = "";
+                // Admins/staff can also search by experimenter.
+                this.search_experimenter_label.style.display = "";
+                this.search_experimenter_input.style.display = "";
                 await this.loadAllProposals();
             }
         }
@@ -263,6 +370,125 @@ class ProposalManagementApp
             show_toast(error.message);
             //throw error;
         });
+    }
+
+    // Run a proposal search using the values in the search form. Regular users
+    // only ever get their own proposals; Admin/Staff search across all and may
+    // also filter by experimenter.
+    private async searchProposals(): Promise<void>
+    {
+        const run = this.search_run_input.value.trim();
+        const beamline = this.search_beamline_input.value.trim();
+        const experimenter = this.search_experimenter_input.value.trim();
+
+        const params = new URLSearchParams();
+        if (run.length > 0)
+        {
+            params.append('run', run);
+        }
+        if (beamline.length > 0)
+        {
+            params.append('beamline_acronym', beamline);
+        }
+        // Experimenter is only meaningful (and only sent) for Admin/Staff.
+        if (this.is_admin && experimenter.length > 0)
+        {
+            params.append('experimenter', experimenter);
+        }
+
+        try
+        {
+            const auth_cookie: string = get_cookie('access_token');
+            const headers = new Headers({
+                'Content-Type': 'application/json',
+                'Accept': 'application/json',
+                'Authorization': auth_cookie,
+            });
+
+            const url = '/api/search_proposals?' + params.toString();
+            const response = await fetch(url, { method: 'GET', headers: headers });
+            if (!response.ok)
+            {
+                throw new Error(`HTTP error! status: ${response.status}`);
+            }
+
+            const proposals: Array<Proposal_Struct> = await response.json();
+            this.proposals_json = proposals;
+            this.fill_proposals_table(this.proposals_json);
+            // Clear any previously shown datasets; the search may have changed
+            // which proposals are listed.
+            this.datasets_table.innerHTML = "";
+
+            if (proposals.length === 0)
+            {
+                show_toast('No proposals matched the search.');
+            }
+        }
+        catch (error)
+        {
+            console.error('Error searching proposals:', error);
+            show_toast((error as Error).message);
+        }
+    }
+
+    // Load the autocomplete values for the search inputs from the database.
+    // Runs and beamline acronyms are scoped to the caller's proposals (all for
+    // Admin/Staff); experimenters are only returned for Admin/Staff.
+    private async loadSearchOptions(): Promise<void>
+    {
+        try
+        {
+            const auth_cookie: string = get_cookie('access_token');
+            const headers = new Headers({
+                'Content-Type': 'application/json',
+                'Accept': 'application/json',
+                'Authorization': auth_cookie,
+            });
+
+            const response = await fetch('/api/get_proposal_search_options', { method: 'GET', headers: headers });
+            if (!response.ok)
+            {
+                throw new Error(`HTTP error! status: ${response.status}`);
+            }
+
+            const options: Proposal_Search_Options = await response.json();
+
+            this.fill_datalist(this.run_datalist, options.runs.map(r => ({ value: r })));
+            this.fill_datalist(this.beamline_datalist, options.beamline_acronyms.map(b => ({ value: b })));
+            // Experimenter option value is the badge (what the search matches
+            // exactly); the name is shown as the label.
+            this.fill_datalist(this.experimenter_datalist,
+                options.experimenters.map(e => ({ value: e.badge.toString(), label: e.name })));
+        }
+        catch (error)
+        {
+            console.error('Error loading search options:', error);
+        }
+    }
+
+    private fill_datalist(datalist: HTMLDataListElement, entries: Array<{ value: string, label?: string }>): void
+    {
+        datalist.innerHTML = "";
+        entries.forEach(entry =>
+        {
+            const option = document.createElement("option") as HTMLOptionElement;
+            option.value = entry.value;
+            if (entry.label !== undefined)
+            {
+                option.label = entry.label;
+            }
+            datalist.appendChild(option);
+        });
+    }
+
+    // Reset the search form and reload the user's full proposal list.
+    private clearSearch(): void
+    {
+        this.search_run_input.value = "";
+        this.search_beamline_input.value = "";
+        this.search_experimenter_input.value = "";
+        this.datasets_table.innerHTML = "";
+        this.loadProposals();
     }
 
     private handleUpdateClick(event: Event): void
@@ -425,15 +651,22 @@ class ProposalManagementApp
         const clickedRow = (event.target as HTMLElement).parentNode as HTMLElement;
         if (clickedRow)
         {
-            console.log(clickedRow.id);
             let numId = Number(clickedRow.id);
-            this.proposals_json?.forEach(proposal => 
+            if (!(numId > 0))
             {
-                if(numId === proposal.id)
-                {
-                    this.fill_dataset_table(proposal);
-                }
-            });
+                return;
+            }
+            const proposal = this.proposals_json?.find(p => p.id === numId);
+            if (proposal && Array.isArray(proposal.datasets) && proposal.datasets.length > 0)
+            {
+                this.fill_dataset_table(proposal);
+            }
+            else
+            {
+                // Search / plain listing responses don't embed datasets, so fetch
+                // them on demand (same path the admin all-proposals dropdown uses).
+                this.handleAllProposalsSelect(numId);
+            }
         }
     }
 
@@ -485,7 +718,9 @@ class ProposalManagementApp
             cell_status.innerText = item.status;
 
             const cell_num = row.insertCell();
-            cell_num.innerText = item.datasets?.length.toString();
+            // Search / plain listing responses don't embed datasets; show '-'
+            // rather than "undefined" in that case.
+            cell_num.innerText = String(item.datasets?.length ?? '-');
 
             row.offsetWidth;
             row.classList.add("visible");
