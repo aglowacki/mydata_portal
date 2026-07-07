@@ -154,7 +154,7 @@ pub struct SampleSource {
     pub name: String,
 }
 
-#[derive(Queryable, Debug, Identifiable)]
+#[derive(Queryable, Debug, Identifiable, Selectable, serde::Serialize)]
 #[diesel(belongs_to(BioSampleType, foreign_key=type_id))]
 #[diesel(belongs_to(SampleOrigin, foreign_key=origin_id))]
 #[diesel(belongs_to(SampleSubOrigin, foreign_key=sub_origin_id))]

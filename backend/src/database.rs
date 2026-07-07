@@ -622,6 +622,43 @@ pub async fn get_proposal_datasets(
     Ok(Json(datasets))
 }
 
+/// Return every bio sample associated with a proposal. The rows hold lookup ids
+/// (type, origin, condition, fixation, ...) which the frontend resolves to names
+/// using the bio-sample metadata groups. Restricted to the proposal's
+/// experimenters and Admin/Staff.
+#[axum_macros::debug_handler]
+pub async fn get_proposal_bio_samples(
+    Path(proposal_id): Path<i32>,
+    State(state): State<appstate::AppState>,
+    claims: auth::Claims,
+    DatabaseConnection(mut conn): DatabaseConnection,
+) -> Result<Json<Vec<models::BioSample>>, (StatusCode, String)>
+{
+    if claims.uac != defines::STR_ADMIN && claims.uac != defines::STR_STAFF
+    {
+        let owned: i64 = schema::experimenter_proposal_links::table
+            .filter(schema::experimenter_proposal_links::user_badge.eq(claims.get_badge()))
+            .filter(schema::experimenter_proposal_links::proposal_id.eq(proposal_id))
+            .count()
+            .get_result(&mut conn)
+            .await
+            .map_err(internal_error)?;
+        if owned == 0
+        {
+            return Err((StatusCode::FORBIDDEN, "You are not associated with the selected proposal.".to_string()));
+        }
+    }
+
+    let samples: Vec<models::BioSample> = schema::bio_samples::table
+        .filter(schema::bio_samples::proposal_id.eq(proposal_id))
+        .select(models::BioSample::as_select())
+        .load(&mut conn)
+        .await
+        .map_err(internal_error)?;
+
+    Ok(Json(samples))
+}
+
 
 /// Utility function for mapping any error into a `500 Internal Server Error`
 /// response.
