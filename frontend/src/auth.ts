@@ -1,5 +1,5 @@
 //import { gen_anim } from "./intro_anim.js";
-import { get_cookie, has_cookie, set_cookie } from "./cookies";
+import { get_cookie, has_cookie, set_cookie, delete_cookie } from "./cookies";
 import { show_toast } from "./toast"
 
 
@@ -25,7 +25,63 @@ export interface Claims {
 }
 
 
-export async function check_user(): Promise<Response> 
+// Decode the stored JWT and report whether it is missing, malformed, or past
+// its `exp` claim. The backend rejects an expired token with a generic 400, so
+// we inspect the token client-side to tell "expired" apart from other failures.
+export function is_token_expired(): boolean
+{
+    const auth_cookie: string = get_cookie('access_token');
+    if (!auth_cookie || auth_cookie === 'null')
+    {
+        return true;
+    }
+
+    const token = auth_cookie.replace(/^Bearer\s+/i, '');
+    const parts = token.split('.');
+    const encoded_payload = parts[1];
+    if (parts.length !== 3 || !encoded_payload)
+    {
+        return true;
+    }
+
+    try
+    {
+        const payload = JSON.parse(atob(encoded_payload.replace(/-/g, '+').replace(/_/g, '/')));
+        if (typeof payload.exp !== 'number')
+        {
+            return false;
+        }
+        // `exp` is seconds since epoch; Date.now() is milliseconds.
+        return Date.now() >= payload.exp * 1000;
+    }
+    catch (error)
+    {
+        // A token we cannot parse is treated as unusable.
+        return true;
+    }
+}
+
+// Drop the stored credentials and send the user back to the login screen.
+export function redirect_to_login(): void
+{
+    delete_cookie('access_token');
+    window.location.href = '/';
+}
+
+// fetch() wrapper for authenticated API calls. If a request fails and the auth
+// token has expired, clear it and bounce the user to the login screen instead
+// of surfacing an opaque error.
+export async function auth_fetch(input: RequestInfo | URL, init?: RequestInit): Promise<Response>
+{
+    const response = await fetch(input, init);
+    if (!response.ok && is_token_expired())
+    {
+        redirect_to_login();
+    }
+    return response;
+}
+
+export async function check_user(): Promise<Response>
 {
     const auth_cookie:string = get_cookie('access_token');
 

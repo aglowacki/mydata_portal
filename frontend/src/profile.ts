@@ -1,5 +1,5 @@
 import { gen_index } from './general-helper';
-import { get_user_info } from './auth';
+import { get_user_info, auth_fetch } from './auth';
 import type { Claims } from './auth';
 import { get_cookie } from './cookies';
 import { show_toast } from './toast';
@@ -65,7 +65,7 @@ async function search_proposals(field: string, value: string): Promise<Array<Pro
     });
 
     const url = '/api/search_user_proposals/' + encodeURIComponent(field) + '/' + encodeURIComponent(value);
-    const response = await fetch(url, { method: 'GET', headers: headers });
+    const response = await auth_fetch(url, { method: 'GET', headers: headers });
     if (!response.ok)
     {
         throw new Error(`HTTP error! status: ${response.status}`);

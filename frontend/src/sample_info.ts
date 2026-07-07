@@ -1,6 +1,6 @@
 import { gen_index } from './general-helper';
 import { get_cookie } from './cookies';
-import { get_user_info } from './auth';
+import { get_user_info, auth_fetch } from './auth';
 
 interface Proposal
 {
@@ -776,7 +776,7 @@ class SampleManagementApp
                 console.error('Could not determine user role, defaulting to own proposals:', e);
             }
 
-            const response = await fetch(url, { method: 'GET', headers: headers });
+            const response = await auth_fetch(url, { method: 'GET', headers: headers });
             if (!response.ok)
             {
                 throw new Error(`HTTP error! status: ${response.status}`);
@@ -820,7 +820,7 @@ class SampleManagementApp
                 'Authorization': auth_cookie,
             });
 
-            const response = await fetch('/api/get_proposal_datasets/' + proposal_id, { method: 'GET', headers: headers });
+            const response = await auth_fetch('/api/get_proposal_datasets/' + proposal_id, { method: 'GET', headers: headers });
             if (!response.ok)
             {
                 throw new Error(`HTTP error! status: ${response.status}`);
@@ -856,7 +856,7 @@ class SampleManagementApp
                 'Authorization': auth_cookie,
             });
 
-            const response = await fetch('/api/get_proposal_bio_samples/' + proposal_id, { method: 'GET', headers: headers });
+            const response = await auth_fetch('/api/get_proposal_bio_samples/' + proposal_id, { method: 'GET', headers: headers });
             if (!response.ok)
             {
                 throw new Error(`HTTP error! status: ${response.status}`);
@@ -1410,7 +1410,7 @@ class SampleManagementApp
                 'Authorization': auth_cookie,
             });
 
-            const response = await fetch('/api/upsert_bio_sample', {
+            const response = await auth_fetch('/api/upsert_bio_sample', {
                 method: 'POST',
                 headers: headers,
                 body: JSON.stringify(payload),

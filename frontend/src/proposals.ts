@@ -1,6 +1,7 @@
 import { get_cookie } from "./cookies";
 import { show_toast } from "./toast"
 import { gen_index } from './general-helper';
+import { auth_fetch } from './auth';
 import { get_user_info } from "./auth";
 
  interface Dataset_Struct
@@ -257,7 +258,7 @@ class ProposalManagementApp
                 'Authorization': auth_cookie,
             });
 
-            const response = await fetch('/api/get_all_proposals', { method: 'GET', headers: headers });
+            const response = await auth_fetch('/api/get_all_proposals', { method: 'GET', headers: headers });
             if (!response.ok)
             {
                 throw new Error(`HTTP error! status: ${response.status}`);
@@ -329,7 +330,7 @@ class ProposalManagementApp
 
         try
         {
-            const response = await fetch('/api/get_proposal_datasets/' + proposal_id, requestOptions);
+            const response = await auth_fetch('/api/get_proposal_datasets/' + proposal_id, requestOptions);
             if (!response.ok)
             {
                 if (response.status == 502)
@@ -406,7 +407,7 @@ class ProposalManagementApp
             });
 
             const url = '/api/search_proposals?' + params.toString();
-            const response = await fetch(url, { method: 'GET', headers: headers });
+            const response = await auth_fetch(url, { method: 'GET', headers: headers });
             if (!response.ok)
             {
                 throw new Error(`HTTP error! status: ${response.status}`);
@@ -445,7 +446,7 @@ class ProposalManagementApp
                 'Authorization': auth_cookie,
             });
 
-            const response = await fetch('/api/get_proposal_search_options', { method: 'GET', headers: headers });
+            const response = await auth_fetch('/api/get_proposal_search_options', { method: 'GET', headers: headers });
             if (!response.ok)
             {
                 throw new Error(`HTTP error! status: ${response.status}`);
@@ -516,7 +517,7 @@ class ProposalManagementApp
 
         try 
         {
-            const response = await fetch('/api/get_user_proposals', requestOptions);
+            const response = await auth_fetch('/api/get_user_proposals', requestOptions);
             if (!response.ok) 
             {
                 if(response.status == 502)
@@ -562,7 +563,7 @@ class ProposalManagementApp
         try 
         {
             const url = '/api/get_user_proposals_with_datasets/'+badge;
-            const response = await fetch(url, requestOptions);
+            const response = await auth_fetch(url, requestOptions);
             if (!response.ok) 
             {
                 if(response.status == 502)

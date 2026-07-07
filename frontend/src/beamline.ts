@@ -1,5 +1,6 @@
     import { gen_index } from './general-helper';
     import { get_cookie, has_cookie, set_cookie } from "./cookies";
+    import { auth_fetch } from './auth';
     
     interface BeamlineLog 
     {
@@ -549,7 +550,7 @@
                 };
 
                 
-                const response = await fetch('/api/queue_beamline_worker_task/'+this.beamline_id, requestOptions);
+                const response = await auth_fetch('/api/queue_beamline_worker_task/'+this.beamline_id, requestOptions);
                 const data = await response;
                 console.log(data);
             }
