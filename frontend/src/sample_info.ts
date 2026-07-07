@@ -18,6 +18,25 @@ interface ProposalDataset
     bio_sample_id: number | null;
 }
 
+interface BioSample
+{
+    id: number;
+    proposal_id: number;
+    name: string;
+    type_id: number;
+    origin_id: number;
+    sub_origin_id: number | null;
+    source_id: number | null;
+    thickness: number | null;
+    cell_line: string | null;
+    is_cancer: boolean | null;
+    condition_id: number;
+    treatment_details: string | null;
+    fixation_id: number;
+    expected_elemental_content_change: string | null;
+    notes: string | null;
+}
+
 interface BioSampleType
 {
     id: number;
@@ -106,6 +125,10 @@ class SampleManagementApp
     // datasets fetched for the currently selected proposal
     private proposal_datasets: Array<ProposalDataset>;
 
+    // bio samples already recorded for the currently selected proposal
+    private proposal_bio_samples: Array<BioSample>;
+    private sample_table_div: HTMLDivElement;
+
     // DOM Elements
     private sample_form: HTMLFormElement;
     private sample_proposal_select: HTMLSelectElement;
@@ -152,8 +175,15 @@ class SampleManagementApp
 
         this.sample_meta_data_groups = null;
         this.proposal_datasets = new Array();
+        this.proposal_bio_samples = new Array();
         this.main_div = document.createElement("div") as HTMLDivElement;
         this.message_div = document.createElement("div") as HTMLDivElement;
+
+        // table listing the bio samples already recorded for the selected proposal
+        this.sample_table_div = document.createElement("div") as HTMLDivElement;
+        this.sample_table_div.id = 'sampleTable';
+        this.sample_table_div.classList.add('sample-table');
+        this.sample_table_div.textContent = 'Select a proposal to list its bio samples.';
 
         this.sample_form = document.createElement('form') as HTMLFormElement;
         this.sample_form.id="sampleForm";
@@ -169,6 +199,7 @@ class SampleManagementApp
             let item = event.target as HTMLSelectElement;
             const value = Number(item?.value);
             this.loadProposalDatasets(value);
+            this.loadProposalBioSamples(value);
         });
         div_prop.appendChild(this.sample_proposal_select);
         this.sample_form.appendChild(div_prop);
@@ -322,6 +353,7 @@ class SampleManagementApp
 
         this.main_div.appendChild(this.message_div);
         this.main_div.appendChild(this.sample_form);
+        this.main_div.appendChild(this.sample_table_div);
 
 
         this.setupEventListeners();
@@ -694,6 +726,136 @@ class SampleManagementApp
         }
     }
 
+    // Fetch all bio samples recorded for the proposal and render them in a table.
+    private async loadProposalBioSamples(proposal_id: number): Promise<void>
+    {
+        if (!(proposal_id > 0))
+        {
+            this.proposal_bio_samples = [];
+            this.sample_table_div.textContent = 'Select a proposal to list its bio samples.';
+            return;
+        }
+
+        try
+        {
+            const auth_cookie: string = get_cookie('access_token');
+            const headers = new Headers({
+                'Content-Type': 'application/json',
+                'Accept': 'application/json',
+                'Authorization': auth_cookie,
+            });
+
+            const response = await fetch('/api/get_proposal_bio_samples/' + proposal_id, { method: 'GET', headers: headers });
+            if (!response.ok)
+            {
+                throw new Error(`HTTP error! status: ${response.status}`);
+            }
+
+            this.proposal_bio_samples = await response.json();
+            this.renderBioSampleTable();
+        }
+        catch (error)
+        {
+            console.error('Error loading bio samples:', error);
+            this.proposal_bio_samples = [];
+            this.sample_table_div.textContent = 'Failed to load bio samples for this proposal.';
+        }
+    }
+
+    // Resolve a lookup id against a list of {id, name} rows, returning a display
+    // string ('-' when the id is missing and 'unknown (id)' when unresolved).
+    private lookupName(id: number | null, rows: Array<{ id: number, name: string }> | undefined): string
+    {
+        if (id === null || !(id > 0))
+        {
+            return '-';
+        }
+        const match = rows?.find(r => r.id === id);
+        return match ? match.name : `unknown (${id})`;
+    }
+
+    // Fixations carry a name plus the fixative they use; resolve both from the
+    // fixation id stored on the sample.
+    private lookupFixation(fixation_id: number): { fixation: string, fixative: string }
+    {
+        const fixation = this.sample_meta_data_groups?.fixations.find(f => f.id === fixation_id);
+        if (fixation === undefined)
+        {
+            return { fixation: `unknown (${fixation_id})`, fixative: '-' };
+        }
+        const fixative = this.sample_meta_data_groups?.fixatives.find(f => f.id === fixation.fixative_id);
+        return { fixation: fixation.name, fixative: fixative ? fixative.name : '-' };
+    }
+
+    // Build (or rebuild) the table of bio samples for the selected proposal,
+    // resolving the stored lookup ids to human-readable names.
+    private renderBioSampleTable(): void
+    {
+        this.sample_table_div.innerHTML = '';
+        if (this.proposal_bio_samples.length === 0)
+        {
+            this.sample_table_div.textContent = 'No bio samples are recorded for this proposal.';
+            return;
+        }
+
+        const columns: Array<string> = [
+            'ID', 'Name', 'Type', 'Origin', 'Sub Origin', 'Source',
+            'Thickness (microns)', 'Cell Line', 'Is Cancer', 'Condition',
+            'Treatment Details', 'Fixation', 'Fixative',
+            'External Elemental Content Change', 'Notes',
+        ];
+
+        const table = document.createElement('table') as HTMLTableElement;
+        table.classList.add('sample-table-grid');
+
+        const thead = document.createElement('thead') as HTMLTableSectionElement;
+        const header_row = document.createElement('tr') as HTMLTableRowElement;
+        columns.forEach(col =>
+        {
+            const th = document.createElement('th') as HTMLTableCellElement;
+            th.textContent = col;
+            header_row.appendChild(th);
+        });
+        thead.appendChild(header_row);
+        table.appendChild(thead);
+
+        const tbody = document.createElement('tbody') as HTMLTableSectionElement;
+        const g = this.sample_meta_data_groups;
+        this.proposal_bio_samples.forEach(sample =>
+        {
+            const fix = this.lookupFixation(sample.fixation_id);
+            const values: Array<string> = [
+                String(sample.id),
+                sample.name,
+                this.lookupName(sample.type_id, g?.sample_types.map(t => ({ id: t.id, name: t.type_name }))),
+                this.lookupName(sample.origin_id, g?.sample_origins),
+                this.lookupName(sample.sub_origin_id, g?.sample_sub_origins),
+                this.lookupName(sample.source_id, g?.samples_sources),
+                sample.thickness !== null ? String(sample.thickness) : '-',
+                sample.cell_line ?? '-',
+                sample.is_cancer === null ? '-' : (sample.is_cancer ? 'Yes' : 'No'),
+                this.lookupName(sample.condition_id, g?.conditions),
+                sample.treatment_details ?? '-',
+                fix.fixation,
+                fix.fixative,
+                sample.expected_elemental_content_change ?? '-',
+                sample.notes ?? '-',
+            ];
+
+            const row = document.createElement('tr') as HTMLTableRowElement;
+            values.forEach(val =>
+            {
+                const td = document.createElement('td') as HTMLTableCellElement;
+                td.textContent = val;
+                row.appendChild(td);
+            });
+            tbody.appendChild(row);
+        });
+        table.appendChild(tbody);
+
+        this.sample_table_div.appendChild(table);
+    }
+
     private renderDatasetCheckboxes(): void
     {
         this.sample_datasets_div.innerHTML = '';
@@ -1031,8 +1193,10 @@ class SampleManagementApp
                     this.sample_id_input.value = String(result.id);
                 }
                 // Refresh the dataset list so the "currently sample #N" notes
-                // reflect the new assignments.
+                // reflect the new assignments, and refresh the bio sample table
+                // so it shows the newly created/updated sample.
                 this.loadProposalDatasets(Number(this.sample_proposal_select.value));
+                this.loadProposalBioSamples(Number(this.sample_proposal_select.value));
             }
             else
             {

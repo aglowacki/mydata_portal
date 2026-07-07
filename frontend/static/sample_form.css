@@ -67,3 +67,39 @@
   font-family: monospace;
   font-size: 0.85em;
 }
+
+/* Table listing the bio samples already recorded for the selected proposal. */
+.sample-table
+{
+  width: 90%;
+  margin-top: 12px;
+  overflow-x: auto;
+}
+
+.sample-table-grid
+{
+  border-collapse: collapse;
+  width: 100%;
+  font-size: 0.85em;
+}
+
+.sample-table-grid th,
+.sample-table-grid td
+{
+  border: 1px solid #ccc;
+  padding: 4px 6px;
+  text-align: left;
+  vertical-align: top;
+}
+
+.sample-table-grid thead th
+{
+  background-color: #f0f0f0;
+  position: sticky;
+  top: 0;
+}
+
+.sample-table-grid tbody tr:nth-child(even)
+{
+  background-color: #f9f9f9;
+}
