@@ -19,10 +19,33 @@
 
 .sample-datasets-list
 {
-  max-height: 200px;
-  overflow-y: auto;
   border: 1px solid #ccc;
   padding: 4px;
+}
+
+.sample-dataset-controls
+{
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-bottom: 4px;
+}
+
+.sample-dataset-filter
+{
+  flex: 1;
+}
+
+.sample-dataset-filter.invalid
+{
+  border-color: #c00;
+  background-color: #fee;
+}
+
+.sample-dataset-list
+{
+  max-height: 200px;
+  overflow-y: auto;
 }
 
 .sample-dataset-row
@@ -30,6 +53,13 @@
   display: flex;
   align-items: center;
   gap: 6px;
+}
+
+/* Filtered-out rows carry both classes; this override (more specific than the
+   base .hidden rule) ensures they are actually hidden despite source order. */
+.sample-dataset-row.hidden
+{
+  display: none;
 }
 
 .sample-dataset-row label

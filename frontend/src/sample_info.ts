@@ -703,7 +703,43 @@ class SampleManagementApp
             return;
         }
 
-        this.proposal_datasets.forEach(ds =>
+        // Show the datasets in alphabetical order by path so they are easy to
+        // scan; sort a copy so the underlying fetch order is left untouched.
+        const sorted_datasets = this.proposal_datasets.slice().sort((a, b) =>
+            a.path.localeCompare(b.path));
+
+        // Controls: filter the list by a regular expression and select/unselect
+        // all of the rows currently visible after filtering.
+        const controls = document.createElement('div') as HTMLDivElement;
+        controls.classList.add('sample-dataset-controls');
+
+        const filter_input = document.createElement('input') as HTMLInputElement;
+        filter_input.type = 'text';
+        filter_input.placeholder = 'Filter (regular expression)...';
+        filter_input.classList.add('sample-dataset-filter');
+
+        const select_all_btn = document.createElement('button') as HTMLButtonElement;
+        select_all_btn.type = 'button';
+        select_all_btn.textContent = 'Select All';
+
+        const unselect_all_btn = document.createElement('button') as HTMLButtonElement;
+        unselect_all_btn.type = 'button';
+        unselect_all_btn.textContent = 'Unselect All';
+
+        controls.appendChild(filter_input);
+        controls.appendChild(select_all_btn);
+        controls.appendChild(unselect_all_btn);
+        this.sample_datasets_div.appendChild(controls);
+
+        const list = document.createElement('div') as HTMLDivElement;
+        list.classList.add('sample-dataset-list');
+        this.sample_datasets_div.appendChild(list);
+
+        // Keep the checkbox + row for each dataset so the controls can act on
+        // only the rows currently shown by the filter.
+        const rows: Array<{ row: HTMLDivElement, checkbox: HTMLInputElement, path: string }> = [];
+
+        sorted_datasets.forEach(ds =>
         {
             const row = document.createElement('div') as HTMLDivElement;
             row.classList.add('sample-dataset-row');
@@ -727,8 +763,56 @@ class SampleManagementApp
 
             row.appendChild(checkbox);
             row.appendChild(label);
-            this.sample_datasets_div.appendChild(row);
+            list.appendChild(row);
+            rows.push({ row: row, checkbox: checkbox, path: ds.path });
         });
+
+        // Hide rows whose path does not match the filter regex. An invalid
+        // regex shows everything and flags the input rather than throwing.
+        const applyFilter = (): void =>
+        {
+            const pattern = filter_input.value.trim();
+            let regex: RegExp | null = null;
+            if (pattern.length > 0)
+            {
+                try
+                {
+                    regex = new RegExp(pattern, 'i');
+                    filter_input.classList.remove('invalid');
+                }
+                catch (e)
+                {
+                    regex = null;
+                    filter_input.classList.add('invalid');
+                }
+            }
+            else
+            {
+                filter_input.classList.remove('invalid');
+            }
+
+            rows.forEach(entry =>
+            {
+                const matches = regex === null || regex.test(entry.path);
+                entry.row.classList.toggle('hidden', !matches);
+            });
+        };
+
+        // Apply to every row not currently hidden by the filter.
+        const setVisibleChecked = (checked: boolean): void =>
+        {
+            rows.forEach(entry =>
+            {
+                if (!entry.row.classList.contains('hidden'))
+                {
+                    entry.checkbox.checked = checked;
+                }
+            });
+        };
+
+        filter_input.addEventListener('input', () => applyFilter());
+        select_all_btn.addEventListener('click', () => setVisibleChecked(true));
+        unselect_all_btn.addEventListener('click', () => setVisibleChecked(false));
 
         // Pre-check datasets already linked to the entered sample id (if any).
         this.autoCheckDatasetsForSample();
