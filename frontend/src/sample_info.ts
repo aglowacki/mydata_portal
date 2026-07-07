@@ -1,6 +1,7 @@
 import { gen_index } from './general-helper';
 import { get_cookie } from './cookies';
 import { get_user_info, auth_fetch } from './auth';
+import { get_effective_theme } from './theme';
 
 interface Proposal
 {
@@ -122,6 +123,14 @@ class SampleManagementApp
     //private sample_types: BioSampleType[] = [];
     private sample_meta_data_groups: SampleMetaDataGroups | null;
 
+    // Every distinct dropdown entry (sample type, origin, sub origin, source,
+    // condition, fixation, fixative) gets its own color index here, keyed by
+    // "<group>:<id-or-name>". The option in the dropdown and the matching table
+    // cell both look their color up here, so a given value (e.g. "Dog") always
+    // shows the same color in the form and the table. Only the index is stored;
+    // the color itself is derived on demand so it can follow the light/dark theme.
+    private value_color_index: Map<string, number>;
+
     // datasets fetched for the currently selected proposal
     private proposal_datasets: Array<ProposalDataset>;
 
@@ -174,6 +183,7 @@ class SampleManagementApp
         this.defaultHiddenOptionsStr.push(KEY_OTHER_NOTES);
 
         this.sample_meta_data_groups = null;
+        this.value_color_index = new Map();
         this.proposal_datasets = new Array();
         this.proposal_bio_samples = new Array();
         this.main_div = document.createElement("div") as HTMLDivElement;
@@ -357,6 +367,8 @@ class SampleManagementApp
 
 
         this.setupEventListeners();
+        this.setupSelectColorListeners();
+        this.setupThemeListeners();
         this.setupAutocompletes();
         this.loadSampleMetaDataGroups();
         this.loadUserProposals();
@@ -365,6 +377,131 @@ class SampleManagementApp
     public gen_main_div(): HTMLDivElement
     {
         return this.main_div;
+    }
+
+    // Generate a distinct background/text color pair for the nth distinct value.
+    // Hues are spread around the color wheel by the golden angle so adjacent
+    // values stay visually separated. In light mode the background is pale with
+    // dark text; in dark mode it is a deep, muted tint with light text, so the
+    // colors stay readable against either page background.
+    private themeColorForIndex(index: number): { bg: string, fg: string }
+    {
+        const hue = (index * 137.508) % 360;
+        if (get_effective_theme() === 'dark')
+        {
+            return { bg: `hsl(${hue}, 40%, 26%)`, fg: '#e8e8e8' };
+        }
+        return { bg: `hsl(${hue}, 70%, 88%)`, fg: '#1a1a1a' };
+    }
+
+    // Assign a stable, unique color index to every distinct dropdown value across
+    // all groups, so no two entries share a color. Built once from the loaded
+    // metadata; fixations are keyed by (unique) name to match the fixation
+    // <select>, everything else by numeric id.
+    private buildValueColorIndex(): void
+    {
+        this.value_color_index.clear();
+        const g = this.sample_meta_data_groups;
+        if (g === null)
+        {
+            return;
+        }
+        let counter = 0;
+        const assign = (group: string, key: number | string): void =>
+        {
+            const k = `${group}:${key}`;
+            if (!this.value_color_index.has(k))
+            {
+                this.value_color_index.set(k, counter);
+                counter += 1;
+            }
+        };
+        g.sample_types.forEach(t => assign('type', t.id));
+        g.sample_origins.forEach(o => assign('origin', o.id));
+        g.sample_sub_origins.forEach(s => assign('sub_origin', s.id));
+        g.samples_sources.forEach(s => assign('source', s.id));
+        g.conditions.forEach(c => assign('condition', c.id));
+        g.fixations.forEach(f => assign('fixation', f.name));
+        g.fixatives.forEach(f => assign('fixative', f.id));
+    }
+
+    // Look up the color assigned to a single dropdown value. `key` is the value's
+    // id (number) for most groups, or its name (string) for fixations. Returns
+    // null when the value has no assigned color (e.g. blank / unresolved cells).
+    private colorForValue(group: string, key: number | string | null): { bg: string, fg: string } | null
+    {
+        if (key === null || key === '')
+        {
+            return null;
+        }
+        const index = this.value_color_index.get(`${group}:${key}`);
+        if (index === undefined)
+        {
+            return null;
+        }
+        return this.themeColorForIndex(index);
+    }
+
+    // The dropdown-backed selects and the value group each one draws from.
+    private dropdownGroups(): Array<{ select: HTMLSelectElement, group: string }>
+    {
+        return [
+            { select: this.sample_type_select, group: 'type' },
+            { select: this.sample_origin_select, group: 'origin' },
+            { select: this.sample_sub_origin_select, group: 'sub_origin' },
+            { select: this.sample_source_select, group: 'source' },
+            { select: this.sample_condition_select, group: 'condition' },
+            { select: this.sample_fixation_select, group: 'fixation' },
+            { select: this.sample_fixative_select, group: 'fixative' },
+        ];
+    }
+
+    // Tint every option in a select with its value's color, then tint the select
+    // itself with the currently selected option's color.
+    private colorSelectOptions(select: HTMLSelectElement, group: string): void
+    {
+        Array.from(select.options).forEach(option =>
+        {
+            const key = group === 'fixation' ? option.value : Number(option.value);
+            const c = option.value === '' ? null : this.colorForValue(group, key);
+            option.style.backgroundColor = c ? c.bg : '';
+            option.style.color = c ? c.fg : '';
+        });
+        this.colorSelectFromValue(select, group);
+    }
+
+    // Tint a select with the color of its currently selected value, so the closed
+    // combo box shows the same color that value has in the table.
+    private colorSelectFromValue(select: HTMLSelectElement, group: string): void
+    {
+        const key = group === 'fixation' ? select.value : Number(select.value);
+        const c = select.value === '' ? null : this.colorForValue(group, key);
+        select.style.backgroundColor = c ? c.bg : '';
+        select.style.color = c ? c.fg : '';
+    }
+
+    // Keep each select's own color in sync with its selection as the user picks
+    // values (the options themselves are colored when they are (re)populated).
+    private setupSelectColorListeners(): void
+    {
+        this.dropdownGroups().forEach(({ select, group }) =>
+        {
+            select.addEventListener('change', () => this.colorSelectFromValue(select, group));
+        });
+    }
+
+    // Re-apply all value colors: option tints, the selects' own colors, and the
+    // table cells. Called after the metadata loads and whenever the theme changes,
+    // so colors always suit the current theme.
+    private recolorFields(): void
+    {
+        this.dropdownGroups().forEach(({ select, group }) => this.colorSelectOptions(select, group));
+
+        // Re-render the table (if populated) so its cells pick up the new colors.
+        if (this.proposal_bio_samples.length > 0)
+        {
+            this.renderBioSampleTable();
+        }
     }
 
     private create_div_group(label_str: string, hidden: boolean): HTMLDivElement
@@ -385,6 +522,19 @@ class SampleManagementApp
     private setupEventListeners(): void
     {
         this.sample_form.addEventListener('submit', (e) => this.handleFormSubmit(e));
+    }
+
+    // Re-color the form fields and table cells whenever the effective theme
+    // changes: either the OS preference (matchMedia) or the in-app override
+    // (the data-theme attribute set on <html> by theme.ts).
+    private setupThemeListeners(): void
+    {
+        window.matchMedia('(prefers-color-scheme: dark)')
+            .addEventListener('change', () => this.recolorFields());
+
+        const observer = new MutationObserver(() => this.recolorFields());
+        observer.observe(document.documentElement,
+            { attributes: true, attributeFilter: ['data-theme'] });
     }
 
     // Attach "previously used value" autocomplete to the free-text fields. The
@@ -556,6 +706,7 @@ class SampleManagementApp
                     added = true;
                 }
             });
+            this.colorSelectOptions(this.sample_origin_select, 'origin');
             if (added)
             {
                 this.setPropVisible(KEY_THICKNESS, true);
@@ -611,9 +762,10 @@ class SampleManagementApp
                 if(added)
                 {
                     this.setPropVisible(KEY_SUB_SAMPLE_ORIGIN, true);
-                    
+
                 }
             }
+            this.colorSelectOptions(this.sample_sub_origin_select, 'sub_origin');
         }
         else
         {
@@ -668,6 +820,7 @@ class SampleManagementApp
           this.sample_fixative_select.selectedIndex = 1;
           //this.sample_fixative_select.dispatchEvent(new Event("change"));
         }
+        this.colorSelectOptions(this.sample_fixative_select, 'fixative');
         this.setPropVisible(KEY_FIXATIVE, true);
     }
 
@@ -693,8 +846,12 @@ class SampleManagementApp
         }
     }
 
-    private populateSampleMetaDataSelect(): void 
+    private populateSampleMetaDataSelect(): void
     {
+        // Assign a color to every distinct dropdown value before the options are
+        // (re)built so each option can be tinted as it is created.
+        this.buildValueColorIndex();
+
         // Clear existing options except the first one
         this.sample_type_select.innerHTML = '<option value="">Select a sample type...</option>';
         this.sample_origin_select.innerHTML = '<option value="">Select a sample type...</option>';
@@ -703,7 +860,7 @@ class SampleManagementApp
         this.sample_fixation_select.innerHTML = '<option value="">Select a sample type...</option>';
         this.sample_fixative_select.innerHTML = '<option value="">Select a sample type...</option>';
         
-        this.sample_meta_data_groups?.sample_types.forEach(sampleType => 
+        this.sample_meta_data_groups?.sample_types.forEach(sampleType =>
         {
             const option = document.createElement('option') as HTMLOptionElement;
             option.value = String(sampleType.id);
@@ -739,7 +896,7 @@ class SampleManagementApp
             }
         });
 /*
-        this.sample_meta_data_groups?.fixatives.forEach(val => 
+        this.sample_meta_data_groups?.fixatives.forEach(val =>
         {
             const option = document.createElement('option') as HTMLOptionElement;
             option.value = String(val.id);
@@ -747,6 +904,8 @@ class SampleManagementApp
             this.sample_fixative_select.appendChild(option);
         });
   */
+        // Tint the freshly created options (and each select) with their colors.
+        this.recolorFields();
     }
 
     private async loadUserProposals(): Promise<void>
@@ -935,30 +1094,47 @@ class SampleManagementApp
         this.proposal_bio_samples.forEach(sample =>
         {
             const fix = this.lookupFixation(sample.fixation_id);
-            const values: Array<string> = [
-                String(sample.id),
-                sample.name,
-                this.lookupName(sample.type_id, g?.sample_types.map(t => ({ id: t.id, name: t.type_name }))),
-                this.lookupName(sample.origin_id, g?.sample_origins),
-                this.lookupName(sample.sub_origin_id, g?.sample_sub_origins),
-                this.lookupName(sample.source_id, g?.samples_sources),
-                sample.thickness !== null ? String(sample.thickness) : '-',
-                sample.cell_line ?? '-',
-                sample.is_cancer === null ? '-' : (sample.is_cancer ? 'Yes' : 'No'),
-                this.lookupName(sample.condition_id, g?.conditions),
-                sample.treatment_details ?? '-',
-                fix.fixation,
-                fix.fixative,
-                sample.expected_elemental_content_change ?? '-',
-                sample.notes ?? '-',
+            const fixation_obj = g?.fixations.find(f => f.id === sample.fixation_id);
+            const fixative_id = fixation_obj ? fixation_obj.fixative_id : null;
+
+            // Each cell carries its display text plus, for dropdown-backed
+            // columns, the color of that value so the cell matches the color of
+            // the option in the form (e.g. "Dog" is the same color in both).
+            const cells: Array<{ text: string, color: { bg: string, fg: string } | null }> = [
+                { text: String(sample.id), color: null },
+                { text: sample.name, color: null },
+                { text: this.lookupName(sample.type_id, g?.sample_types.map(t => ({ id: t.id, name: t.type_name }))),
+                  color: this.colorForValue('type', sample.type_id) },
+                { text: this.lookupName(sample.origin_id, g?.sample_origins),
+                  color: this.colorForValue('origin', sample.origin_id) },
+                { text: this.lookupName(sample.sub_origin_id, g?.sample_sub_origins),
+                  color: this.colorForValue('sub_origin', sample.sub_origin_id) },
+                { text: this.lookupName(sample.source_id, g?.samples_sources),
+                  color: this.colorForValue('source', sample.source_id) },
+                { text: sample.thickness !== null ? String(sample.thickness) : '-', color: null },
+                { text: sample.cell_line ?? '-', color: null },
+                { text: sample.is_cancer === null ? '-' : (sample.is_cancer ? 'Yes' : 'No'), color: null },
+                { text: this.lookupName(sample.condition_id, g?.conditions),
+                  color: this.colorForValue('condition', sample.condition_id) },
+                { text: sample.treatment_details ?? '-', color: null },
+                { text: fix.fixation,
+                  color: this.colorForValue('fixation', fixation_obj ? fixation_obj.name : null) },
+                { text: fix.fixative, color: this.colorForValue('fixative', fixative_id) },
+                { text: sample.expected_elemental_content_change ?? '-', color: null },
+                { text: sample.notes ?? '-', color: null },
             ];
 
             const row = document.createElement('tr') as HTMLTableRowElement;
             row.classList.add('sample-table-row');
-            values.forEach(val =>
+            cells.forEach(cell =>
             {
                 const td = document.createElement('td') as HTMLTableCellElement;
-                td.textContent = val;
+                td.textContent = cell.text;
+                if (cell.color !== null)
+                {
+                    td.style.backgroundColor = cell.color.bg;
+                    td.style.color = cell.color.fg;
+                }
                 row.appendChild(td);
             });
             tbody.appendChild(row);
@@ -1088,6 +1264,10 @@ class SampleManagementApp
             }
         });
         this.autoCheckDatasetsForSample();
+
+        // Setting .value programmatically doesn't fire "change", so refresh each
+        // select's own color to match the value just loaded.
+        this.dropdownGroups().forEach(({ select, group }) => this.colorSelectFromValue(select, group));
 
         // Bring the form into view so the user sees the loaded values.
         this.sample_form.scrollIntoView({ behavior: 'smooth', block: 'start' });
