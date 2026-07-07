@@ -847,13 +847,6 @@ class SampleManagementApp
 
             const row = document.createElement('tr') as HTMLTableRowElement;
             row.classList.add('sample-table-row');
-            // Clicking a row loads that sample into the form for editing.
-            row.addEventListener('click', () =>
-            {
-                tbody.querySelectorAll('tr').forEach(r => r.classList.remove('selected'));
-                row.classList.add('selected');
-                this.populateFormFromSample(sample);
-            });
             values.forEach(val =>
             {
                 const td = document.createElement('td') as HTMLTableCellElement;
@@ -861,10 +854,75 @@ class SampleManagementApp
                 row.appendChild(td);
             });
             tbody.appendChild(row);
+
+            // Collapsible detail row (initially hidden) that lists the datasets
+            // linked to this sample. Filled lazily each time it is expanded so it
+            // reflects the latest dataset assignments.
+            const detail_row = document.createElement('tr') as HTMLTableRowElement;
+            detail_row.classList.add('sample-detail-row', 'hidden');
+            const detail_cell = document.createElement('td') as HTMLTableCellElement;
+            detail_cell.colSpan = columns.length;
+            detail_row.appendChild(detail_cell);
+            tbody.appendChild(detail_row);
+
+            // Clicking a row loads that sample into the form for editing and
+            // toggles the expanded list of its associated datasets.
+            row.addEventListener('click', () =>
+            {
+                const willExpand = detail_row.classList.contains('hidden');
+
+                // Collapse any other expanded rows and clear their highlight.
+                tbody.querySelectorAll('tr.sample-table-row').forEach(r => r.classList.remove('selected'));
+                tbody.querySelectorAll('tr.sample-detail-row').forEach(r => r.classList.add('hidden'));
+
+                if (willExpand)
+                {
+                    row.classList.add('selected');
+                    this.renderSampleDatasets(detail_cell, sample);
+                    detail_row.classList.remove('hidden');
+                }
+
+                this.populateFormFromSample(sample);
+            });
         });
         table.appendChild(tbody);
 
         this.sample_table_div.appendChild(table);
+    }
+
+    // Fill a detail cell with the datasets currently linked to the given sample,
+    // taken from the proposal's datasets (bio_sample_id === sample.id).
+    private renderSampleDatasets(cell: HTMLTableCellElement, sample: BioSample): void
+    {
+        cell.innerHTML = '';
+
+        const linked = this.proposal_datasets
+            .filter(ds => ds.bio_sample_id === sample.id)
+            .slice()
+            .sort((a, b) => a.path.localeCompare(b.path));
+
+        const heading = document.createElement('div') as HTMLDivElement;
+        heading.classList.add('sample-detail-heading');
+        heading.textContent = `Datasets for sample #${sample.id} (${sample.name})`;
+        cell.appendChild(heading);
+
+        if (linked.length === 0)
+        {
+            const empty = document.createElement('div') as HTMLDivElement;
+            empty.textContent = 'No datasets are associated with this sample.';
+            cell.appendChild(empty);
+            return;
+        }
+
+        const list = document.createElement('ul') as HTMLUListElement;
+        list.classList.add('sample-detail-dataset-list');
+        linked.forEach(ds =>
+        {
+            const item = document.createElement('li') as HTMLLIElement;
+            item.textContent = `${ds.path} [${ds.beamline} / ${ds.syncotron_run} / ${ds.acquisition_timestamp}]`;
+            list.appendChild(item);
+        });
+        cell.appendChild(list);
     }
 
     // Fill the form with an existing sample's values so the user can edit it.
