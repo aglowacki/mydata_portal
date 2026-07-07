@@ -33,7 +33,7 @@ use crate::database::schema::{beamline_contacts,
                                 };
 
 
-#[derive(Queryable, Debug, Identifiable, Selectable, QueryableByName)]
+#[derive(Queryable, Debug, Identifiable, Selectable, QueryableByName, serde::Serialize)]
 #[diesel(primary_key(id))]
 #[diesel(table_name = experiment_roles)]
 #[diesel(check_for_backend(diesel::pg::Pg))]
@@ -382,6 +382,45 @@ pub struct ProposalWithDatasets
     #[serde(flatten)]
     pub proposal: Proposal,
     pub datasets: Vec<DatasetWithDetails>,
+}
+
+/// One experimenter linked to a proposal, with the user's details and their role
+/// on that proposal. Returned by get_proposal_experimenters.
+#[derive(serde::Serialize)]
+pub struct ProposalExperimenter
+{
+    pub badge: i32,
+    pub first_name: String,
+    pub last_name: String,
+    pub username: String,
+    pub institution: String,
+    pub role: String,
+    pub experiment_role_id: i32,
+}
+
+/// Payload for linking a user to a proposal (Admin/Staff only).
+#[derive(Deserialize, Debug)]
+pub struct AddExperimenterPayload
+{
+    pub proposal_id: i32,
+    pub user_badge: i32,
+    pub experiment_role_id: i32,
+}
+
+/// Payload for removing a user from a proposal (Admin/Staff only).
+#[derive(Deserialize, Debug)]
+pub struct RemoveExperimenterPayload
+{
+    pub proposal_id: i32,
+    pub user_badge: i32,
+}
+
+/// Generic status returned after a mutation (add/remove) attempt.
+#[derive(Serialize)]
+pub struct MutationResponse
+{
+    pub success: bool,
+    pub message: String,
 }
 
 #[derive(serde::Serialize)]

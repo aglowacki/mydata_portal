@@ -802,6 +802,193 @@ pub async fn get_proposal_bio_samples(
     Ok(Json(samples))
 }
 
+/// Return the experimenters (users) linked to a proposal, each with their role on
+/// that proposal. Restricted to the proposal's own experimenters and Admin/Staff.
+#[axum_macros::debug_handler]
+pub async fn get_proposal_experimenters(
+    Path(proposal_id): Path<i32>,
+    State(state): State<appstate::AppState>,
+    claims: auth::Claims,
+    DatabaseConnection(mut conn): DatabaseConnection,
+) -> Result<Json<Vec<models::ProposalExperimenter>>, (StatusCode, String)>
+{
+    if claims.uac != defines::STR_ADMIN && claims.uac != defines::STR_STAFF
+    {
+        let owned: i64 = schema::experimenter_proposal_links::table
+            .filter(schema::experimenter_proposal_links::user_badge.eq(claims.get_badge()))
+            .filter(schema::experimenter_proposal_links::proposal_id.eq(proposal_id))
+            .count()
+            .get_result(&mut conn)
+            .await
+            .map_err(internal_error)?;
+        if owned == 0
+        {
+            return Err((StatusCode::FORBIDDEN, "You are not associated with the selected proposal.".to_string()));
+        }
+    }
+
+    let rows = schema::experimenter_proposal_links::table
+        .inner_join(schema::users::table.on(schema::users::badge.eq(schema::experimenter_proposal_links::user_badge)))
+        .inner_join(schema::experiment_roles::table.on(schema::experiment_roles::id.eq(schema::experimenter_proposal_links::experiment_role_id)))
+        .filter(schema::experimenter_proposal_links::proposal_id.eq(proposal_id))
+        .select((
+            schema::users::badge,
+            schema::users::first_name,
+            schema::users::last_name,
+            schema::users::username,
+            schema::users::institution,
+            schema::experiment_roles::role,
+            schema::experiment_roles::id,
+        ))
+        .load::<(i32, String, String, String, String, String, i32)>(&mut conn)
+        .await
+        .map_err(internal_error)?;
+
+    let experimenters = rows.into_iter()
+        .map(|(badge, first_name, last_name, username, institution, role, experiment_role_id)| models::ProposalExperimenter {
+            badge,
+            first_name,
+            last_name,
+            username,
+            institution,
+            role,
+            experiment_role_id,
+        })
+        .collect();
+
+    Ok(Json(experimenters))
+}
+
+/// Return every experiment role, used to populate the "add experimenter" role
+/// dropdown. Any authenticated user may read this reference data.
+#[axum_macros::debug_handler]
+pub async fn get_experiment_roles(
+    State(state): State<appstate::AppState>,
+    claims: auth::Claims,
+    DatabaseConnection(mut conn): DatabaseConnection,
+) -> Result<Json<Vec<models::ExperimentRole>>, (StatusCode, String)>
+{
+    let roles = schema::experiment_roles::table
+        .select(models::ExperimentRole::as_select())
+        .order(schema::experiment_roles::id.asc())
+        .load(&mut conn)
+        .await
+        .map_err(internal_error)?;
+
+    Ok(Json(roles))
+}
+
+/// Return every user (badge + display name) for the "add experimenter"
+/// autocomplete. Admin/Staff only.
+#[axum_macros::debug_handler]
+pub async fn get_all_users(
+    State(state): State<appstate::AppState>,
+    claims: auth::Claims,
+    DatabaseConnection(mut conn): DatabaseConnection,
+) -> Result<Json<Vec<models::ExperimenterOption>>, (StatusCode, String)>
+{
+    if claims.uac != defines::STR_ADMIN && claims.uac != defines::STR_STAFF
+    {
+        return Err((StatusCode::FORBIDDEN, "Admin or staff access required.".to_string()));
+    }
+
+    let mut rows: Vec<(i32, String, String, String)> = schema::users::table
+        .select((schema::users::badge, schema::users::first_name, schema::users::last_name, schema::users::username))
+        .load::<(i32, String, String, String)>(&mut conn)
+        .await
+        .map_err(internal_error)?;
+    rows.sort_by(|a, b| a.2.to_lowercase().cmp(&b.2.to_lowercase()));
+
+    let users = rows.into_iter()
+        .map(|(badge, first, last, username)| models::ExperimenterOption {
+            badge,
+            name: format!("{} {} ({})", first.trim(), last.trim(), username.trim()),
+        })
+        .collect();
+
+    Ok(Json(users))
+}
+
+/// Link a user to a proposal with a given role. Admin/Staff only; refuses to add
+/// the same user twice.
+#[axum_macros::debug_handler]
+pub async fn add_proposal_experimenter(
+    State(state): State<appstate::AppState>,
+    claims: auth::Claims,
+    DatabaseConnection(mut conn): DatabaseConnection,
+    Json(payload): Json<models::AddExperimenterPayload>,
+) -> Json<models::MutationResponse>
+{
+    let fail = |msg: &str| Json(models::MutationResponse { success: false, message: msg.to_string() });
+
+    if claims.uac != defines::STR_ADMIN && claims.uac != defines::STR_STAFF
+    {
+        return fail("Admin or staff access required.");
+    }
+
+    // Don't link the same user to a proposal more than once.
+    let existing: i64 = match schema::experimenter_proposal_links::table
+        .filter(schema::experimenter_proposal_links::proposal_id.eq(payload.proposal_id))
+        .filter(schema::experimenter_proposal_links::user_badge.eq(payload.user_badge))
+        .count()
+        .get_result(&mut conn)
+        .await
+    {
+        Ok(c) => c,
+        Err(err) => return fail(&format!("Failed to check existing experimenters: {}", err)),
+    };
+    if existing > 0
+    {
+        return fail("That user is already an experimenter on this proposal.");
+    }
+
+    let res = diesel::insert_into(schema::experimenter_proposal_links::table)
+        .values((
+            schema::experimenter_proposal_links::user_badge.eq(payload.user_badge),
+            schema::experimenter_proposal_links::proposal_id.eq(payload.proposal_id),
+            schema::experimenter_proposal_links::experiment_role_id.eq(payload.experiment_role_id),
+        ))
+        .execute(&mut conn)
+        .await;
+
+    match res
+    {
+        Ok(_) => Json(models::MutationResponse { success: true, message: "Experimenter added.".to_string() }),
+        Err(err) => fail(&format!("Failed to add experimenter: {}", err)),
+    }
+}
+
+/// Remove a user's link to a proposal. Admin/Staff only.
+#[axum_macros::debug_handler]
+pub async fn remove_proposal_experimenter(
+    State(state): State<appstate::AppState>,
+    claims: auth::Claims,
+    DatabaseConnection(mut conn): DatabaseConnection,
+    Json(payload): Json<models::RemoveExperimenterPayload>,
+) -> Json<models::MutationResponse>
+{
+    let fail = |msg: &str| Json(models::MutationResponse { success: false, message: msg.to_string() });
+
+    if claims.uac != defines::STR_ADMIN && claims.uac != defines::STR_STAFF
+    {
+        return fail("Admin or staff access required.");
+    }
+
+    let res = diesel::delete(
+            schema::experimenter_proposal_links::table
+                .filter(schema::experimenter_proposal_links::proposal_id.eq(payload.proposal_id))
+                .filter(schema::experimenter_proposal_links::user_badge.eq(payload.user_badge)))
+        .execute(&mut conn)
+        .await;
+
+    match res
+    {
+        Ok(0) => fail("No matching experimenter link found."),
+        Ok(_) => Json(models::MutationResponse { success: true, message: "Experimenter removed.".to_string() }),
+        Err(err) => fail(&format!("Failed to remove experimenter: {}", err)),
+    }
+}
+
 
 /// Utility function for mapping any error into a `500 Internal Server Error`
 /// response.

@@ -51,6 +51,26 @@ interface Proposal_Search_Options
     experimenters: Array<Experimenter_Option>;
 }
 
+// An experimenter linked to a proposal, as returned by
+// /api/get_proposal_experimenters.
+interface Proposal_Experimenter
+{
+    badge: number;
+    first_name: string;
+    last_name: string;
+    username: string;
+    institution: string;
+    role: string;
+    experiment_role_id: number;
+}
+
+// An experiment role, as returned by /api/get_experiment_roles.
+interface Experiment_Role
+{
+    id: number;
+    role: string;
+}
+
 class ProposalManagementApp 
 {
     private proposals_json: Array<Proposal_Struct> | null = null;;
@@ -58,10 +78,21 @@ class ProposalManagementApp
     // Whether the current user is Admin/Staff (set once in initAdminControls).
     private is_admin: boolean = false;
 
+    // The proposal whose experimenters/datasets are currently shown.
+    private selected_proposal_id: number | null = null;
+
     // DOM Elements
     private proposals_table: HTMLTableElement;
+    private experimenters_table: HTMLTableElement;
     private datasets_table: HTMLTableElement;
     private admin_div: HTMLDivElement;
+
+    // Admin-only controls for adding experimenters to the selected proposal.
+    private experimenter_admin_div: HTMLDivElement;
+    private add_experimenter_input: HTMLInputElement;
+    private users_datalist: HTMLDataListElement;
+    private role_select: HTMLSelectElement;
+    private add_experimenter_btn: HTMLButtonElement;
     private badge_label: HTMLLabelElement;
     private badge_input: HTMLInputElement;
     private update_btn: HTMLButtonElement;
@@ -178,12 +209,49 @@ class ProposalManagementApp
         this.proposals_table = document.createElement("table") as HTMLTableElement;
         this.proposals_table.id = "proposals-table";
         this.proposals_table.className = "animated-table";
-    
+
+        // Admin-only controls for adding experimenters. Hidden until we confirm
+        // the current user is Admin/Staff (see initAdminControls).
+        this.experimenter_admin_div = document.createElement("div") as HTMLDivElement;
+        this.experimenter_admin_div.id = "experimenter-admin";
+        this.experimenter_admin_div.style.display = "none";
+
+        const add_experimenter_label = document.createElement("label") as HTMLLabelElement;
+        add_experimenter_label.innerText = "Add Experimenter: ";
+
+        this.users_datalist = document.createElement("datalist") as HTMLDataListElement;
+        this.users_datalist.id = "all_users_options";
+
+        this.add_experimenter_input = document.createElement("input") as HTMLInputElement;
+        this.add_experimenter_input.id = "add_experimenter";
+        this.add_experimenter_input.placeholder = "badge or name";
+        this.add_experimenter_input.setAttribute("list", this.users_datalist.id);
+
+        this.role_select = document.createElement("select") as HTMLSelectElement;
+        this.role_select.id = "experimenter_role";
+
+        this.add_experimenter_btn = document.createElement("button") as HTMLButtonElement;
+        this.add_experimenter_btn.type = "button";
+        this.add_experimenter_btn.innerText = "Add";
+
+        this.experimenter_admin_div.appendChild(add_experimenter_label);
+        this.experimenter_admin_div.appendChild(this.add_experimenter_input);
+        this.experimenter_admin_div.appendChild(this.role_select);
+        this.experimenter_admin_div.appendChild(this.add_experimenter_btn);
+        this.experimenter_admin_div.appendChild(this.users_datalist);
+
+        this.experimenters_table = document.createElement("table") as HTMLTableElement;
+        this.experimenters_table.id = "experimenters-table";
+        this.experimenters_table.className = "animated-table";
+
         this.datasets_table = document.createElement("table") as HTMLTableElement;
         this.datasets_table.id = "datasets-table";
         this.datasets_table.className = "animated-table";
 
         this.main_div.appendChild(this.proposals_table);
+        // Experimenters are shown before the datasets table.
+        this.main_div.appendChild(this.experimenter_admin_div);
+        this.main_div.appendChild(this.experimenters_table);
         this.main_div.appendChild(this.datasets_table);
 
         this.setupEventListeners();
@@ -201,6 +269,8 @@ class ProposalManagementApp
     {
         this.update_btn.addEventListener('click', (event) =>  this.handleUpdateClick(event));
         this.proposals_table.addEventListener('click', (event) =>  this.handleRowSelection(event));
+        this.add_experimenter_btn.addEventListener('click', () => this.addExperimenter());
+        this.experimenters_table.addEventListener('click', (event) => this.handleExperimenterRemove(event));
         this.all_proposals_select.addEventListener('change', (event) =>
         {
             const item = event.target as HTMLSelectElement;
@@ -238,7 +308,12 @@ class ProposalManagementApp
                 // Admins/staff can also search by experimenter.
                 this.search_experimenter_label.style.display = "";
                 this.search_experimenter_input.style.display = "";
+                // Admins/staff can add experimenters to a proposal; reveal the
+                // controls and populate their autocomplete + role options.
+                this.experimenter_admin_div.style.display = "";
                 await this.loadAllProposals();
+                await this.loadAllUsers();
+                await this.loadExperimentRoles();
             }
         }
         catch (error)
@@ -288,6 +363,8 @@ class ProposalManagementApp
             this.datasets_table.innerHTML = "";
             return;
         }
+
+        this.onProposalSelected(proposal_id);
 
         const resp = this.get_proposal_datasets(proposal_id);
         resp.then(lres =>
@@ -355,6 +432,305 @@ class ProposalManagementApp
         }
     }
 
+    // Called whenever a proposal becomes the active one; loads its experimenters.
+    private onProposalSelected(proposal_id: number): void
+    {
+        this.selected_proposal_id = proposal_id;
+        this.loadExperimenters(proposal_id);
+    }
+
+    // Clear the current selection and the experimenter/dataset tables.
+    private clearSelection(): void
+    {
+        this.selected_proposal_id = null;
+        this.experimenters_table.innerHTML = "";
+        this.datasets_table.innerHTML = "";
+    }
+
+    private async loadExperimenters(proposal_id: number): Promise<void>
+    {
+        try
+        {
+            const auth_cookie: string = get_cookie('access_token');
+            const headers = new Headers({
+                'Content-Type': 'application/json',
+                'Accept': 'application/json',
+                'Authorization': auth_cookie,
+            });
+
+            const response = await auth_fetch('/api/get_proposal_experimenters/' + proposal_id, { method: 'GET', headers: headers });
+            if (!response.ok)
+            {
+                throw new Error(`HTTP error! status: ${response.status}`);
+            }
+
+            const experimenters: Array<Proposal_Experimenter> = await response.json();
+            this.fill_experimenters_table(experimenters);
+        }
+        catch (error)
+        {
+            console.error('Error loading experimenters:', error);
+            this.experimenters_table.innerHTML = "";
+            show_toast('Failed to load experimenters.');
+        }
+    }
+
+    private fill_experimenters_table(experimenters: Array<Proposal_Experimenter>): void
+    {
+        this.experimenters_table.innerHTML = "";
+
+        // Table title.
+        this.experimenters_table.createCaption().innerText = "Experimenters";
+
+        // Header row. Admins get an extra column for the remove action.
+        const header_labels = ["badge", "name", "username", "institution", "role"];
+        if (this.is_admin)
+        {
+            header_labels.push("");
+        }
+        const thead = this.experimenters_table.createTHead();
+        header_labels.forEach(label =>
+        {
+            const th = document.createElement("th");
+            th.innerText = label;
+            thead.appendChild(th);
+        });
+
+        if (!Array.isArray(experimenters) || experimenters.length === 0)
+        {
+            return;
+        }
+
+        // A user may be linked to a proposal under more than one role; show each
+        // badge only once (keeping the first occurrence).
+        const seen_badges = new Set<number>();
+        const unique_experimenters = experimenters.filter(item =>
+        {
+            if (seen_badges.has(item.badge))
+            {
+                return false;
+            }
+            seen_badges.add(item.badge);
+            return true;
+        });
+
+        unique_experimenters.forEach(item =>
+        {
+            const row = this.experimenters_table.insertRow();
+            row.className = "ex-row";
+
+            const cell_badge = row.insertCell();
+            cell_badge.innerText = item.badge.toString();
+
+            const cell_name = row.insertCell();
+            cell_name.innerText = `${item.first_name} ${item.last_name}`.trim();
+
+            const cell_username = row.insertCell();
+            cell_username.innerText = item.username;
+
+            const cell_institution = row.insertCell();
+            cell_institution.innerText = item.institution;
+
+            const cell_role = row.insertCell();
+            cell_role.innerText = item.role;
+
+            if (this.is_admin)
+            {
+                const cell_remove = row.insertCell();
+                const remove_btn = document.createElement("button");
+                remove_btn.type = "button";
+                remove_btn.innerText = "Remove";
+                remove_btn.className = "ex-remove-btn";
+                remove_btn.dataset.badge = item.badge.toString();
+                cell_remove.appendChild(remove_btn);
+            }
+
+            row.offsetWidth;
+            row.classList.add("visible");
+        });
+    }
+
+    // Delegated click handler for the per-row "Remove" buttons.
+    private handleExperimenterRemove(event: Event): void
+    {
+        const target = event.target as HTMLElement;
+        if (!target.classList.contains("ex-remove-btn"))
+        {
+            return;
+        }
+        const badge = Number(target.dataset.badge);
+        if (badge > 0)
+        {
+            this.removeExperimenter(badge);
+        }
+    }
+
+    private async addExperimenter(): Promise<void>
+    {
+        if (!(this.selected_proposal_id && this.selected_proposal_id > 0))
+        {
+            show_toast('Select a proposal first.');
+            return;
+        }
+
+        // The autocomplete stores the badge as the option value.
+        const badge = Number(this.add_experimenter_input.value.trim());
+        if (!(badge > 0))
+        {
+            show_toast('Enter a valid user (badge).');
+            return;
+        }
+
+        const experiment_role_id = Number(this.role_select.value);
+        if (!(experiment_role_id > 0))
+        {
+            show_toast('Select a role.');
+            return;
+        }
+
+        try
+        {
+            const auth_cookie: string = get_cookie('access_token');
+            const headers = new Headers({
+                'Content-Type': 'application/json',
+                'Accept': 'application/json',
+                'Authorization': auth_cookie,
+            });
+
+            const response = await auth_fetch('/api/add_proposal_experimenter', {
+                method: 'POST',
+                headers: headers,
+                body: JSON.stringify({
+                    proposal_id: this.selected_proposal_id,
+                    user_badge: badge,
+                    experiment_role_id: experiment_role_id,
+                }),
+            });
+            if (!response.ok)
+            {
+                throw new Error(`HTTP error! status: ${response.status}`);
+            }
+
+            const result: { success: boolean, message: string } = await response.json();
+            show_toast(result.message);
+            if (result.success)
+            {
+                this.add_experimenter_input.value = "";
+                this.loadExperimenters(this.selected_proposal_id);
+            }
+        }
+        catch (error)
+        {
+            console.error('Error adding experimenter:', error);
+            show_toast((error as Error).message);
+        }
+    }
+
+    private async removeExperimenter(badge: number): Promise<void>
+    {
+        if (!(this.selected_proposal_id && this.selected_proposal_id > 0))
+        {
+            return;
+        }
+
+        try
+        {
+            const auth_cookie: string = get_cookie('access_token');
+            const headers = new Headers({
+                'Content-Type': 'application/json',
+                'Accept': 'application/json',
+                'Authorization': auth_cookie,
+            });
+
+            const response = await auth_fetch('/api/remove_proposal_experimenter', {
+                method: 'POST',
+                headers: headers,
+                body: JSON.stringify({
+                    proposal_id: this.selected_proposal_id,
+                    user_badge: badge,
+                }),
+            });
+            if (!response.ok)
+            {
+                throw new Error(`HTTP error! status: ${response.status}`);
+            }
+
+            const result: { success: boolean, message: string } = await response.json();
+            show_toast(result.message);
+            if (result.success)
+            {
+                this.loadExperimenters(this.selected_proposal_id);
+            }
+        }
+        catch (error)
+        {
+            console.error('Error removing experimenter:', error);
+            show_toast((error as Error).message);
+        }
+    }
+
+    // Populate the add-experimenter autocomplete with every user (Admin/Staff only).
+    private async loadAllUsers(): Promise<void>
+    {
+        try
+        {
+            const auth_cookie: string = get_cookie('access_token');
+            const headers = new Headers({
+                'Content-Type': 'application/json',
+                'Accept': 'application/json',
+                'Authorization': auth_cookie,
+            });
+
+            const response = await auth_fetch('/api/get_all_users', { method: 'GET', headers: headers });
+            if (!response.ok)
+            {
+                throw new Error(`HTTP error! status: ${response.status}`);
+            }
+
+            const users: Array<Experimenter_Option> = await response.json();
+            // Option value is the badge (what we submit); the name is the label.
+            this.fill_datalist(this.users_datalist, users.map(u => ({ value: u.badge.toString(), label: u.name })));
+        }
+        catch (error)
+        {
+            console.error('Error loading users:', error);
+        }
+    }
+
+    // Populate the role dropdown for the add-experimenter form.
+    private async loadExperimentRoles(): Promise<void>
+    {
+        try
+        {
+            const auth_cookie: string = get_cookie('access_token');
+            const headers = new Headers({
+                'Content-Type': 'application/json',
+                'Accept': 'application/json',
+                'Authorization': auth_cookie,
+            });
+
+            const response = await auth_fetch('/api/get_experiment_roles', { method: 'GET', headers: headers });
+            if (!response.ok)
+            {
+                throw new Error(`HTTP error! status: ${response.status}`);
+            }
+
+            const roles: Array<Experiment_Role> = await response.json();
+            this.role_select.innerHTML = "";
+            roles.forEach(role =>
+            {
+                const option = document.createElement("option") as HTMLOptionElement;
+                option.value = role.id.toString();
+                option.textContent = role.role;
+                this.role_select.appendChild(option);
+            });
+        }
+        catch (error)
+        {
+            console.error('Error loading experiment roles:', error);
+        }
+    }
+
     private loadProposals(): void
     {
         const resp = this.get_proposals();
@@ -416,9 +792,9 @@ class ProposalManagementApp
             const proposals: Array<Proposal_Struct> = await response.json();
             this.proposals_json = proposals;
             this.fill_proposals_table(this.proposals_json);
-            // Clear any previously shown datasets; the search may have changed
-            // which proposals are listed.
-            this.datasets_table.innerHTML = "";
+            // Clear any previously shown experimenters/datasets; the search may
+            // have changed which proposals are listed.
+            this.clearSelection();
 
             if (proposals.length === 0)
             {
@@ -488,7 +864,7 @@ class ProposalManagementApp
         this.search_run_input.value = "";
         this.search_beamline_input.value = "";
         this.search_experimenter_input.value = "";
-        this.datasets_table.innerHTML = "";
+        this.clearSelection();
         this.loadProposals();
     }
 
@@ -602,7 +978,10 @@ class ProposalManagementApp
         
         this.datasets_table.innerHTML = "";
 
-        if (!Array.isArray(data.datasets) || data.datasets.length === 0) 
+        // Table title.
+        this.datasets_table.createCaption().innerText = "Datasets";
+
+        if (!Array.isArray(data.datasets) || data.datasets.length === 0)
         {
             console.log("No datasets for this proposal");
             return;
@@ -660,12 +1039,14 @@ class ProposalManagementApp
             const proposal = this.proposals_json?.find(p => p.id === numId);
             if (proposal && Array.isArray(proposal.datasets) && proposal.datasets.length > 0)
             {
+                this.onProposalSelected(numId);
                 this.fill_dataset_table(proposal);
             }
             else
             {
                 // Search / plain listing responses don't embed datasets, so fetch
                 // them on demand (same path the admin all-proposals dropdown uses).
+                // handleAllProposalsSelect also loads the experimenters.
                 this.handleAllProposalsSelect(numId);
             }
         }
@@ -681,7 +1062,10 @@ class ProposalManagementApp
         
         this.proposals_table.innerHTML = "";
 
-        if (!Array.isArray(data) || data.length === 0) 
+        // Table title.
+        this.proposals_table.createCaption().innerText = "Proposals";
+
+        if (!Array.isArray(data) || data.length === 0)
         {
             console.log("Resply is empty array");
             return;
