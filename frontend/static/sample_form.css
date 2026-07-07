@@ -141,11 +141,57 @@
   font-size: 0.9em;
 }
 
+/* "Previously used value" autocomplete dropdown attached to free-text fields. */
+.autocomplete-wrapper
+{
+  position: relative;
+}
+
+.autocomplete-list
+{
+  position: absolute;
+  top: 100%;
+  left: 0;
+  z-index: 1000;
+  max-height: 180px;
+  overflow-y: auto;
+  border: 1px solid #ccc;
+  background-color: #fff;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+}
+
+.autocomplete-item
+{
+  padding: 3px 6px;
+  cursor: pointer;
+  font-size: 0.9em;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.autocomplete-item:hover
+{
+  background-color: #eef5ff;
+}
+
 /* Dark mode: the table's default light backgrounds wash out against a dark
    page, so remap the borders, header, zebra striping, hover/selected states
    and the expanded detail row to dark-friendly colors. */
 @media (prefers-color-scheme: dark)
 {
+  .autocomplete-list
+  {
+    border-color: #555;
+    background-color: #2b2b2b;
+    color: #e0e0e0;
+  }
+
+  .autocomplete-item:hover
+  {
+    background-color: #2a3a4a;
+  }
+
   .sample-datasets-list
   {
     border-color: #555;

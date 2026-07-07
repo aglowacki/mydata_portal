@@ -357,6 +357,7 @@ class SampleManagementApp
 
 
         this.setupEventListeners();
+        this.setupAutocompletes();
         this.loadSampleMetaDataGroups();
         this.loadUserProposals();
     }
@@ -384,6 +385,113 @@ class SampleManagementApp
     private setupEventListeners(): void
     {
         this.sample_form.addEventListener('submit', (e) => this.handleFormSubmit(e));
+    }
+
+    // Attach "previously used value" autocomplete to the free-text fields. The
+    // suggestions are drawn from the bio samples already recorded for the
+    // currently selected proposal (this.proposal_bio_samples), so they update
+    // whenever a different proposal is chosen.
+    private setupAutocompletes(): void
+    {
+        this.setupAutocomplete(this.sample_name_input,
+            () => this.proposal_bio_samples.map(s => s.name));
+        this.setupAutocomplete(this.sample_thickness_input,
+            () => this.proposal_bio_samples.map(s => s.thickness !== null ? String(s.thickness) : ''));
+        this.setupAutocomplete(this.sample_cell_line_input,
+            () => this.proposal_bio_samples.map(s => s.cell_line ?? ''));
+        this.setupAutocomplete(this.sample_eecc_textarea,
+            () => this.proposal_bio_samples.map(s => s.expected_elemental_content_change ?? ''));
+        this.setupAutocomplete(this.sample_notes_textarea,
+            () => this.proposal_bio_samples.map(s => s.notes ?? ''));
+    }
+
+    // Wire up a lightweight autocomplete dropdown for a single field. Works for
+    // both <input> and <textarea> (native <datalist> does not support the
+    // latter). `getSuggestions` is called each time the field is used so the
+    // list always reflects the current proposal's samples.
+    private setupAutocomplete(field: HTMLInputElement | HTMLTextAreaElement,
+                              getSuggestions: () => Array<string>): void
+    {
+        const parent = field.parentElement;
+        if (parent === null)
+        {
+            return;
+        }
+
+        // Wrap the field so the dropdown can be positioned relative to it.
+        const wrapper = document.createElement('div') as HTMLDivElement;
+        wrapper.classList.add('autocomplete-wrapper');
+        parent.insertBefore(wrapper, field);
+        wrapper.appendChild(field);
+
+        const dropdown = document.createElement('div') as HTMLDivElement;
+        dropdown.classList.add('autocomplete-list', 'hidden');
+        wrapper.appendChild(dropdown);
+
+        const render = (): void =>
+        {
+            const query = field.value.trim().toLowerCase();
+
+            // Build a distinct, non-empty, filtered, sorted suggestion list.
+            const seen: Set<string> = new Set();
+            const matches: Array<string> = [];
+            getSuggestions().forEach(raw =>
+            {
+                const value = (raw ?? '').trim();
+                if (value.length === 0)
+                {
+                    return;
+                }
+                const key = value.toLowerCase();
+                if (seen.has(key))
+                {
+                    return;
+                }
+                // Only suggest entries containing what's typed so far; when the
+                // field is empty, offer all previously used values.
+                if (query.length > 0 && !key.includes(query))
+                {
+                    return;
+                }
+                seen.add(key);
+                matches.push(value);
+            });
+            matches.sort((a, b) => a.localeCompare(b));
+
+            dropdown.innerHTML = '';
+            if (matches.length === 0)
+            {
+                dropdown.classList.add('hidden');
+                return;
+            }
+
+            matches.slice(0, 10).forEach(match =>
+            {
+                const item = document.createElement('div') as HTMLDivElement;
+                item.classList.add('autocomplete-item');
+                item.textContent = match;
+                // mousedown (not click) so it fires before the field's blur,
+                // and preventDefault keeps focus on the field.
+                item.addEventListener('mousedown', (e) =>
+                {
+                    e.preventDefault();
+                    field.value = match;
+                    dropdown.classList.add('hidden');
+                });
+                dropdown.appendChild(item);
+            });
+            // Match the dropdown width to the field.
+            dropdown.style.width = field.offsetWidth + 'px';
+            dropdown.classList.remove('hidden');
+        };
+
+        field.addEventListener('input', render);
+        field.addEventListener('focus', render);
+        // Delay hiding so a suggestion click is still registered.
+        field.addEventListener('blur', () =>
+        {
+            setTimeout(() => dropdown.classList.add('hidden'), 150);
+        });
     }
 
 
