@@ -675,8 +675,11 @@ class SampleManagementApp
             }
 
             const proposals: Array<Proposal> = await response.json();
+            // Sort by proposal id (ascending) so the list is easy to scan;
+            // sort a copy so the fetched order is left untouched.
+            const sorted_proposals = proposals.slice().sort((a, b) => a.id - b.id);
             this.sample_proposal_select.innerHTML = '<option value="">Select a proposal...</option>';
-            proposals.forEach(proposal =>
+            sorted_proposals.forEach(proposal =>
             {
                 const option = document.createElement('option') as HTMLOptionElement;
                 option.value = String(proposal.id);
@@ -843,6 +846,14 @@ class SampleManagementApp
             ];
 
             const row = document.createElement('tr') as HTMLTableRowElement;
+            row.classList.add('sample-table-row');
+            // Clicking a row loads that sample into the form for editing.
+            row.addEventListener('click', () =>
+            {
+                tbody.querySelectorAll('tr').forEach(r => r.classList.remove('selected'));
+                row.classList.add('selected');
+                this.populateFormFromSample(sample);
+            });
             values.forEach(val =>
             {
                 const td = document.createElement('td') as HTMLTableCellElement;
@@ -854,6 +865,66 @@ class SampleManagementApp
         table.appendChild(tbody);
 
         this.sample_table_div.appendChild(table);
+    }
+
+    // Fill the form with an existing sample's values so the user can edit it.
+    // Fields are set in dependency order and the cascade handlers are invoked so
+    // the dependent selects (origin, sub-origin, fixative) and conditional field
+    // visibility match what was originally saved.
+    private populateFormFromSample(sample: BioSample): void
+    {
+        // Setting the Sample ID switches the form to "update" mode and lets
+        // autoCheckDatasetsForSample tick the datasets already linked to it.
+        this.sample_id_input.value = String(sample.id);
+        this.sample_name_input.value = sample.name;
+
+        // Sample type first: it drives which origin options and conditional
+        // fields become available.
+        this.sample_type_select.value = String(sample.type_id);
+        this.sampleTypeChanged(sample.type_id);
+
+        // Origin (now populated by the type change) drives the sub-origin list.
+        this.sample_origin_select.value = String(sample.origin_id);
+        this.sampleOriginChanged(sample.origin_id);
+
+        this.sample_sub_origin_select.value = sample.sub_origin_id !== null ? String(sample.sub_origin_id) : '';
+        this.sample_source_select.value = sample.source_id !== null ? String(sample.source_id) : '';
+        this.sample_thickness_input.value = sample.thickness !== null ? String(sample.thickness) : '';
+        this.sample_cell_line_input.value = sample.cell_line ?? '';
+        this.sample_is_cancer_input.checked = sample.is_cancer === true;
+
+        // Condition drives whether the treatment-details field is shown.
+        this.sample_condition_select.value = String(sample.condition_id);
+        this.sampleConditionChanged(sample.condition_id);
+        this.sample_treatment_textarea.value = sample.treatment_details ?? '';
+
+        // The fixation <select> holds a fixation *name*; resolve the stored
+        // fixation id back to (name, fixative_id) and drive the cascade so the
+        // fixative list is populated before selecting the fixative.
+        const fixation = this.sample_meta_data_groups?.fixations.find(f => f.id === sample.fixation_id);
+        if (fixation !== undefined)
+        {
+            this.sample_fixation_select.value = fixation.name;
+            this.sampleFixationChanged(fixation.name);
+            this.sample_fixative_select.value = String(fixation.fixative_id);
+        }
+
+        this.sample_eecc_textarea.value = sample.expected_elemental_content_change ?? '';
+        this.sample_notes_textarea.value = sample.notes ?? '';
+
+        // Reset all dataset checkboxes, then tick the ones linked to this sample.
+        this.proposal_datasets.forEach(ds =>
+        {
+            const checkbox = document.getElementById('dataset_' + ds.id) as HTMLInputElement | null;
+            if (checkbox !== null)
+            {
+                checkbox.checked = false;
+            }
+        });
+        this.autoCheckDatasetsForSample();
+
+        // Bring the form into view so the user sees the loaded values.
+        this.sample_form.scrollIntoView({ behavior: 'smooth', block: 'start' });
     }
 
     private renderDatasetCheckboxes(): void

@@ -103,3 +103,19 @@
 {
   background-color: #f9f9f9;
 }
+
+/* Rows are clickable to load the sample into the form for editing. */
+.sample-table-row
+{
+  cursor: pointer;
+}
+
+.sample-table-grid tbody tr.sample-table-row:hover
+{
+  background-color: #eef5ff;
+}
+
+.sample-table-grid tbody tr.sample-table-row.selected
+{
+  background-color: #d6e8ff;
+}
