@@ -7,6 +7,7 @@
 
 use std::time::Duration;
 use axum::{
+    middleware,
     routing::{get, post},
     Json, Router,
 };
@@ -89,6 +90,8 @@ async fn main()
         .route("/api/get_beamline_worker_heartbeat/{beamline_id}", get(beamline_controls::get_beamline_worker_heartbeat))
         .route("/api/queue_beamline_worker_task/{beamline_id}", post(beamline_controls::queue_beamline_worker_task))
         
+        // Extend the caller's session by an hour after each successful, authenticated request.
+        .layer(middleware::from_fn(auth::refresh_token_layer))
         .layer((
             TraceLayer::new_for_http(),
             // Graceful shutdown will wait for outstanding requests to complete. Add a timeout so

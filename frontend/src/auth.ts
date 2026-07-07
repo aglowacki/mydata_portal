@@ -77,7 +77,17 @@ export async function auth_fetch(input: RequestInfo | URL, init?: RequestInit): 
     if (!response.ok && is_token_expired())
     {
         redirect_to_login();
+        return response;
     }
+
+    // The backend extends the session by an hour on each successful call and
+    // returns the refreshed token; persist it so the new expiry takes effect.
+    const refreshed_token = response.headers.get('x-refresh-token');
+    if (refreshed_token)
+    {
+        set_cookie('access_token', 'Bearer ' + refreshed_token);
+    }
+
     return response;
 }
 

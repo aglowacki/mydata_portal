@@ -3,8 +3,9 @@ use std::fmt::Display;
 use serde::{Deserialize, Serialize};
 use jsonwebtoken::{decode, encode, DecodingKey, EncodingKey, Header, Validation};
 use axum::{
-    extract::FromRequestParts,
-    http::{request::Parts, StatusCode},
+    extract::{FromRequestParts, Request},
+    http::{header, request::Parts, HeaderName, HeaderValue, StatusCode},
+    middleware::Next,
     response::{IntoResponse, Response},
     Json, RequestPartsExt
 };
@@ -63,6 +64,54 @@ impl Claims
     {
         return encode(&Header::default(), self, &KEYS.encoding);//.map_err(|_| "");
     }
+}
+
+// How long a successful request extends the session, in seconds (1 hour).
+const TOKEN_TTL_SECS: u64 = 3600;
+
+// Response header carrying the refreshed token back to the client.
+pub const REFRESH_HEADER: &str = "x-refresh-token";
+
+// Given a currently-valid bearer token, return a new token with its expiry
+// pushed out to now + TOKEN_TTL_SECS. Returns None when the token is missing,
+// invalid, or already expired, since there is nothing to extend in those cases.
+fn refresh_token(bearer_token: &str) -> Option<String>
+{
+    // decode() with the default validation rejects an already-expired token.
+    let mut token_data = decode::<Claims>(bearer_token, &KEYS.decoding, &Validation::default()).ok()?;
+    let now = SystemTime::now().duration_since(UNIX_EPOCH).ok()?.as_secs();
+    token_data.claims.exp = now + TOKEN_TTL_SECS;
+    token_data.claims.encode_to_string().ok()
+}
+
+// Middleware that extends the caller's session after each successful, authenticated
+// request. It reads the incoming bearer token, runs the handler, and on a 2xx
+// response attaches a refreshed token (expiry bumped by an hour) in the
+// REFRESH_HEADER for the client to store.
+pub async fn refresh_token_layer(request: Request, next: Next) -> Response
+{
+    // Grab the bearer token before the handler consumes the request.
+    let bearer = request
+        .headers()
+        .get(header::AUTHORIZATION)
+        .and_then(|value| value.to_str().ok())
+        .and_then(|value| value.strip_prefix("Bearer ").or_else(|| value.strip_prefix("bearer ")))
+        .map(|token| token.to_owned());
+
+    let mut response = next.run(request).await;
+
+    if response.status().is_success()
+    {
+        if let Some(new_token) = bearer.as_deref().and_then(refresh_token)
+        {
+            if let Ok(header_value) = HeaderValue::from_str(&new_token)
+            {
+                response.headers_mut().insert(HeaderName::from_static(REFRESH_HEADER), header_value);
+            }
+        }
+    }
+
+    response
 }
 
 #[derive(Debug, Serialize)]
