@@ -247,6 +247,35 @@ pub struct Proposal {
     pub status: Option<String>,
 }
 
+/// Query parameters for the proposal search form. All fields are optional; an
+/// omitted or empty field is not used as a filter. `experimenter` is only
+/// honored for Admin/Staff (a badge number, or a substring of the user's
+/// username / first / last name).
+#[derive(Deserialize, Debug)]
+pub struct ProposalSearchParams {
+    pub run: Option<String>,
+    pub beamline_acronym: Option<String>,
+    pub experimenter: Option<String>,
+}
+
+/// One experimenter suggestion for the search form's autocomplete. `badge` is
+/// what the search actually filters on; `name` is the human-readable label.
+#[derive(Serialize, Debug)]
+pub struct ExperimenterOption {
+    pub badge: i32,
+    pub name: String,
+}
+
+/// Autocomplete values for the proposal search form, scoped like the search
+/// itself: runs and beamline acronyms come from the proposals the caller can
+/// see, and experimenters are only populated for Admin/Staff.
+#[derive(Serialize, Debug)]
+pub struct ProposalSearchOptions {
+    pub runs: Vec<String>,
+    pub beamline_acronyms: Vec<String>,
+    pub experimenters: Vec<ExperimenterOption>,
+}
+
 #[derive(Queryable, Debug, Identifiable, Selectable, QueryableByName, Associations, serde::Serialize)]
 #[diesel(belongs_to(UserAccessControl, foreign_key=user_access_control_id))]
 #[diesel(primary_key(badge))]

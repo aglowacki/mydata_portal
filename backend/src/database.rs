@@ -19,6 +19,7 @@ use super::appstate;
 use crate::{auth};
 
 use diesel::pg::Pg;
+use diesel::PgTextExpressionMethods;
 
 // we can also write a custom extractor that grabs a connection from the pool
 // which setup is appropriate depends on your application
@@ -315,6 +316,148 @@ pub async fn search_user_proposals(
     let res = query.load(&mut conn).await.map_err(internal_error)?;
 
     Ok(Json(res))
+}
+
+/// Search proposals by dataset properties (syncotron run name and/or beamline
+/// acronym) and, for Admin/Staff, by experimenter. Regular users only ever see
+/// proposals they are associated with; Admin/Staff search across all proposals.
+/// All filters are optional and combined with AND.
+#[axum_macros::debug_handler]
+pub async fn search_proposals(
+    State(state): State<appstate::AppState>,
+    claims: auth::Claims,
+    DatabaseConnection(mut conn): DatabaseConnection,
+    axum::extract::Query(params): axum::extract::Query<models::ProposalSearchParams>,
+) -> Result<Json<Vec<models::Proposal>>, (StatusCode, String)>
+{
+    let is_admin = claims.uac == defines::STR_ADMIN || claims.uac == defines::STR_STAFF;
+
+    // Join proposals to their experimenters and, via their datasets, to the
+    // beamline and syncotron run those datasets were collected on.
+    let mut query = schema::proposals::table
+        .inner_join(schema::experimenter_proposal_links::table.on(schema::proposals::id.eq(schema::experimenter_proposal_links::proposal_id)))
+        .inner_join(schema::users::table.on(schema::users::badge.eq(schema::experimenter_proposal_links::user_badge)))
+        .inner_join(schema::proposal_dataset_links::table.on(schema::proposals::id.eq(schema::proposal_dataset_links::proposal_id)))
+        .inner_join(schema::datasets::table.on(schema::datasets::id.eq(schema::proposal_dataset_links::dataset_id)))
+        .inner_join(schema::beamlines::table.on(schema::beamlines::id.eq(schema::datasets::beamline_id)))
+        .inner_join(schema::syncotron_runs::table.on(schema::syncotron_runs::id.eq(schema::datasets::syncotron_run_id)))
+        .select(models::Proposal::as_select())
+        .distinct()
+        .into_boxed();
+
+    // Non-admins are restricted to their own proposals; the experimenter filter
+    // is ignored for them.
+    if !is_admin
+    {
+        query = query.filter(schema::experimenter_proposal_links::user_badge.eq(claims.get_badge()));
+    }
+
+    if let Some(run) = params.run.as_deref().map(str::trim).filter(|s| !s.is_empty())
+    {
+        query = query.filter(schema::syncotron_runs::name.eq(run.to_string()));
+    }
+
+    if let Some(acronym) = params.beamline_acronym.as_deref().map(str::trim).filter(|s| !s.is_empty())
+    {
+        query = query.filter(schema::beamlines::acronym.eq(acronym.to_string()));
+    }
+
+    if is_admin
+    {
+        if let Some(exp) = params.experimenter.as_deref().map(str::trim).filter(|s| !s.is_empty())
+        {
+            if let Ok(badge) = exp.parse::<i32>()
+            {
+                query = query.filter(schema::experimenter_proposal_links::user_badge.eq(badge));
+            }
+            else
+            {
+                // Match a substring of the username, first name, or last name.
+                let pattern = format!("%{}%", exp);
+                query = query.filter(
+                    schema::users::username.ilike(pattern.clone())
+                        .or(schema::users::first_name.ilike(pattern.clone()))
+                        .or(schema::users::last_name.ilike(pattern)));
+            }
+        }
+    }
+
+    let res = query.load(&mut conn).await.map_err(internal_error)?;
+
+    Ok(Json(res))
+}
+
+/// Distinct values used to power the proposal search form's autocomplete: the
+/// syncotron run names and beamline acronyms found on proposals the caller can
+/// see (their own, or all for Admin/Staff), plus the list of experimenters
+/// (Admin/Staff only).
+#[axum_macros::debug_handler]
+pub async fn get_proposal_search_options(
+    State(state): State<appstate::AppState>,
+    claims: auth::Claims,
+    DatabaseConnection(mut conn): DatabaseConnection,
+) -> Result<Json<models::ProposalSearchOptions>, (StatusCode, String)>
+{
+    let is_admin = claims.uac == defines::STR_ADMIN || claims.uac == defines::STR_STAFF;
+
+    // Distinct syncotron run names on datasets the caller can see.
+    let mut runs_query = schema::datasets::table
+        .inner_join(schema::syncotron_runs::table.on(schema::syncotron_runs::id.eq(schema::datasets::syncotron_run_id)))
+        .inner_join(schema::proposal_dataset_links::table.on(schema::proposal_dataset_links::dataset_id.eq(schema::datasets::id)))
+        .inner_join(schema::experimenter_proposal_links::table.on(schema::experimenter_proposal_links::proposal_id.eq(schema::proposal_dataset_links::proposal_id)))
+        .select(schema::syncotron_runs::name)
+        .distinct()
+        .into_boxed();
+    if !is_admin
+    {
+        runs_query = runs_query.filter(schema::experimenter_proposal_links::user_badge.eq(claims.get_badge()));
+    }
+    let mut runs: Vec<String> = runs_query.load::<String>(&mut conn).await.map_err(internal_error)?
+        .into_iter().map(|r| r.trim().to_string()).filter(|r| !r.is_empty()).collect();
+    runs.sort();
+    runs.dedup();
+
+    // Distinct beamline acronyms on datasets the caller can see.
+    let mut beamlines_query = schema::datasets::table
+        .inner_join(schema::beamlines::table.on(schema::beamlines::id.eq(schema::datasets::beamline_id)))
+        .inner_join(schema::proposal_dataset_links::table.on(schema::proposal_dataset_links::dataset_id.eq(schema::datasets::id)))
+        .inner_join(schema::experimenter_proposal_links::table.on(schema::experimenter_proposal_links::proposal_id.eq(schema::proposal_dataset_links::proposal_id)))
+        .select(schema::beamlines::acronym)
+        .distinct()
+        .into_boxed();
+    if !is_admin
+    {
+        beamlines_query = beamlines_query.filter(schema::experimenter_proposal_links::user_badge.eq(claims.get_badge()));
+    }
+    let mut beamline_acronyms: Vec<String> = beamlines_query.load::<String>(&mut conn).await.map_err(internal_error)?
+        .into_iter().map(|b| b.trim().to_string()).filter(|b| !b.is_empty()).collect();
+    beamline_acronyms.sort();
+    beamline_acronyms.dedup();
+
+    // Experimenters are Admin/Staff only: every distinct user linked to a proposal.
+    let experimenters = if is_admin
+    {
+        let mut rows: Vec<(i32, String, String, String)> = schema::experimenter_proposal_links::table
+            .inner_join(schema::users::table.on(schema::users::badge.eq(schema::experimenter_proposal_links::user_badge)))
+            .select((schema::users::badge, schema::users::first_name, schema::users::last_name, schema::users::username))
+            .distinct()
+            .load::<(i32, String, String, String)>(&mut conn)
+            .await
+            .map_err(internal_error)?;
+        rows.sort_by(|a, b| a.2.to_lowercase().cmp(&b.2.to_lowercase()));
+        rows.into_iter()
+            .map(|(badge, first, last, username)| models::ExperimenterOption {
+                badge,
+                name: format!("{} {} ({})", first.trim(), last.trim(), username.trim()),
+            })
+            .collect()
+    }
+    else
+    {
+        Vec::new()
+    };
+
+    Ok(Json(models::ProposalSearchOptions { runs, beamline_acronyms, experimenters }))
 }
 
 #[axum_macros::debug_handler]

@@ -70,6 +70,8 @@ async fn main()
         .route("/api/get_user_proposals_as/{user_id}", get(database::get_user_proposals_as))
         .route("/api/get_user_proposals_with_datasets/{user_id}", get(database::get_user_proposals_with_datasets))
         .route("/api/search_user_proposals/{field}/{value}", get(database::search_user_proposals))
+        .route("/api/search_proposals", get(database::search_proposals))
+        .route("/api/get_proposal_search_options", get(database::get_proposal_search_options))
         .route("/api/get_syncotron_runs", get(database::get_syncotron_runs))
         // depricated for get_bio_sample_meta_data_groups
         //.route("/api/bio_sample_types", get(database::get_bio_sample_types)) 
