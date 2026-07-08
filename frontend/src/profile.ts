@@ -115,11 +115,12 @@ function gen_lookup_card(): HTMLDivElement
     // Shared results table, refreshed by whichever field is searched.
     const results_table = document.createElement('table');
 
-    const fields: Array<{ key: string, label: string, placeholder: string }> =
+    // Each field may search one or more backend keys; results from all keys are
+    // merged. The Beamline Acronym field searches both the new and old acronyms.
+    const fields: Array<{ keys: Array<string>, label: string, placeholder: string }> =
     [
-        { key: 'beamline_acronym',     label: 'Beamline Acronym',     placeholder: 'e.g. 2-ID-E' },
-        { key: 'beamline_old_acronym', label: 'Beamline Old Acronym', placeholder: 'e.g. 2-ID-D' },
-        { key: 'syncotron_run',        label: 'Syncotron Run Name',   placeholder: 'e.g. 2024-1' },
+        { keys: ['beamline_acronym', 'beamline_old_acronym'], label: 'Beamline Acronym',   placeholder: 'e.g. 2-ID-E' },
+        { keys: ['syncotron_run'],                            label: 'Syncotron Run Name', placeholder: 'e.g. 2024-1' },
     ];
 
     fields.forEach(field =>
@@ -146,8 +147,18 @@ function gen_lookup_card(): HTMLDivElement
                 show_toast('Please enter a ' + field.label + ' to search.');
                 return;
             }
-            search_proposals(field.key, value)
-                .then(proposals => render_results(results_table, proposals))
+            // Search every key for this field and merge the results, keeping each
+            // proposal only once (by id).
+            Promise.all(field.keys.map(key => search_proposals(key, value)))
+                .then(result_lists =>
+                {
+                    const merged = new Map<number, Proposal>();
+                    result_lists.forEach(list =>
+                    {
+                        list.forEach(p => merged.set(p.id, p));
+                    });
+                    render_results(results_table, Array.from(merged.values()));
+                })
                 .catch(error => show_toast(error.message));
         };
 
