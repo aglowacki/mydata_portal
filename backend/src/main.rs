@@ -55,7 +55,8 @@ async fn main()
     // set up connection pool
     let db_config = AsyncDieselConnectionManager::<diesel_async::AsyncPgConnection>::new(db_url);
     let diesel_pool = bb8::Pool::builder().build(db_config).await.unwrap();
-    let redis_client = redis::Client::open("redis://localhost").unwrap();
+    let redis_host = std::env::var("REDIS_HOST").unwrap_or_else(|_| "localhost".to_string());
+    let redis_client = redis::Client::open(format!("redis://{}", redis_host)).unwrap();
     let app_state = appstate::AppState { diesel_pool, redis_client, sse_tx, shutdown_rx, };
 
     tokio::spawn(sse::redis_event_listener(app_state.clone()));
@@ -83,6 +84,8 @@ async fn main()
         .route("/api/get_proposal_experimenters/{proposal_id}", get(database::get_proposal_experimenters))
         .route("/api/get_experiment_roles", get(database::get_experiment_roles))
         .route("/api/get_all_users", get(database::get_all_users))
+        .route("/api/get_all_beamlines", get(database::get_all_beamlines))
+        .route("/api/get_my_beamlines", get(database::get_my_beamlines))
         .route("/api/add_proposal_experimenter", post(database::add_proposal_experimenter))
         .route("/api/remove_proposal_experimenter", post(database::remove_proposal_experimenter))
         .route("/api/get_beamline_log/{beamline_id}", get(beamline_controls::get_beamline_log))

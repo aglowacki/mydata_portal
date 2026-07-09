@@ -83,6 +83,14 @@ pub struct Beamline {
     pub link: String,
 }
 
+/// One entry for the beamline selector dropdown. `acronym` is what the page uses
+/// as its `beamline_id`; `name` is the human-readable label.
+#[derive(Serialize, Debug)]
+pub struct BeamlineInfo {
+    pub acronym: String,
+    pub name: String,
+}
+
 #[derive(Queryable, Debug, Identifiable, Selectable, QueryableByName, serde::Serialize)]
 #[diesel(primary_key(id))]
 #[diesel(table_name = bio_sample_conditions)]

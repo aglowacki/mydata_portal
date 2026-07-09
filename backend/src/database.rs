@@ -909,6 +909,56 @@ pub async fn get_all_users(
     Ok(Json(users))
 }
 
+/// Return every beamline (acronym + name) for the beamline selector dropdown.
+/// Any authenticated user may read this reference data.
+#[axum_macros::debug_handler]
+pub async fn get_all_beamlines(
+    State(state): State<appstate::AppState>,
+    claims: auth::Claims,
+    DatabaseConnection(mut conn): DatabaseConnection,
+) -> Result<Json<Vec<models::BeamlineInfo>>, (StatusCode, String)>
+{
+    let rows: Vec<(String, String)> = schema::beamlines::table
+        .select((schema::beamlines::acronym, schema::beamlines::name))
+        .order(schema::beamlines::acronym.asc())
+        .load::<(String, String)>(&mut conn)
+        .await
+        .map_err(internal_error)?;
+
+    let beamlines = rows.into_iter()
+        .map(|(acronym, name)| models::BeamlineInfo { acronym, name })
+        .collect();
+
+    Ok(Json(beamlines))
+}
+
+/// Return the beamline(s) the logged-in user is a contact for, by joining
+/// beamlines <- beamline_contacts -> users on the caller's badge. Used to pick
+/// a staff member's default beamline for the beamline control page.
+#[axum_macros::debug_handler]
+pub async fn get_my_beamlines(
+    State(state): State<appstate::AppState>,
+    claims: auth::Claims,
+    DatabaseConnection(mut conn): DatabaseConnection,
+) -> Result<Json<Vec<models::BeamlineInfo>>, (StatusCode, String)>
+{
+    let rows: Vec<(String, String)> = schema::beamline_contacts::table
+        .inner_join(schema::beamlines::table.on(schema::beamlines::id.eq(schema::beamline_contacts::beamline_id)))
+        .inner_join(schema::users::table.on(schema::users::badge.eq(schema::beamline_contacts::user_badge)))
+        .filter(schema::users::badge.eq(claims.get_badge()))
+        .select((schema::beamlines::acronym, schema::beamlines::name))
+        .order(schema::beamlines::acronym.asc())
+        .load::<(String, String)>(&mut conn)
+        .await
+        .map_err(internal_error)?;
+
+    let beamlines = rows.into_iter()
+        .map(|(acronym, name)| models::BeamlineInfo { acronym, name })
+        .collect();
+
+    Ok(Json(beamlines))
+}
+
 /// Link a user to a proposal with a given role. Admin/Staff only; refuses to add
 /// the same user twice.
 #[axum_macros::debug_handler]
