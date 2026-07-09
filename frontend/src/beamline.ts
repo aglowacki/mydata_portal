@@ -2,6 +2,12 @@
     import { get_cookie, has_cookie, set_cookie } from "./cookies";
     import { auth_fetch, get_user_info } from './auth';
 
+    // SSE event messages arrive as "<topic>:::<payload>". These topics must match
+    // the header defines the backend prepends (see defines: KEY_CONTROLS_EVENT).
+    const SSE_TOPIC_DELIMITER = ':::';
+    const SSE_TOPIC_CONTROLS_EVENT = 'CONTROLS_EVENT'; // log line payload
+    const SSE_TOPIC_TASK_EVENT = 'TASK_EVENT';         // task queue changed
+
     // One entry in the beamline selector dropdown. `acronym` doubles as the
     // page's beamline_id; `name` is the human-readable label.
     interface BeamlineInfo
@@ -163,13 +169,10 @@
                 console.log('SSE connection established.', event);
             };
             
-            this.beamline_event_source.onmessage = (event) => 
+            this.beamline_event_source.onmessage = (event) =>
             {
                 console.log("Received SSE message:", event.data);
-                const jsonData = JSON.parse(event.data);
-                const blog = jsonData as BeamlineLog;
-                // append to logs
-                this.appendLog(blog);
+                this.handleSseMessage(event.data);
             };
 
             this.beamline_event_source.onerror = (error) => 
@@ -196,6 +199,45 @@
         public gen_main_div(): HTMLDivElement
         {
             return this.main_div;
+        }
+
+        // Dispatch an SSE event based on its "<topic>:::<payload>" header:
+        // log events are appended to the logs; task events refresh the task queues.
+        private handleSseMessage(data: string): void
+        {
+            const delim_idx = data.indexOf(SSE_TOPIC_DELIMITER);
+            if (delim_idx === -1)
+            {
+                console.warn("SSE message missing topic delimiter:", data);
+                return;
+            }
+            const topic = data.substring(0, delim_idx);
+            const payload = data.substring(delim_idx + SSE_TOPIC_DELIMITER.length);
+
+            switch (topic)
+            {
+                case SSE_TOPIC_CONTROLS_EVENT:
+                {
+                    try
+                    {
+                        const blog = JSON.parse(payload) as BeamlineLog;
+                        this.appendLog(blog);
+                    }
+                    catch (error)
+                    {
+                        console.error("Failed to parse log event payload:", error, payload);
+                    }
+                    break;
+                }
+                case SSE_TOPIC_TASK_EVENT:
+                {
+                    // A task changed; re-fetch the queues and repopulate.
+                    this.fetcTasks().then(tasks => this.populateTasks(tasks));
+                    break;
+                }
+                default:
+                    console.warn("Unknown SSE topic:", topic);
+            }
         }
 
         // Clicking a tab expands the dock (up to a third of the screen) to show
