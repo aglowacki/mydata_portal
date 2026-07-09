@@ -106,41 +106,48 @@
     padding: 4px;
 }
 
-.beamline-log
-{
-    position: fixed;
-    width: 100%;
-    bottom: 0;
-    left: 0;
-    height: 120px;
-    overflow: auto;
-    outline: 2px solid #1f1f59;
-}
-
+/* Bottom-docked logs/tasks panel. The tab bar is always visible; clicking a
+   tab expands the content area upward to a third of the viewport. */
 .beamline-log-main
 {
     position: fixed;
     width: 100%;
     bottom: 0;
     left: 0;
-    height: 150px;
+    display: flex;
+    flex-direction: column;
     outline: 2px solid #1f1f59;
+    /* System colors adapt to light/dark mode so the dock stays opaque. */
+    background: Canvas;
+    color: CanvasText;
+}
+
+/* Scrollable content region shown when a tab is active. */
+.beamline-log-content
+{
+    height: 33vh;
+    overflow: auto;
+    border-bottom: 1px solid #1f1f59;
+}
+
+/* One panel (logs or tasks) inside the content region. */
+.beamline-log-panel
+{
+    width: 100%;
 }
 
 .beamline-log-tab
 {
     outline: 2px solid #1f1f59;
+    padding: 4px 12px;
+    cursor: pointer;
 }
 
-.beamline-task
+/* Highlight the currently expanded tab. */
+.beamline-log-tab.active
 {
-    position: fixed;
-    width: 100%;
-    bottom: 0;
-    left: 0;
-    height: 125px;
-    overflow: auto;
-    outline: 2px solid #4444c0;
+    background: #3a3a7a;
+    color: #ffffff;
 }
 
 div.scrollable

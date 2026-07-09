@@ -98,48 +98,63 @@
 
         private main_div: HTMLDivElement;
         private tab_div: HTMLDivElement;
+        private content_div: HTMLDivElement;
         private logs_div: HTMLDivElement;
         private tasks_div: HTMLDivElement;
         private tab_link_logs: HTMLButtonElement;
         private tab_link_tasks: HTMLButtonElement;
         private beamline_event_source: EventSource;
+        // Which panel is expanded ('logs' | 'tasks'), or null when the dock is collapsed.
+        private active_tab: string | null;
 
         constructor(beam_id: string)
         {
             this.main_div = document.createElement("div") as HTMLDivElement;
             this.main_div.id = "beamline-log-main";
             this.main_div.classList.add("beamline-log-main");
+            this.main_div.classList.add("collapsed");
             this.tab_div = document.createElement("div") as HTMLDivElement;
             this.tab_div.id = "beamline-tab";
             this.tab_div.classList.add("tab");
-            
+
+            // Scrollable content area that expands above the tab bar. Holds both
+            // panels; only the active one is shown.
+            this.content_div = document.createElement("div") as HTMLDivElement;
+            this.content_div.id = "beamline-log-content";
+            this.content_div.classList.add("beamline-log-content");
+            this.content_div.classList.add("hidden");
+
             this.logs_div = document.createElement("div") as HTMLDivElement;
             this.logs_div.id = "beamline-logs";
-            this.logs_div.classList.add("beamline-log");
+            this.logs_div.classList.add("beamline-log-panel");
             this.tasks_div = document.createElement("div") as HTMLDivElement;
             this.tasks_div.id = "beamline-tasks";
-            this.tasks_div.classList.add("beamline-log");
+            this.tasks_div.classList.add("beamline-log-panel");
             this.tasks_div.classList.add("hidden");
             this.logs = null;
             this.tasks = null;
-            this.beamline_id = beam_id; 
+            this.active_tab = null;
+            this.beamline_id = beam_id;
 
             this.tab_link_logs = document.createElement('button') as HTMLButtonElement;
             this.tab_link_logs.innerText = "Logs";
             this.tab_link_logs.classList.add('beamline-log-tab');
-            this.tab_link_logs.addEventListener('click', (event)=> { this.setlogsVisible(); });
+            this.tab_link_logs.addEventListener('click', (event)=> { this.toggleTab('logs'); });
             this.tab_link_tasks = document.createElement('button') as HTMLButtonElement;
             this.tab_link_tasks.innerText = "Tasks";
             this.tab_link_tasks.classList.add('beamline-log-tab');
-            this.tab_link_tasks.addEventListener('click', (event)=> { this.setTasksVisible(); });
+            this.tab_link_tasks.addEventListener('click', (event)=> { this.toggleTab('tasks'); });
 
 
             this.tab_div.appendChild(this.tab_link_logs);
             this.tab_div.appendChild(this.tab_link_tasks);
 
+            this.content_div.appendChild(this.logs_div);
+            this.content_div.appendChild(this.tasks_div);
+
+            // Tab bar sits below the content so the dock grows upward when expanded.
+            this.main_div.appendChild(this.content_div);
             this.main_div.appendChild(this.tab_div);
-            this.main_div.appendChild(this.logs_div);
-            this.main_div.appendChild(this.tasks_div);
 
             let sse_url = "api/sse/"+beam_id;
             this.beamline_event_source = new EventSource(sse_url, { withCredentials: true} );
@@ -183,16 +198,29 @@
             return this.main_div;
         }
 
-        private setlogsVisible(): void
+        // Clicking a tab expands the dock (up to a third of the screen) to show
+        // that panel; clicking the same tab again collapses the dock.
+        private toggleTab(tab: string): void
         {
-            this.logs_div.classList.remove('hidden')
-            this.tasks_div.classList.add('hidden')
+            this.active_tab = (this.active_tab === tab) ? null : tab;
+            this.applyTabState();
         }
 
-        private setTasksVisible(): void
+        // Reflect `active_tab` in the DOM: expand/collapse the dock, show the
+        // selected panel, and highlight the active tab button.
+        private applyTabState(): void
         {
-            this.logs_div.classList.add('hidden')
-            this.tasks_div.classList.remove('hidden')
+            const expanded = this.active_tab !== null;
+            this.main_div.classList.toggle('expanded', expanded);
+            this.main_div.classList.toggle('collapsed', !expanded);
+            this.content_div.classList.toggle('hidden', !expanded);
+
+            const logs_active = this.active_tab === 'logs';
+            const tasks_active = this.active_tab === 'tasks';
+            this.logs_div.classList.toggle('hidden', !logs_active);
+            this.tasks_div.classList.toggle('hidden', !tasks_active);
+            this.tab_link_logs.classList.toggle('active', logs_active);
+            this.tab_link_tasks.classList.toggle('active', tasks_active);
         }
 
         private async fetcLogs(): Promise<BeamlineLogs | null>
