@@ -1,8 +1,16 @@
     import { gen_index } from './general-helper';
     import { get_cookie, has_cookie, set_cookie } from "./cookies";
-    import { auth_fetch } from './auth';
-    
-    interface BeamlineLog 
+    import { auth_fetch, get_user_info } from './auth';
+
+    // One entry in the beamline selector dropdown. `acronym` doubles as the
+    // page's beamline_id; `name` is the human-readable label.
+    interface BeamlineInfo
+    {
+        acronym: string;
+        name: string;
+    }
+
+    interface BeamlineLog
     {
         time: number;
         msg: string;
@@ -387,10 +395,10 @@
             this.available_scans = null;
             this.beamline_id = beam_id;
 
-            this.fetchAvailableScans().then(scans => 
+            this.fetchAvailableScans().then(scans =>
             {
                 this.available_scans = scans;
-                //this.populateAvailableScans(scans);
+                this.populateAvailableScans(scans);
             }
             );
         }
@@ -446,48 +454,216 @@
             }
         }
 */
+        // Render the available scan plans parsed from the redis value into
+        // viewable components: one card per plan showing its description and a
+        // table of parameters.
         private populateAvailableScans(scans: ScanApiResponse | null): void
         {
-            console.log(scans);
             this.queued_div.innerText = "";
 
-            if (scans?.success === true)
-            {
-                //nlogs?.reverse();
-                let table = document.createElement("table") as HTMLTableElement;
-                let hrow = table.insertRow();
-                let th0 = document.createElement("th");
-                th0.innerText = "Status";
-                hrow.appendChild(th0);
-                let th1 = document.createElement("th");
-                th1.innerText = "Command";
-                hrow.appendChild(th1);
-                let th2 = document.createElement("th");
-                th2.innerText = "Username";
-                hrow.appendChild(th2);
-                let th3 = document.createElement("th");
-                th3.innerText = "Reply";
-                hrow.appendChild(th3);
-                let th4 = document.createElement("th");
-                th4.innerText = "Start Time";
-                hrow.appendChild(th4);
-                let th5 = document.createElement("th");
-                th5.innerText = "End Time";
-                hrow.appendChild(th5);
+            // Section header with a toggle to collapse/expand the whole plan list.
+            const header = document.createElement("div") as HTMLDivElement;
+            header.classList.add("scan-section-header");
 
-                let htmlList = document.createElement("ul") as HTMLUListElement;
-                Object.keys(scans.plans_allowed).forEach(key => 
+            const toggle = document.createElement("button") as HTMLButtonElement;
+            toggle.type = "button";
+            toggle.classList.add("scan-plan-toggle");
+            toggle.innerText = "+";
+
+            const heading = document.createElement("h3") as HTMLHeadingElement;
+            heading.innerText = "Available Scan Plans";
+
+            header.appendChild(toggle);
+            header.appendChild(heading);
+            this.queued_div.appendChild(header);
+
+            // Container holding all plan cards; toggled as a unit. Starts collapsed.
+            const list = document.createElement("div") as HTMLDivElement;
+            list.classList.add("scan-plan-list");
+            list.classList.add("hidden");
+            this.queued_div.appendChild(list);
+
+            const do_toggle = () =>
+            {
+                const collapsed = list.classList.toggle("hidden");
+                toggle.innerText = collapsed ? "+" : "-";
+            };
+            toggle.addEventListener('click', do_toggle);
+            heading.addEventListener('click', do_toggle);
+
+            if (scans?.success !== true || !scans.plans_allowed)
+            {
+                const msg = document.createElement("div") as HTMLDivElement;
+                msg.innerText = scans?.msg ? scans.msg : "No available scan plans.";
+                list.appendChild(msg);
+                return;
+            }
+
+            const plan_names = Object.keys(scans.plans_allowed).sort();
+            plan_names.forEach(key =>
+            {
+                const plan = scans.plans_allowed[key];
+                if (plan)
                 {
-                    //console.log(key, scans.plans_allowed[key]);
-                    let list_item = document.createElement("li") as HTMLLIElement;
-                    list_item.textContent  = key; //scans.plans_allowed[key].name;
-                    htmlList.appendChild(list_item);
+                    list.appendChild(this.gen_plan_card(key, plan));
+                }
+            });
+        }
+
+        // Build a single scan plan card: a collapsed row showing only the name
+        // with a '+'/'-' toggle button that expands to reveal the description
+        // and parameters table.
+        private gen_plan_card(name: string, plan: Plan): HTMLDivElement
+        {
+            const card = document.createElement("div") as HTMLDivElement;
+            card.classList.add("scan-plan");
+
+            const header = document.createElement("div") as HTMLDivElement;
+            header.classList.add("scan-plan-header");
+
+            const toggle = document.createElement("button") as HTMLButtonElement;
+            toggle.type = "button";
+            toggle.classList.add("scan-plan-toggle");
+            toggle.innerText = "+";
+
+            const title = document.createElement("span") as HTMLSpanElement;
+            title.classList.add("scan-plan-name");
+            title.innerText = plan.name ? plan.name : name;
+
+            header.appendChild(toggle);
+            header.appendChild(title);
+            card.appendChild(header);
+
+            const details = this.gen_plan_form(name, plan);
+            details.classList.add("hidden");
+            card.appendChild(details);
+
+            const do_toggle = () =>
+            {
+                const collapsed = details.classList.toggle("hidden");
+                toggle.innerText = collapsed ? "+" : "-";
+            };
+            // Clicking the toggle button or anywhere on the header row expands/collapses.
+            toggle.addEventListener('click', do_toggle);
+            title.addEventListener('click', do_toggle);
+
+            return card;
+        }
+
+        // Build the expandable details section for a plan as a fillable form:
+        // a description, one input per parameter (pre-filled with its default),
+        // and a submit button that queues the plan with the entered values.
+        private gen_plan_form(name: string, plan: Plan): HTMLFormElement
+        {
+            const form = document.createElement("form") as HTMLFormElement;
+            form.classList.add("scan-plan-details");
+
+            if (plan.description)
+            {
+                const desc = document.createElement("div") as HTMLDivElement;
+                desc.classList.add("scan-plan-desc");
+                desc.innerText = plan.description;
+                form.appendChild(desc);
+            }
+
+            // Map each parameter name to its input so we can collect values on submit.
+            const inputs: Map<string, HTMLInputElement> = new Map();
+
+            if (plan.parameters && plan.parameters.length > 0)
+            {
+                const table = document.createElement("table") as HTMLTableElement;
+                table.classList.add("scan-plan-params");
+                const hrow = table.insertRow();
+                ["Parameter", "Value", "Description"].forEach(text =>
+                {
+                    const th = document.createElement("th");
+                    th.innerText = text;
+                    hrow.appendChild(th);
                 });
-                
-                this.main_div.appendChild(htmlList);
+
+                plan.parameters.forEach((param: Parameter) =>
+                {
+                    const row = table.insertRow();
+                    row.insertCell().innerText = param.name;
+
+                    const value_cell = row.insertCell();
+                    const input = document.createElement("input") as HTMLInputElement;
+                    input.type = "text";
+                    input.name = param.name;
+                    input.classList.add("scan-plan-input");
+                    if (param.default !== undefined)
+                    {
+                        input.value = param.default;
+                        input.placeholder = param.default;
+                    }
+                    value_cell.appendChild(input);
+                    inputs.set(param.name, input);
+
+                    row.insertCell().innerText = param.description ? param.description : "";
+                });
+
+                form.appendChild(table);
+            }
+
+            const submit_btn = document.createElement("button") as HTMLButtonElement;
+            submit_btn.type = "submit";
+            submit_btn.classList.add("scan-plan-submit");
+            submit_btn.innerText = "Queue Scan";
+            form.appendChild(submit_btn);
+
+            const plan_name = plan.name ? plan.name : name;
+            form.addEventListener('submit', (event) =>
+            {
+                event.preventDefault();
+                const args: CommandArgs = {};
+                inputs.forEach((input, param_name) =>
+                {
+                    // Only send parameters the user actually provided a value for.
+                    if (input.value !== "")
+                    {
+                        args[param_name] = input.value;
+                    }
+                });
+                this.submit_plan(plan_name, args);
+            });
+
+            return form;
+        }
+
+        // Queue a scan plan on the beamline worker with the values entered in
+        // the plan's form.
+        private async submit_plan(plan_name: string, args: CommandArgs): Promise<void>
+        {
+            try
+            {
+                const auth_cookie: string = get_cookie('access_token');
+                const headers = new Headers({
+                    'Content-Type': 'application/json',
+                    'Accept': 'application/json',
+                    'Authorization': auth_cookie,
+                });
+                const command: BeamlineTask = {
+                    status: " ",
+                    beamline_id: this.beamline_id,
+                    cmd: plan_name,
+                    args: args,
+                };
+                console.log(command);
+                const requestOptions: RequestInit = {
+                    method: 'POST',
+                    headers: headers,
+                    body: JSON.stringify(command),
+                };
+
+                const response = await auth_fetch('/api/queue_beamline_worker_task/' + this.beamline_id, requestOptions);
+                console.log(response);
+            }
+            catch (error)
+            {
+                console.error('Error queueing scan plan:', error);
             }
         }
-        
+
     }
 
     class BeamlineWidget
@@ -561,12 +737,125 @@
         }
     }
 
+// Fetch every beamline for the selector dropdown.
+async function fetch_all_beamlines(): Promise<Array<BeamlineInfo>>
+{
+    const auth_cookie: string = get_cookie('access_token');
+    const headers = new Headers({
+        'Content-Type': 'application/json',
+        'Accept': 'application/json',
+        'Authorization': auth_cookie,
+    });
+    const response = await auth_fetch('/api/get_all_beamlines', { method: 'GET', headers: headers });
+    if (!response.ok)
+    {
+        throw new Error(`HTTP error! status: ${response.status}`);
+    }
+    return await response.json() as Array<BeamlineInfo>;
+}
+
+// Fetch the beamline(s) the logged-in user is a contact for. The backend joins
+// beamlines, beamline_contacts, and users on the caller's badge.
+async function fetch_my_beamlines(): Promise<Array<BeamlineInfo>>
+{
+    const auth_cookie: string = get_cookie('access_token');
+    const headers = new Headers({
+        'Content-Type': 'application/json',
+        'Accept': 'application/json',
+        'Authorization': auth_cookie,
+    });
+    const response = await auth_fetch('/api/get_my_beamlines', { method: 'GET', headers: headers });
+    if (!response.ok)
+    {
+        throw new Error(`HTTP error! status: ${response.status}`);
+    }
+    return await response.json() as Array<BeamlineInfo>;
+}
+
+// Build the beamline selector. Selecting an entry reloads the page for the chosen
+// beamline, passing its acronym as the beamline_id URL parameter.
+async function gen_beamline_selector(current: string): Promise<HTMLDivElement>
+{
+    const wrap = document.createElement("div") as HTMLDivElement;
+    wrap.classList.add("beamline-selector");
+
+    const label = document.createElement("label") as HTMLLabelElement;
+    label.textContent = "Beamline: ";
+    label.htmlFor = "beamline-select";
+
+    const select = document.createElement("select") as HTMLSelectElement;
+    select.id = "beamline-select";
+
+    try
+    {
+        const beamlines = await fetch_all_beamlines();
+        beamlines.forEach(bl =>
+        {
+            const opt = document.createElement("option") as HTMLOptionElement;
+            opt.value = bl.acronym;
+            opt.textContent = bl.name ? `${bl.acronym} — ${bl.name}` : bl.acronym;
+            if (bl.acronym === current)
+            {
+                opt.selected = true;
+            }
+            select.appendChild(opt);
+        });
+    }
+    catch (error)
+    {
+        console.error('Error loading beamlines:', error);
+    }
+
+    select.addEventListener('change', () =>
+    {
+        window.location.href = 'beamline.html?beamline_id=' + encodeURIComponent(select.value);
+    });
+
+    wrap.appendChild(label);
+    wrap.appendChild(select);
+    return wrap;
+}
+
 // Initialize the application when the DOM is loaded
-document.addEventListener('DOMContentLoaded', () => 
+document.addEventListener('DOMContentLoaded', async () =>
 {
     const queryString = window.location.search;
     const urlParams = new URLSearchParams(queryString);
-    let beamline_id = urlParams.get('beamline_id')?.toString() ?? 'sec0';
-    let blw = new BeamlineWidget(beamline_id);
-    gen_index('app', blw.gen_main_div());
+    let beamline_id = urlParams.get('beamline_id')?.toString() ?? '';
+
+    // With no beamline explicitly requested, staff default to their assigned
+    // beamline (queried from beamlines/beamline_contacts/users).
+    if (beamline_id.length === 0)
+    {
+        try
+        {
+            const claims = await get_user_info();
+            if (claims.uac === 'Staff' || claims.uac === 'Admin')
+            {
+                const mine = await fetch_my_beamlines();
+                if (mine.length > 0 && mine[0])
+                {
+                    beamline_id = mine[0].acronym;
+                }
+            }
+        }
+        catch (error)
+        {
+            console.error('Could not determine assigned beamline:', error);
+        }
+    }
+
+    // Fall back to the historical default if nothing else resolved.
+    if (beamline_id.length === 0)
+    {
+        beamline_id = 'sec0';
+    }
+
+    const container = document.createElement("div") as HTMLDivElement;
+    container.appendChild(await gen_beamline_selector(beamline_id));
+
+    const blw = new BeamlineWidget(beamline_id);
+    container.appendChild(blw.gen_main_div());
+
+    gen_index('app', container);
 });

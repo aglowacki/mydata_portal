@@ -133,6 +133,7 @@ export function gen_header()
     header_nav.appendChild(gen_link("Home", "/"));
     header_nav.appendChild(gen_link("Proposals", "/proposals.html"));
     header_nav.appendChild(gen_link("Samples", "/samples.html"));
+    header_nav.appendChild(gen_link("Beamline", "/beamline.html"));
     //header_nav.appendChild(gen_signin_form());
 
     header.appendChild(gen_user_icon());
