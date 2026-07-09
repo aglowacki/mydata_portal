@@ -28,6 +28,7 @@ mod command_protocols;
 mod config;
 mod epics;
 mod redis_sink;
+mod xrf_stream;
 
 use config::Config;
 
@@ -101,6 +102,15 @@ fn main() -> Result<()> {
         })
     };
 
+    // XRF live-map stream thread: subscribes to a ZeroMQ PUB/SUB feed (configured
+    // via the `xrf_stream` config section) and mirrors decoded per-pixel counts
+    // into Redis. Optional: returns None when the section is absent.
+    let xrf_handle = xrf_stream::spawn(
+        config.xrf_stream.clone(),
+        config.redis_config.conn_str.clone(),
+        running.clone(),
+    );
+
     // Main thread: synchronous ZeroMQ + Redis command/log poll loop.
     if let Err(e) = run_command_loop(&config, &running) {
         warn!(error = %e, "command loop terminated with error");
@@ -123,6 +133,14 @@ fn main() -> Result<()> {
         Ok(Ok(())) => {}
         Ok(Err(e)) => warn!(error = %e, "EPICS monitor terminated with error"),
         Err(_) => warn!("EPICS monitor thread panicked"),
+    }
+
+    // The XRF stream thread polls `running` on a bounded recv timeout, so this
+    // join returns promptly once shutdown was requested.
+    if let Some(handle) = xrf_handle {
+        if handle.join().is_err() {
+            warn!("XRF stream thread panicked");
+        }
     }
 
     info!("stopped");
