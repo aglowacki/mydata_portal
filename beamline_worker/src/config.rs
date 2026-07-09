@@ -9,7 +9,29 @@ pub struct Config
 {
     pub redis_config: RedisConfig,
     pub control_clients: Vec<ControlClient>,
-    pub ioc_config: IocConfig
+    pub ioc_config: IocConfig,
+    /// Optional XRF live-map stream. Omit the section to disable the listener.
+    #[serde(default)]
+    pub xrf_stream: Option<XrfStreamConfig>,
+}
+
+#[derive(Deserialize, Debug, Clone)]
+pub struct XrfStreamConfig
+{
+    /// Hostname/IP of the XRF-Maps ZeroMQ PUB socket.
+    pub host: String,
+    /// TCP port of the XRF-Maps ZeroMQ PUB socket.
+    pub port: u16,
+    /// Subscription topic prefix; empty subscribes to all messages.
+    #[serde(default)]
+    pub topic: String,
+    /// Byte width of XRF-Maps' real type: 4 (float) or 8 (double).
+    #[serde(default = "default_real_bytes")]
+    pub real_bytes: usize,
+}
+
+fn default_real_bytes() -> usize {
+    4
 }
 
 #[derive(Deserialize, Debug, Clone)]
