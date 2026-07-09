@@ -12,7 +12,6 @@
     },
   "ioc_config":
   {
-    "hash_key": "SIM1",
     "connect_timeout_secs": 10,
     "reconnect_backoff_secs": 2,
     "pvs": [

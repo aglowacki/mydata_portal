@@ -58,7 +58,7 @@ fn main() -> Result<()> {
     info!(
         config = %args.config_filename,
         pvs = config.ioc_config.pvs.len(),
-        hash_key = %config.ioc_config.hash_key,
+        beamline_id = %config.beamline_id,
         "loaded configuration"
     );
 
@@ -157,10 +157,13 @@ async fn run_epics(cfg: Config, running: Arc<AtomicBool>) -> Result<()> {
 
     let (tx, rx) = mpsc::channel(UPDATE_CHANNEL_CAPACITY);
 
+    // Redis hash that all monitored PV values are written into, keyed per beamline.
+    let hash_key = format!("{}{}", defines::KEY_IOC_MONITOR, cfg.beamline_id);
+
     // Start the Redis writer first so updates have somewhere to go.
     let writer = redis_sink::spawn(
         cfg.redis_config.conn_str.clone(),
-        cfg.ioc_config.hash_key.clone(),
+        hash_key,
         rx,
     );
 

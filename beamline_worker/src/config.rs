@@ -55,9 +55,6 @@ pub struct ControlClient
 #[derive(Debug, Clone, Deserialize)]
 pub struct IocConfig
 {
-    /// Name of the Redis hash that all PV values are written into.
-    pub hash_key: String,
-
     /// Seconds to wait for a PV to connect before retrying.
     #[serde(default = "default_connect_timeout")]
     pub connect_timeout_secs: u64,
@@ -106,9 +103,6 @@ impl Config {
         }
         if self.redis_config.conn_str.trim().is_empty() {
             bail!("`redis_url` must not be empty");
-        }
-        if self.ioc_config.hash_key.trim().is_empty() {
-            bail!("`hash_key` must not be empty");
         }
         if self.ioc_config.pvs.is_empty() {
             bail!("`pvs` must contain at least one entry");
