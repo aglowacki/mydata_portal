@@ -1,6 +1,5 @@
 use zmq::PollItem;
 use redis::{Commands};
-use std::{collections::HashMap};
 use std::sync::Arc;
 use crate::{beamline_controls, config};
 use std::time::Duration;
@@ -23,16 +22,16 @@ pub struct ControlClient
 
 impl ControlClient 
 {
-    pub fn new(config: &config::ControlClient, context: &zmq::Context) -> Self
+    pub fn new(config: &config::ControlClient, beamline_id: &str, context: &zmq::Context) -> Self
     {
-        Self 
+        Self
         {
             cmd_address: format!("tcp://{}:60615", config.host.to_string()),
             log_address: format!("tcp://{}:60625", config.host.to_string()),
             log_topic: String::from(config.zmq_log_topic.clone()),
             protocol: String::from(config.protocol.clone()),
-            beamline_id: String::from(config.beamline_id.clone()),
-            beamline_id_log: format!("{}{}", defines::KEY_BEAMLINE_SCAN_LOGS, config.beamline_id),
+            beamline_id: String::from(beamline_id),
+            beamline_id_log: format!("{}{}", defines::KEY_BEAMLINE_SCAN_LOGS, beamline_id),
             subscriber: context.socket(zmq::SUB).expect("Failed to create SUB socket"),
             cmd_channel: context.socket(zmq::REQ).expect("Failed to create CMD socket"),
         }
@@ -66,8 +65,10 @@ pub struct ClientMap
     pub redis_key_cmd_queue_processing: String,
     pub redis_key_cmd_queue_done: String,
     pub redis_key_heartbeat: String,
-    client_map: HashMap<String, Arc<ControlClient>>,
-    poll_map: HashMap<usize, Arc<ControlClient>>,
+    // Program-wide beamline id; commands are only handled if they target it.
+    beamline_id: String,
+    // The single control client this worker drives.
+    client: Arc<ControlClient>,
     poll_list: Vec<PollItem<'static>>,
 }
 
@@ -103,22 +104,12 @@ impl ClientMap
 {
     pub fn init(config: &config::Config, context: &zmq::Context ) -> Self
     {
-        let mut c_map:HashMap<String, Arc<ControlClient>> = HashMap::new();
-        let mut p_map:HashMap<usize, Arc<ControlClient>> = HashMap::new();
-        let mut p_list:Vec<PollItem<'static>> = Vec::new();
-        let mut idx: usize = 0;
-        for bs_client_config in config.control_clients.iter()
-        {
-            let bs_client = Arc::new(ControlClient::new(bs_client_config, context));
-            println!("New BlueSky Client: Cmd: {} , Log: {}", bs_client.cmd_address, bs_client.log_address);
-            bs_client.connect();
-            // SAFETY: We extend the lifetime to 'static because Arc ensures the data lives long enough.
-            let poll_item: PollItem<'static> = unsafe { std::mem::transmute(bs_client.gen_poll_item()) };
-            p_list.push(poll_item);
-            c_map.insert(bs_client_config.beamline_id.clone(), Arc::clone(&bs_client));
-            p_map.insert(idx, Arc::clone(&bs_client));
-            idx = idx + 1;
-        }
+        let bs_client = Arc::new(ControlClient::new(&config.control_client, &config.beamline_id, context));
+        println!("New BlueSky Client: Cmd: {} , Log: {}", bs_client.cmd_address, bs_client.log_address);
+        bs_client.connect();
+        // SAFETY: We extend the lifetime to 'static because Arc ensures the data lives long enough.
+        let poll_item: PollItem<'static> = unsafe { std::mem::transmute(bs_client.gen_poll_item()) };
+        let poll_list: Vec<PollItem<'static>> = vec![poll_item];
 
         Self
         {
@@ -126,9 +117,9 @@ impl ClientMap
             redis_key_cmd_queue_processing: format!("{}{}", defines::KEY_TASK_QUEUE_PROCESSING, config.redis_config.redis_cmd_queue.to_string()),
             redis_key_cmd_queue_done: format!("{}{}", defines::KEY_TASK_QUEUE_DONE, config.redis_config.redis_cmd_queue.to_string()),
             redis_key_heartbeat: format!("{}{}", defines::KEY_WORKER_HEARTBEAT, config.redis_config.redis_cmd_queue.to_string()),
-            client_map: c_map,
-            poll_map: p_map,
-            poll_list: p_list,
+            beamline_id: config.beamline_id.clone(),
+            client: bs_client,
+            poll_list,
         }
     }
 
@@ -139,38 +130,33 @@ impl ClientMap
         // Poll the socket
         let poll_result = zmq::poll(&mut self.poll_list, poll_timeout);
 
-        match poll_result 
+        match poll_result
         {
-            Ok(_) => 
+            Ok(_) =>
             {
-                for (index, poll_item) in self.poll_list.iter().enumerate() 
+                if self.poll_list[0].is_readable()
                 {
-                    if poll_item.is_readable()
+                    let client = &self.client;
+                    match client.subscriber.recv_string(0)
                     {
-                        if let Some(client) = self.poll_map.get(&index)
+                        Ok(Ok(message)) =>
                         {
-                            match client.subscriber.recv_string(0)
+                            println!("Received message: {}", message);
+                            got_data = true;
+                            if message != client.log_topic
                             {
-                                Ok(Ok(message)) => 
+                                // Push the message to the Redis list
+                                let result: redis::RedisResult<()> = redis_conn.rpush(&(client.beamline_id_log), &message);
+                                let _: redis::RedisResult<()> = redis_conn.publish(&(client.beamline_id_log), &message);
+                                match result
                                 {
-                                    println!("Received message: {}", message);
-                                    got_data = true;
-                                    if message != client.log_topic
-                                    {
-                                        // Push the message to the Redis list
-                                        let result: redis::RedisResult<()> = redis_conn.rpush(&(client.beamline_id_log), &message);
-                                        let _: redis::RedisResult<()> = redis_conn.publish(&(client.beamline_id_log), &message);
-                                        match result 
-                                        {
-                                            Ok(_) => println!("Message pushed to Redis list: {}", client.beamline_id_log),
-                                            Err(err) => eprintln!("Failed to push message to Redis: {}", err),
-                                        }
-                                    }
+                                    Ok(_) => println!("Message pushed to Redis list: {}", client.beamline_id_log),
+                                    Err(err) => eprintln!("Failed to push message to Redis: {}", err),
                                 }
-                                Ok(Err(err)) => eprintln!("Failed to decode message: {}", String::from_utf8(err).expect("Failed to decode!")),
-                                Err(err) => eprintln!("Failed to receive message: {}", err),
                             }
                         }
+                        Ok(Err(err)) => eprintln!("Failed to decode message: {}", String::from_utf8(err).expect("Failed to decode!")),
+                        Err(err) => eprintln!("Failed to receive message: {}", err),
                     }
                 }
             }
@@ -183,20 +169,17 @@ impl ClientMap
 
     pub fn update_available_scans(&mut self, redis_conn: &mut redis::Connection)
     {
-        for (name, client) in self.client_map.iter_mut()
+        let rkey = format!("{}{}", defines::KEY_BEAMLINE_AVAILABLE_SCANS, self.beamline_id);
+        let mut command = command_protocols::BeamlineCommand::gen_get_avail_scans(&self.beamline_id);
+        process_protocol_command(&self.client, &mut command);
+        match command.reply
         {
-            let rkey = format!("{}{}", defines::KEY_BEAMLINE_AVAILABLE_SCANS, name);
-            let mut command = command_protocols::BeamlineCommand::gen_get_avail_scans(name);
-            process_protocol_command(&client, &mut command);
-            match command.reply
+            Some(value)=>
             {
-                Some(value)=>
-                {
-                    println!("Updating available scans for {}", name);
-                    let _: redis::RedisResult<()>= redis_conn.set(&rkey, &value);
-                }
-                None=> println!("Failed to get available scans for {}", name),
+                println!("Updating available scans for {}", self.beamline_id);
+                let _: redis::RedisResult<()>= redis_conn.set(&rkey, &value);
             }
+            None=> println!("Failed to get available scans for {}", self.beamline_id),
         }
     }
 
@@ -205,15 +188,15 @@ impl ClientMap
         let mut beamline_cmd: command_protocols::BeamlineCommand = serde_json::from_str(&cmd_str).unwrap_or(command_protocols::BeamlineCommand::new(cmd_str));
         if beamline_cmd.is_valid()
         {
-            let result = self.client_map.get(beamline_cmd.get_beamline_id());
-            match result
+            // Only one client; handle the command if it targets this beamline.
+            if *beamline_cmd.get_beamline_id() == self.beamline_id
             {
-                Some(cmd_client) => 
-                {
-                    print!("Processing: {}", cmd_str);
-                    process_protocol_command(cmd_client, &mut beamline_cmd);
-                }
-                None => beamline_cmd.set_client_not_found()
+                print!("Processing: {}", cmd_str);
+                process_protocol_command(&self.client, &mut beamline_cmd);
+            }
+            else
+            {
+                beamline_cmd.set_client_not_found();
             }
         }
         else 

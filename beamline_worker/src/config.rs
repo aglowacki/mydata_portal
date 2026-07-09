@@ -7,8 +7,10 @@ use serde::Deserialize;
 #[derive(Deserialize, Debug, Clone)]
 pub struct Config
 {
+    /// Beamline identifier for the whole program (Redis key suffix, command routing).
+    pub beamline_id: String,
     pub redis_config: RedisConfig,
-    pub control_clients: Vec<ControlClient>,
+    pub control_client: ControlClient,
     pub ioc_config: IocConfig,
     /// Optional XRF live-map stream. Omit the section to disable the listener.
     #[serde(default)]
@@ -48,7 +50,6 @@ pub struct ControlClient
 {
     pub host: String,
     pub zmq_log_topic: String,
-    pub beamline_id: String,
     pub protocol: String,
 }
 
@@ -101,6 +102,9 @@ impl Config {
     }
 
     fn validate(&self) -> Result<()> {
+        if self.beamline_id.trim().is_empty() {
+            bail!("`beamline_id` must not be empty");
+        }
         if self.redis_config.conn_str.trim().is_empty() {
             bail!("`redis_url` must not be empty");
         }

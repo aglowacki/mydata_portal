@@ -1,18 +1,16 @@
 {
+    "beamline_id": "BeamlineId",
     "redis_config":
     {
         "conn_str": "redis://127.0.0.1/",
         "redis_cmd_queue": "Sec0_Q"
     },
-    "control_clients":
-    [
-        {
-            "host": "127.0.0.1",
-            "zmq_log_topic": "QS_Console",
-            "beamline_id": "BeamlineId",
-            "protocol": "BlueSky"
-        }
-    ],
+    "control_client":
+    {
+        "host": "127.0.0.1",
+        "zmq_log_topic": "QS_Console",
+        "protocol": "BlueSky"
+    },
   "ioc_config":
   {
     "hash_key": "SIM1",
