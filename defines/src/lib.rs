@@ -3,6 +3,9 @@ pub const KEY_BEAMLINE_QUEUED_SCANS: &str = "BEAMLINE_QUEUED_SCANS_";
 pub const KEY_BEAMLINE_DONE_SCANS: &str = "BEAMLINE_DONE_SCANS_";
 pub const KEY_BEAMLINE_SCAN_LOGS: &str = "BEAMLINE_SCAN_LOGS_";
 pub const KEY_BEAMLINE_EVENT: &str = "BEAMLINE_EVENT_";
+// Header prepended (with the ':::' delimiter) to control-log messages published
+// on the KEY_BEAMLINE_EVENT channel, identifying the event type.
+pub const KEY_CONTROLS_EVENT: &str = "CONTROLS_EVENT";
 pub const KEY_TASK_QUEUE_WAITING: &str = "TASK_QUEUE_WAITING_";
 pub const KEY_TASK_QUEUE_PROCESSING: &str = "TASK_QUEUE_PROCESSING_";
 pub const KEY_TASK_QUEUE_DONE: &str = "TASK_QUEUE_DONE_";

@@ -15,6 +15,7 @@ pub struct ControlClient
     log_topic: String,
     beamline_id: String,
     beamline_id_log: String,
+    beamline_id_event: String,
     protocol: String,
     subscriber: zmq::Socket,
     cmd_channel: zmq::Socket,
@@ -32,6 +33,7 @@ impl ControlClient
             protocol: String::from(config.protocol.clone()),
             beamline_id: String::from(beamline_id),
             beamline_id_log: format!("{}{}", defines::KEY_BEAMLINE_SCAN_LOGS, beamline_id),
+            beamline_id_event: format!("{}{}", defines::KEY_BEAMLINE_EVENT, beamline_id),
             subscriber: context.socket(zmq::SUB).expect("Failed to create SUB socket"),
             cmd_channel: context.socket(zmq::REQ).expect("Failed to create CMD socket"),
         }
@@ -147,7 +149,10 @@ impl ClientMap
                             {
                                 // Push the message to the Redis list
                                 let result: redis::RedisResult<()> = redis_conn.rpush(&(client.beamline_id_log), &message);
-                                let _: redis::RedisResult<()> = redis_conn.publish(&(client.beamline_id_log), &message);
+                                // Publish on the beamline event channel, prefixed with the
+                                // controls-event header and ':::' delimiter.
+                                let event_msg = format!("{}:::{}", defines::KEY_CONTROLS_EVENT, message);
+                                let _: redis::RedisResult<()> = redis_conn.publish(&(client.beamline_id_event), &event_msg);
                                 match result
                                 {
                                     Ok(_) => println!("Message pushed to Redis list: {}", client.beamline_id_log),
