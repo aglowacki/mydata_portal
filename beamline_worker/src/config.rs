@@ -37,10 +37,9 @@ fn default_real_bytes() -> usize {
 }
 
 #[derive(Deserialize, Debug, Clone)]
-pub struct RedisConfig 
+pub struct RedisConfig
 {
     pub conn_str: String,
-    pub redis_cmd_queue: String,
     pub username: Option<String>,
     pub password: Option<String>,
 }

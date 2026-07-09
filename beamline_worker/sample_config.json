@@ -2,8 +2,7 @@
     "beamline_id": "BeamlineId",
     "redis_config":
     {
-        "conn_str": "redis://127.0.0.1/",
-        "redis_cmd_queue": "Sec0_Q"
+        "conn_str": "redis://127.0.0.1/"
     },
     "control_client":
     {

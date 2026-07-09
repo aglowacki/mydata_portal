@@ -113,10 +113,10 @@ impl ClientMap
 
         Self
         {
-            redis_key_cmd_queue_waiting: format!("{}{}", defines::KEY_TASK_QUEUE_WAITING, config.redis_config.redis_cmd_queue.to_string()),
-            redis_key_cmd_queue_processing: format!("{}{}", defines::KEY_TASK_QUEUE_PROCESSING, config.redis_config.redis_cmd_queue.to_string()),
-            redis_key_cmd_queue_done: format!("{}{}", defines::KEY_TASK_QUEUE_DONE, config.redis_config.redis_cmd_queue.to_string()),
-            redis_key_heartbeat: format!("{}{}", defines::KEY_WORKER_HEARTBEAT, config.redis_config.redis_cmd_queue.to_string()),
+            redis_key_cmd_queue_waiting: format!("{}{}", defines::KEY_TASK_QUEUE_WAITING, config.beamline_id.to_string()),
+            redis_key_cmd_queue_processing: format!("{}{}", defines::KEY_TASK_QUEUE_PROCESSING, config.beamline_id.to_string()),
+            redis_key_cmd_queue_done: format!("{}{}", defines::KEY_TASK_QUEUE_DONE, config.beamline_id.to_string()),
+            redis_key_heartbeat: format!("{}{}", defines::KEY_WORKER_HEARTBEAT, config.beamline_id.to_string()),
             beamline_id: config.beamline_id.clone(),
             client: bs_client,
             poll_list,
