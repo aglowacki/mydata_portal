@@ -11,6 +11,9 @@ pub const KEY_WORKER_HEARTBEAT: &str = "WORKER_HEARTBEAT_";
 // "<row>_<col>", plus a matching pub/sub channel of the same name for live updates.
 pub const KEY_XRF_LIVE_MAP: &str = "XRF_LIVE_MAP_";
 
+// REDIS Channels
+pub const BEAMLINE_CONTROLS: &str = "Beamline_Controls";
+
 pub const STR_QUEUED: &str = "QUEUED";
 pub const STR_PROCESSING: &str = "PROCESSING";
 pub const STR_DONE: &str = "DONE";
