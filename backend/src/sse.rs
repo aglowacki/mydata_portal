@@ -19,7 +19,7 @@ pub async fn redis_event_listener(state: appstate::AppState)
     println!("Subscribed to Redis channels: "); 
     for beamline in &beamlines
     {
-        let mut chan =  String::from("BEAMLINE_SCAN_LOGS_");
+        let mut chan =  String::from(defines::KEY_BEAMLINE_EVENT);
         chan.push_str(&beamline.acronym.clone());
         println!("{}", chan);
         channel_names.push(chan);
@@ -52,7 +52,7 @@ pub async fn sse_handler(
     // Wrap it into a Stream of SSE Events
     let stream = BroadcastStream::new(rx).filter_map( move |result|
     {
-        let mut chan =  String::from("BEAMLINE_SCAN_LOGS_");
+        let mut chan =  String::from(defines::KEY_BEAMLINE_EVENT);
         chan.push_str(&beamline_id.clone());
         // Return a Future using future::ready
         future::ready(match result
