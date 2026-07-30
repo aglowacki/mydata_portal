@@ -70,10 +70,11 @@ interface SampleOrigin
     display_order: number;
 }
 
-interface SampleSubOrigin 
+interface SampleSubOrigin
 {
     id: number;
     name: string;
+    display_order: number;
 }
 
 interface SampleSource
@@ -746,7 +747,12 @@ class SampleManagementApp
             if(sub_origin_id_map.size > 0)
             {
                 let added: boolean = false;
-                this.sample_meta_data_groups?.sample_sub_origins.forEach(val => 
+                // Show the sub origins in their configured display order; sort a
+                // copy so the fetched metadata order is left untouched.
+                const ordered_sub_origins = (this.sample_meta_data_groups?.sample_sub_origins ?? [])
+                    .slice()
+                    .sort((a, b) => a.display_order - b.display_order);
+                ordered_sub_origins.forEach(val =>
                 {
                     if (sub_origin_id_map.has(val.id))
                     {

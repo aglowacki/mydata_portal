@@ -153,6 +153,7 @@ pub struct SampleOrigin {
 pub struct SampleSubOrigin {
     pub id: i32,
     pub name: String,
+    pub display_order: i32,
 }
 
 #[derive(Queryable, Debug, Identifiable, Selectable, QueryableByName, serde::Serialize)]

@@ -192,6 +192,7 @@ diesel::table! {
         id -> Int4,
         #[max_length = 2000]
         name -> Varchar,
+        display_order -> Int4,
     }
 }
 
