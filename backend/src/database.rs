@@ -527,6 +527,7 @@ pub async fn get_bio_sample_meta_data_groups(
 
     let sample_origins: Vec<_> = schema::sample_origins::table.select(models::SampleOrigin::as_select())
     .distinct()
+    .order(schema::sample_origins::display_order.asc())
     .load(&mut conn)
     .await
     .map_err(internal_error)?;

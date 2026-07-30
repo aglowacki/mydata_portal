@@ -175,6 +175,7 @@ diesel::table! {
         id -> Int4,
         #[max_length = 255]
         name -> Varchar,
+        display_order -> Int4,
     }
 }
 

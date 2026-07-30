@@ -1,4 +1,5 @@
 CREATE TABLE sample_origins (
 id INT PRIMARY KEY GENERATED ALWAYS AS IDENTITY,
-name varchar(255) UNIQUE NOT NULL
+name varchar(255) UNIQUE NOT NULL,
+display_order INT NOT NULL DEFAULT 0
 );

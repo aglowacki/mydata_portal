@@ -63,10 +63,11 @@ interface BioSampleFixative
     name: string;
 }
 
-interface SampleOrigin 
+interface SampleOrigin
 {
     id: number;
     name: string;
+    display_order: number;
 }
 
 interface SampleSubOrigin 
@@ -695,7 +696,12 @@ class SampleManagementApp
                 }
             });
             let added: boolean = false;
-            this.sample_meta_data_groups?.sample_origins.forEach(val => 
+            // Show the origins in their configured display order; sort a copy so
+            // the fetched metadata order is left untouched.
+            const ordered_origins = (this.sample_meta_data_groups?.sample_origins ?? [])
+                .slice()
+                .sort((a, b) => a.display_order - b.display_order);
+            ordered_origins.forEach(val =>
             {
                 if (origin_id_map.has(val.id))
                 {
