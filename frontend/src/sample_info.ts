@@ -111,7 +111,7 @@ const KEY_SAMPLE_CONDITION: string = "Sample Condition:";
 const KEY_TREATMENT: string = "Treatment Details:";
 const KEY_FIXATION: string = "Sample Fixation:";
 const KEY_FIXATIVE: string = "Sample Fixative:";
-const KEY_EECC: string = "External Elemental Content Change:";
+const KEY_EECC: string = "Expected Elemental Content Change:";
 const KEY_OTHER_NOTES: string = "Other Notes:";
 
 const KEY_NONE: string = "None";
