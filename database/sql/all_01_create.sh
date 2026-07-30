@@ -26,3 +26,5 @@ psql -d mydata -f 003_create_proposal_dataset_links.sql
 psql -d mydata -f 003_create_bio_samples.sql
 
 psql -d mydata -f 004_create_bio_sample_dataset_links.sql
+
+psql -d mydata -f 005_create_foreign_key_indexes.sql
