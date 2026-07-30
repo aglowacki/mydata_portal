@@ -27,7 +27,7 @@ interface BioSample
     type_id: number;
     origin_id: number;
     sub_origin_id: number | null;
-    source_id: number | null;
+    tissue_source_id: number | null;
     thickness: number | null;
     cell_line: string | null;
     is_cancer: boolean | null;
@@ -77,7 +77,7 @@ interface SampleSubOrigin
     display_order: number;
 }
 
-interface SampleSource
+interface TissueSource
 {
     id: number;
     name: string;
@@ -99,13 +99,13 @@ interface SampleMetaDataGroups
     sample_types: Array<BioSampleType>,
     sample_origins: Array<SampleOrigin>,
     sample_sub_origins: Array<SampleSubOrigin>,
-    samples_sources: Array<SampleSource>,
+    tissue_sources: Array<TissueSource>,
     sample_type_origin_links: Array<SampleTypeOriginLinks>,
 }
 
 const KEY_SAMPLE_ORIGIN: string = "Sample Origin:";
 const KEY_SUB_SAMPLE_ORIGIN: string = "Sample Sub Origin:";
-const KEY_SAMPLE_SOURCE: string = "Sample Source:";
+const KEY_TISSUE_SOURCE: string = "Tissue Source:";
 const KEY_THICKNESS: string = "Thickness (microns):";
 const KEY_CELL_LINE: string = "Cell Line:";
 const KEY_IS_CANCER: string = "Is Cancer:";
@@ -173,7 +173,7 @@ class SampleManagementApp
         this.defaultHiddenOptionsStr = new Array();
         this.defaultHiddenOptionsStr.push(KEY_SAMPLE_ORIGIN);
         this.defaultHiddenOptionsStr.push(KEY_SUB_SAMPLE_ORIGIN);
-        this.defaultHiddenOptionsStr.push(KEY_SAMPLE_SOURCE);
+        this.defaultHiddenOptionsStr.push(KEY_TISSUE_SOURCE);
         this.defaultHiddenOptionsStr.push(KEY_THICKNESS);
         this.defaultHiddenOptionsStr.push(KEY_CELL_LINE);
         this.defaultHiddenOptionsStr.push(KEY_IS_CANCER);
@@ -279,10 +279,10 @@ class SampleManagementApp
         this.sample_form.appendChild(div3_1);
 
 
-        const div4 = this.create_div_group(KEY_SAMPLE_SOURCE, true);
+        const div4 = this.create_div_group(KEY_TISSUE_SOURCE, true);
         this.sample_source_select = document.createElement('select') as HTMLSelectElement;
         this.sample_source_select.id = 'sampleSource';
-        this.sample_source_select.innerHTML = '<option value="">Select a sample source...</option>';
+        this.sample_source_select.innerHTML = '<option value="">Select a tissue source...</option>';
         div4.appendChild(this.sample_source_select);
         this.sample_form.appendChild(div4);
 
@@ -421,7 +421,7 @@ class SampleManagementApp
         g.sample_types.forEach(t => assign('type', t.id));
         g.sample_origins.forEach(o => assign('origin', o.id));
         g.sample_sub_origins.forEach(s => assign('sub_origin', s.id));
-        g.samples_sources.forEach(s => assign('source', s.id));
+        g.tissue_sources.forEach(s => assign('tissue_source', s.id));
         g.conditions.forEach(c => assign('condition', c.id));
         g.fixations.forEach(f => assign('fixation', f.name));
         g.fixatives.forEach(f => assign('fixative', f.id));
@@ -451,7 +451,7 @@ class SampleManagementApp
             { select: this.sample_type_select, group: 'type' },
             { select: this.sample_origin_select, group: 'origin' },
             { select: this.sample_sub_origin_select, group: 'sub_origin' },
-            { select: this.sample_source_select, group: 'source' },
+            { select: this.sample_source_select, group: 'tissue_source' },
             { select: this.sample_condition_select, group: 'condition' },
             { select: this.sample_fixation_select, group: 'fixation' },
             { select: this.sample_fixative_select, group: 'fixative' },
@@ -684,7 +684,7 @@ class SampleManagementApp
                 }
                 if(item.id === id && item.type_name === KEYS_TISSUES)
                 {
-                    this.setPropVisible(KEY_SAMPLE_SOURCE, true);
+                    this.setPropVisible(KEY_TISSUE_SOURCE, true);
                 }
             });
             this.sample_origin_select.innerHTML = '<option value="">Select a sample origin...</option>';
@@ -781,7 +781,7 @@ class SampleManagementApp
         }
         else
         {
-            this.sample_source_select.innerHTML = '<option value="">Select a sample source...</option>';
+            this.sample_source_select.innerHTML = '<option value="">Select a tissue source...</option>';
             this.setPropVisible(KEY_SUB_SAMPLE_ORIGIN, false);
         }
     }
@@ -880,7 +880,7 @@ class SampleManagementApp
             this.sample_type_select.appendChild(option);
         });
 
-        this.sample_meta_data_groups?.samples_sources.forEach(item => 
+        this.sample_meta_data_groups?.tissue_sources.forEach(item =>
         {
             const option = document.createElement('option') as HTMLOptionElement;
             option.value = String(item.id);
@@ -1081,7 +1081,7 @@ class SampleManagementApp
         }
 
         const columns: Array<string> = [
-            'ID', 'Name', 'Type', 'Origin', 'Sub Origin', 'Source',
+            'ID', 'Name', 'Type', 'Origin', 'Sub Origin', 'Tissue Source',
             'Thickness (microns)', 'Cell Line', 'Is Cancer', 'Condition',
             'Treatment Details', 'Fixation', 'Fixative',
             'External Elemental Content Change', 'Notes',
@@ -1121,8 +1121,8 @@ class SampleManagementApp
                   color: this.colorForValue('origin', sample.origin_id) },
                 { text: this.lookupName(sample.sub_origin_id, g?.sample_sub_origins),
                   color: this.colorForValue('sub_origin', sample.sub_origin_id) },
-                { text: this.lookupName(sample.source_id, g?.samples_sources),
-                  color: this.colorForValue('source', sample.source_id) },
+                { text: this.lookupName(sample.tissue_source_id, g?.tissue_sources),
+                  color: this.colorForValue('tissue_source', sample.tissue_source_id) },
                 { text: sample.thickness !== null ? String(sample.thickness) : '-', color: null },
                 { text: sample.cell_line ?? '-', color: null },
                 { text: sample.is_cancer === null ? '-' : (sample.is_cancer ? 'Yes' : 'No'), color: null },
@@ -1242,7 +1242,7 @@ class SampleManagementApp
         this.sampleOriginChanged(sample.origin_id);
 
         this.sample_sub_origin_select.value = sample.sub_origin_id !== null ? String(sample.sub_origin_id) : '';
-        this.sample_source_select.value = sample.source_id !== null ? String(sample.source_id) : '';
+        this.sample_source_select.value = sample.tissue_source_id !== null ? String(sample.tissue_source_id) : '';
         this.sample_thickness_input.value = sample.thickness !== null ? String(sample.thickness) : '';
         this.sample_cell_line_input.value = sample.cell_line ?? '';
         this.sample_is_cancer_input.checked = sample.is_cancer === true;
@@ -1563,7 +1563,7 @@ class SampleManagementApp
         }
 
         const sub_origin_id = Number(this.sample_sub_origin_select.value);
-        const source_id = Number(this.sample_source_select.value);
+        const tissue_source_id = Number(this.sample_source_select.value);
         const cell_line = this.sample_cell_line_input.value.trim();
         const treatment = this.sample_treatment_textarea.value.trim();
         const eecc = this.sample_eecc_textarea.value.trim();
@@ -1577,7 +1577,7 @@ class SampleManagementApp
             type_id: type_id,
             origin_id: origin_id,
             sub_origin_id: sub_origin_id > 0 ? sub_origin_id : null,
-            source_id: source_id > 0 ? source_id : null,
+            tissue_source_id: tissue_source_id > 0 ? tissue_source_id : null,
             thickness: thickness,
             cell_line: cell_line.length > 0 ? cell_line : null,
             is_cancer: this.sample_is_cancer_input.checked,

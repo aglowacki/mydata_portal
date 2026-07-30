@@ -539,7 +539,7 @@ pub async fn get_bio_sample_meta_data_groups(
     .await
     .map_err(internal_error)?;
 
-    let samples_sources: Vec<_> = schema::sample_sources::table.select(models::SampleSource::as_select())
+    let tissue_sources: Vec<_> = schema::tissue_sources::table.select(models::TissueSource::as_select())
     .distinct()
     .load(&mut conn)
     .await
@@ -552,7 +552,7 @@ pub async fn get_bio_sample_meta_data_groups(
     .map_err(internal_error)?;
 
 
-    Ok(Json(models::BioSampleMetaDataGrouping{conditions, fixations, fixatives, sample_types, sample_origins, sample_sub_origins, samples_sources, sample_type_origin_links}))
+    Ok(Json(models::BioSampleMetaDataGrouping{conditions, fixations, fixatives, sample_types, sample_origins, sample_sub_origins, tissue_sources, sample_type_origin_links}))
 
 
 }

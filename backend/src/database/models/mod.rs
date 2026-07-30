@@ -24,8 +24,8 @@ use crate::database::schema::{beamline_contacts,
                                 proposal_dataset_links,
                                 proposals,
                                 sample_origins,
-                                sample_sources,
                                 sample_sub_origins,
+                                tissue_sources,
                                 scan_types,
                                 syncotron_runs,
                                 user_access_controls,
@@ -158,8 +158,8 @@ pub struct SampleSubOrigin {
 
 #[derive(Queryable, Debug, Identifiable, Selectable, QueryableByName, serde::Serialize)]
 #[diesel(primary_key(id))]
-#[diesel(table_name = sample_sources)]
-pub struct SampleSource {
+#[diesel(table_name = tissue_sources)]
+pub struct TissueSource {
     pub id: i32,
     pub name: String,
 }
@@ -168,7 +168,7 @@ pub struct SampleSource {
 #[diesel(belongs_to(BioSampleType, foreign_key=type_id))]
 #[diesel(belongs_to(SampleOrigin, foreign_key=origin_id))]
 #[diesel(belongs_to(SampleSubOrigin, foreign_key=sub_origin_id))]
-#[diesel(belongs_to(SampleSource, foreign_key=source_id))]
+#[diesel(belongs_to(TissueSource, foreign_key=tissue_source_id))]
 #[diesel(belongs_to(Proposal, foreign_key=proposal_id))]
 #[diesel(belongs_to(BioSampleCondition, foreign_key=condition_id))]
 #[diesel(belongs_to(BioSampleFixation, foreign_key=fixation_id))]
@@ -181,7 +181,7 @@ pub struct BioSample {
     pub type_id: i32,
     pub origin_id: i32,
     pub sub_origin_id: Option<i32>,
-    pub source_id: Option<i32>,
+    pub tissue_source_id: Option<i32>,
     pub thickness: Option<i32>,
     pub cell_line: Option<String>,
     pub is_cancer: Option<bool>,
@@ -204,7 +204,7 @@ pub struct NewBioSample {
     pub type_id: i32,
     pub origin_id: i32,
     pub sub_origin_id: Option<i32>,
-    pub source_id: Option<i32>,
+    pub tissue_source_id: Option<i32>,
     pub thickness: Option<i32>,
     pub cell_line: Option<String>,
     pub is_cancer: Option<bool>,
@@ -443,7 +443,7 @@ pub struct BioSampleMetaDataGrouping
     pub sample_types: Vec<BioSampleType>,
     pub sample_origins: Vec<SampleOrigin>,
     pub sample_sub_origins: Vec<SampleSubOrigin>,
-    pub samples_sources: Vec<SampleSource>,
+    pub tissue_sources: Vec<TissueSource>,
     pub sample_type_origin_links: Vec<BioSampleTypeOriginSubOriginLink>
     
     //pub suboriginlinks: Vec<BioSampleTypeOriginSubOriginLink>,

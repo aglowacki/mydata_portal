@@ -36,7 +36,7 @@ CREATE INDEX bio_samples_proposal_id_idx ON bio_samples (proposal_id);
 CREATE INDEX bio_samples_type_id_idx ON bio_samples (type_id);
 CREATE INDEX bio_samples_origin_id_idx ON bio_samples (origin_id);
 CREATE INDEX bio_samples_sub_origin_id_idx ON bio_samples (sub_origin_id);
-CREATE INDEX bio_samples_source_id_idx ON bio_samples (source_id);
+CREATE INDEX bio_samples_tissue_source_id_idx ON bio_samples (tissue_source_id);
 CREATE INDEX bio_samples_condition_id_idx ON bio_samples (condition_id);
 CREATE INDEX bio_samples_fixation_id_idx ON bio_samples (fixation_id);
 

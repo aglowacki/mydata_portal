@@ -1,4 +1,4 @@
-CREATE TABLE sample_sources (
+CREATE TABLE tissue_sources (
 id INT PRIMARY KEY GENERATED ALWAYS AS IDENTITY,
 name varchar(255) UNIQUE NOT NULL
 );

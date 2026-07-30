@@ -10,7 +10,7 @@ psql -d mydata -f 000_create_bio_sample_conditions.sql
 psql -d mydata -f 000_create_bio_sample_fixatives.sql
 psql -d mydata -f 000_create_bio_sample_types.sql
 psql -d mydata -f 000_create_sample_origins.sql
-psql -d mydata -f 000_create_sample_sources.sql
+psql -d mydata -f 000_create_tissue_sources.sql
 psql -d mydata -f 000_create_sample_sub_origins.sql
 
 psql -d mydata -f 001_create_users.sql

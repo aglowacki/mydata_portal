@@ -5,5 +5,5 @@ DROP TABLE bio_sample_fixations CASCADE;
 DROP TABLE bio_sample_fixatives CASCADE;  
 DROP TABLE bio_sample_types CASCADE;
 DROP TABLE sample_origins CASCADE;
-DROP TABLE sample_sources CASCADE;
+DROP TABLE tissue_sources CASCADE;
 DROP TABLE sample_sub_origins CASCADE;

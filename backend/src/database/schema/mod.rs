@@ -82,7 +82,7 @@ diesel::table! {
         type_id -> Int4,
         origin_id -> Int4,
         sub_origin_id -> Nullable<Int4>,
-        source_id -> Nullable<Int4>,
+        tissue_source_id -> Nullable<Int4>,
         thickness -> Nullable<Int4>,
         #[max_length = 256]
         cell_line -> Nullable<Varchar>,
@@ -180,7 +180,7 @@ diesel::table! {
 }
 
 diesel::table! {
-    sample_sources (id) {
+    tissue_sources (id) {
         id -> Int4,
         #[max_length = 255]
         name -> Varchar,
@@ -256,7 +256,7 @@ diesel::joinable!(bio_samples -> bio_sample_fixations (fixation_id));
 diesel::joinable!(bio_samples -> bio_sample_types (type_id));
 diesel::joinable!(bio_samples -> proposals (proposal_id));
 diesel::joinable!(bio_samples -> sample_origins (origin_id));
-diesel::joinable!(bio_samples -> sample_sources (source_id));
+diesel::joinable!(bio_samples -> tissue_sources (tissue_source_id));
 diesel::joinable!(bio_samples -> sample_sub_origins (sub_origin_id));
 diesel::joinable!(data_analysis -> datasets (dataset_id));
 diesel::joinable!(datasets -> beamlines (beamline_id));
@@ -291,7 +291,7 @@ diesel::allow_tables_to_appear_in_same_query!(
     proposal_dataset_links,
     proposals,
     sample_origins,
-    sample_sources,
+    tissue_sources,
     sample_sub_origins,
     scan_types,
     syncotron_runs,

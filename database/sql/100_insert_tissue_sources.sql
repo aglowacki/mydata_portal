@@ -1,4 +1,4 @@
-INSERT INTO sample_sources (name) VALUES 
+INSERT INTO tissue_sources (name) VALUES
 ('Brain'),
 ('Muscle'),
 ('Skin'),
