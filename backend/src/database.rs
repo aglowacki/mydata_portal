@@ -551,10 +551,35 @@ pub async fn get_bio_sample_meta_data_groups(
     .await
     .map_err(internal_error)?;
 
+    let sample_origin_tissue_source_links: Vec<_> = schema::sample_origin_tissue_source_links::table.select(models::SampleOriginTissueSourceLink::as_select())
+    .distinct()
+    .load(&mut conn)
+    .await
+    .map_err(internal_error)?;
 
-    Ok(Json(models::BioSampleMetaDataGrouping{conditions, fixations, fixatives, sample_types, sample_origins, sample_sub_origins, tissue_sources, sample_type_origin_links}))
+
+    Ok(Json(models::BioSampleMetaDataGrouping{conditions, fixations, fixatives, sample_types, sample_origins, sample_sub_origins, tissue_sources, sample_type_origin_links, sample_origin_tissue_source_links}))
 
 
+}
+
+/// Return the links that associate each sample origin with its tissue sources
+/// (one origin -> many tissue sources). The frontend uses these to populate and
+/// show the tissue source dropdown once an origin is selected.
+#[axum_macros::debug_handler]
+pub async fn get_sample_origin_tissue_source_links(
+    State(state): State<appstate::AppState>,
+    //claims: auth::Claims,
+    DatabaseConnection(mut conn): DatabaseConnection,
+) -> Result<Json<Vec<models::SampleOriginTissueSourceLink>>, (StatusCode, String)>
+{
+    let res = schema::sample_origin_tissue_source_links::table.select(models::SampleOriginTissueSourceLink::as_select())
+    .distinct()
+    .load(&mut conn)
+    .await
+    .map_err(internal_error)?;
+
+    Ok(Json(res))
 }
 
 /// Insert a new bio sample or update an existing one (when `id` is supplied).

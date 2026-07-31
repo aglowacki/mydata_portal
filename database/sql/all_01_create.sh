@@ -19,6 +19,7 @@ psql -d mydata -f 001_create_bio_sample_fixations.sql
 psql -d mydata -f 002_create_beamline_contacts.sql
 psql -d mydata -f 002_create_datasets.sql
 psql -d mydata -f 002_create_bio_sample_type_origin_sub_origin_links.sql
+psql -d mydata -f 002_create_sample_origin_tissue_source_links.sql
 
 psql -d mydata -f 003_create_analysis.sql
 psql -d mydata -f 003_create_experimenter_proposal_links.sql

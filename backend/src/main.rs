@@ -78,6 +78,7 @@ async fn main()
         // depricated for get_bio_sample_meta_data_groups
         //.route("/api/bio_sample_types", get(database::get_bio_sample_types)) 
         .route("/api/get_bio_sample_meta_data_groups", get(database::get_bio_sample_meta_data_groups))
+        .route("/api/get_sample_origin_tissue_source_links", get(database::get_sample_origin_tissue_source_links))
         .route("/api/upsert_bio_sample", post(database::upsert_bio_sample))
         .route("/api/get_proposal_datasets/{proposal_id}", get(database::get_proposal_datasets))
         .route("/api/get_proposal_bio_samples/{proposal_id}", get(database::get_proposal_bio_samples))

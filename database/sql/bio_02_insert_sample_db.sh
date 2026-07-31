@@ -10,3 +10,4 @@ psql -d mydata -f 100_insert_sample_sub_origins.sql
 psql -d mydata -f 101_insert_bio_sample_fixations.sql
 
 psql -d mydata -f 102_insert_bio_sample_type_origin_sub_origin_links.sql
+psql -d mydata -f 102_insert_sample_origin_tissue_source_links.sql

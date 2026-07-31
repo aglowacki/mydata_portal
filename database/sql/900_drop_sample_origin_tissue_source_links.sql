@@ -1,0 +1,1 @@
+DROP TABLE sample_origin_tissue_source_links;

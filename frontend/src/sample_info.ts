@@ -91,6 +91,13 @@ interface SampleTypeOriginLinks
     sub_origin_id: number,
 }
 
+interface SampleOriginTissueSourceLink
+{
+    id: number,
+    origin_id: number,
+    tissue_source_id: number,
+}
+
 interface SampleMetaDataGroups 
 {    
     conditions: Array<BioSampleCondition>,
@@ -101,6 +108,7 @@ interface SampleMetaDataGroups
     sample_sub_origins: Array<SampleSubOrigin>,
     tissue_sources: Array<TissueSource>,
     sample_type_origin_links: Array<SampleTypeOriginLinks>,
+    sample_origin_tissue_source_links: Array<SampleOriginTissueSourceLink>,
 }
 
 const KEY_SAMPLE_ORIGIN: string = "Sample Origin:";
@@ -682,10 +690,10 @@ class SampleManagementApp
                 {
                     this.setPropVisible(KEY_CELL_LINE, true);
                 }
-                if(item.id === id && item.type_name === KEYS_TISSUES)
-                {
-                    this.setPropVisible(KEY_TISSUE_SOURCE, true);
-                }
+                // The tissue source dropdown is driven by the selected origin's
+                // tissue source links (see sampleOriginChanged), not by the type,
+                // so it applies to both 'Tissues' and 'Cells'. It stays hidden
+                // here until an origin with links is chosen.
             });
             this.sample_origin_select.innerHTML = '<option value="">Select a sample origin...</option>';
             let origin_id_map: Map<number, number> = new Map();
@@ -730,8 +738,61 @@ class SampleManagementApp
         }
     }
 
-    private sampleOriginChanged(id: number): void 
+    // Rebuild the tissue source dropdown so it contains only the tissue sources
+    // linked to the selected origin, and show it only when there are links. This
+    // is driven by the origin (not the sample type), so it applies to both
+    // 'Tissues' and 'Cells'.
+    private populateTissueSources(origin_id: number): void
     {
+        this.sample_source_select.innerHTML = '<option value="">Select a tissue source...</option>';
+
+        // Restrict to the sample types this feature applies to.
+        let type_id = Number(this.sample_type_select.value);
+        let type_ok = false;
+        this.sample_meta_data_groups?.sample_types.forEach(t =>
+        {
+            if(t.id === type_id && (t.type_name === KEYS_TISSUES || t.type_name === KEY_CELLS))
+            {
+                type_ok = true;
+            }
+        });
+
+        if(origin_id > 0 && type_ok)
+        {
+            let source_id_map: Map<number, number> = new Map();
+            this.sample_meta_data_groups?.sample_origin_tissue_source_links.forEach(link =>
+            {
+                if(link.origin_id === origin_id)
+                {
+                    source_id_map.set(link.tissue_source_id, 1);
+                }
+            });
+
+            let added: boolean = false;
+            this.sample_meta_data_groups?.tissue_sources.forEach(src =>
+            {
+                if(source_id_map.has(src.id))
+                {
+                    const option = document.createElement('option') as HTMLOptionElement;
+                    option.value = String(src.id);
+                    option.textContent = src.name;
+                    this.sample_source_select.appendChild(option);
+                    added = true;
+                }
+            });
+            this.colorSelectOptions(this.sample_source_select, 'tissue_source');
+            this.setPropVisible(KEY_TISSUE_SOURCE, added);
+        }
+        else
+        {
+            this.colorSelectOptions(this.sample_source_select, 'tissue_source');
+            this.setPropVisible(KEY_TISSUE_SOURCE, false);
+        }
+    }
+
+    private sampleOriginChanged(id: number): void
+    {
+        this.populateTissueSources(id);
         if(id > 0)
         {
             let sample_type_id = Number(this.sample_type_select.value);

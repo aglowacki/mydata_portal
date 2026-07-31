@@ -171,6 +171,14 @@ diesel::table! {
 }
 
 diesel::table! {
+    sample_origin_tissue_source_links (id) {
+        id -> Int4,
+        origin_id -> Int4,
+        tissue_source_id -> Int4,
+    }
+}
+
+diesel::table! {
     sample_origins (id) {
         id -> Int4,
         #[max_length = 255]
@@ -258,6 +266,8 @@ diesel::joinable!(bio_samples -> proposals (proposal_id));
 diesel::joinable!(bio_samples -> sample_origins (origin_id));
 diesel::joinable!(bio_samples -> tissue_sources (tissue_source_id));
 diesel::joinable!(bio_samples -> sample_sub_origins (sub_origin_id));
+diesel::joinable!(sample_origin_tissue_source_links -> sample_origins (origin_id));
+diesel::joinable!(sample_origin_tissue_source_links -> tissue_sources (tissue_source_id));
 diesel::joinable!(data_analysis -> datasets (dataset_id));
 diesel::joinable!(datasets -> beamlines (beamline_id));
 diesel::joinable!(datasets -> scan_types (scan_type_id));
@@ -290,6 +300,7 @@ diesel::allow_tables_to_appear_in_same_query!(
     experimenters,
     proposal_dataset_links,
     proposals,
+    sample_origin_tissue_source_links,
     sample_origins,
     tissue_sources,
     sample_sub_origins,

@@ -24,6 +24,7 @@ use crate::database::schema::{beamline_contacts,
                                 proposal_dataset_links,
                                 proposals,
                                 sample_origins,
+                                sample_origin_tissue_source_links,
                                 sample_sub_origins,
                                 tissue_sources,
                                 scan_types,
@@ -162,6 +163,17 @@ pub struct SampleSubOrigin {
 pub struct TissueSource {
     pub id: i32,
     pub name: String,
+}
+
+#[derive(Queryable, Debug, Identifiable, Selectable, QueryableByName, serde::Serialize)]
+#[diesel(belongs_to(SampleOrigin, foreign_key=origin_id))]
+#[diesel(belongs_to(TissueSource, foreign_key=tissue_source_id))]
+#[diesel(primary_key(id))]
+#[diesel(table_name = sample_origin_tissue_source_links)]
+pub struct SampleOriginTissueSourceLink {
+    pub id: i32,
+    pub origin_id: i32,
+    pub tissue_source_id: i32,
 }
 
 #[derive(Queryable, Debug, Identifiable, Selectable, serde::Serialize)]
@@ -444,7 +456,8 @@ pub struct BioSampleMetaDataGrouping
     pub sample_origins: Vec<SampleOrigin>,
     pub sample_sub_origins: Vec<SampleSubOrigin>,
     pub tissue_sources: Vec<TissueSource>,
-    pub sample_type_origin_links: Vec<BioSampleTypeOriginSubOriginLink>
-    
+    pub sample_type_origin_links: Vec<BioSampleTypeOriginSubOriginLink>,
+    pub sample_origin_tissue_source_links: Vec<SampleOriginTissueSourceLink>
+
     //pub suboriginlinks: Vec<BioSampleTypeOriginSubOriginLink>,
 }

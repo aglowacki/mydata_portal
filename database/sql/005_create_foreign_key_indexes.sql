@@ -41,3 +41,7 @@ CREATE INDEX bio_samples_condition_id_idx ON bio_samples (condition_id);
 CREATE INDEX bio_samples_fixation_id_idx ON bio_samples (fixation_id);
 
 CREATE INDEX bio_sample_dataset_links_bio_sample_id_idx ON bio_sample_dataset_links (bio_sample_id);
+
+-- origin_id is already the leading column of the (origin_id, tissue_source_id)
+-- unique constraint, so only tissue_source_id needs its own index here.
+CREATE INDEX sample_origin_tissue_source_links_tissue_source_id_idx ON sample_origin_tissue_source_links (tissue_source_id);
