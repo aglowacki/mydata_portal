@@ -1,4 +1,6 @@
 DROP TABLE bio_samples CASCADE;
+DROP FUNCTION IF EXISTS bio_samples_require_hydration_when_fixed();
+DROP TABLE bio_sample_hydration_states CASCADE;
 DROP TABLE bio_sample_type_origin_sub_origin_links CASCADE;
 DROP TABLE bio_sample_conditions CASCADE;    
 DROP TABLE bio_sample_fixations CASCADE;

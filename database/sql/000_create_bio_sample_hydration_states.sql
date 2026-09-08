@@ -1,0 +1,4 @@
+CREATE TABLE bio_sample_hydration_states (
+id INT PRIMARY KEY GENERATED ALWAYS AS IDENTITY,
+name varchar(255) UNIQUE NOT NULL
+);

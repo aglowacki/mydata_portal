@@ -14,6 +14,7 @@ use crate::database::schema::{beamline_contacts,
                                 bio_sample_dataset_links,
                                 bio_sample_fixations,
                                 bio_sample_fixatives,
+                                bio_sample_hydration_states,
                                 bio_sample_type_origin_sub_origin_links,
                                 bio_sample_types,
                                 bio_samples,
@@ -141,6 +142,14 @@ pub struct BioSampleType {
 
 #[derive(Queryable, Debug, Identifiable, Selectable, QueryableByName, serde::Serialize)]
 #[diesel(primary_key(id))]
+#[diesel(table_name = bio_sample_hydration_states)]
+pub struct BioSampleHydrationState {
+    pub id: i32,
+    pub name: String,
+}
+
+#[derive(Queryable, Debug, Identifiable, Selectable, QueryableByName, serde::Serialize)]
+#[diesel(primary_key(id))]
 #[diesel(table_name = sample_origins)]
 pub struct SampleOrigin {
     pub id: i32,
@@ -184,6 +193,7 @@ pub struct SampleOriginTissueSourceLink {
 #[diesel(belongs_to(Proposal, foreign_key=proposal_id))]
 #[diesel(belongs_to(BioSampleCondition, foreign_key=condition_id))]
 #[diesel(belongs_to(BioSampleFixation, foreign_key=fixation_id))]
+#[diesel(belongs_to(BioSampleHydrationState, foreign_key=hydration_state_id))]
 #[diesel(primary_key(id))]
 #[diesel(table_name = bio_samples)]
 pub struct BioSample {
@@ -200,6 +210,7 @@ pub struct BioSample {
     pub condition_id: i32,
     pub treatment_details: Option<String>,
     pub fixation_id: i32,
+    pub hydration_state_id: Option<i32>,
     pub expected_elemental_content_change: Option<String>,
     pub notes: Option<String>,
 }
@@ -223,6 +234,7 @@ pub struct NewBioSample {
     pub condition_id: i32,
     pub treatment_details: Option<String>,
     pub fixation_id: i32,
+    pub hydration_state_id: Option<i32>,
     pub expected_elemental_content_change: Option<String>,
     pub notes: Option<String>,
 }
@@ -452,6 +464,7 @@ pub struct BioSampleMetaDataGrouping
     pub conditions: Vec<BioSampleCondition>,
     pub fixations: Vec<BioSampleFixation>,
     pub fixatives: Vec<BioSampleFixative>,
+    pub hydration_states: Vec<BioSampleHydrationState>,
     pub sample_types: Vec<BioSampleType>,
     pub sample_origins: Vec<SampleOrigin>,
     pub sample_sub_origins: Vec<SampleSubOrigin>,

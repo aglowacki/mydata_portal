@@ -66,6 +66,14 @@ diesel::table! {
 }
 
 diesel::table! {
+    bio_sample_hydration_states (id) {
+        id -> Int4,
+        #[max_length = 255]
+        name -> Varchar,
+    }
+}
+
+diesel::table! {
     bio_sample_types (id) {
         id -> Int4,
         #[max_length = 512]
@@ -91,6 +99,7 @@ diesel::table! {
         #[max_length = 2000]
         treatment_details -> Nullable<Varchar>,
         fixation_id -> Int4,
+        hydration_state_id -> Nullable<Int4>,
         #[max_length = 2000]
         expected_elemental_content_change -> Nullable<Varchar>,
         #[max_length = 3000]
@@ -261,6 +270,7 @@ diesel::joinable!(bio_sample_type_origin_sub_origin_links -> sample_origins (ori
 diesel::joinable!(bio_sample_type_origin_sub_origin_links -> sample_sub_origins (sub_origin_id));
 diesel::joinable!(bio_samples -> bio_sample_conditions (condition_id));
 diesel::joinable!(bio_samples -> bio_sample_fixations (fixation_id));
+diesel::joinable!(bio_samples -> bio_sample_hydration_states (hydration_state_id));
 diesel::joinable!(bio_samples -> bio_sample_types (type_id));
 diesel::joinable!(bio_samples -> proposals (proposal_id));
 diesel::joinable!(bio_samples -> sample_origins (origin_id));
@@ -290,6 +300,7 @@ diesel::allow_tables_to_appear_in_same_query!(
     bio_sample_dataset_links,
     bio_sample_fixations,
     bio_sample_fixatives,
+    bio_sample_hydration_states,
     bio_sample_type_origin_sub_origin_links,
     bio_sample_types,
     bio_samples,

@@ -6,6 +6,7 @@ psql -d mydata -f 100_insert_bio_sample_types.sql
 psql -d mydata -f 100_insert_sample_origins.sql
 psql -d mydata -f 100_insert_tissue_sources.sql
 psql -d mydata -f 100_insert_sample_sub_origins.sql
+psql -d mydata -f 100_insert_bio_sample_hydration_states.sql
 
 psql -d mydata -f 101_insert_bio_sample_fixations.sql
 

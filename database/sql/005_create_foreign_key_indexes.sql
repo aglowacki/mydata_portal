@@ -39,6 +39,7 @@ CREATE INDEX bio_samples_sub_origin_id_idx ON bio_samples (sub_origin_id);
 CREATE INDEX bio_samples_tissue_source_id_idx ON bio_samples (tissue_source_id);
 CREATE INDEX bio_samples_condition_id_idx ON bio_samples (condition_id);
 CREATE INDEX bio_samples_fixation_id_idx ON bio_samples (fixation_id);
+CREATE INDEX bio_samples_hydration_state_id_idx ON bio_samples (hydration_state_id);
 
 CREATE INDEX bio_sample_dataset_links_bio_sample_id_idx ON bio_sample_dataset_links (bio_sample_id);
 

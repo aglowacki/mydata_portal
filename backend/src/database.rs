@@ -519,6 +519,12 @@ pub async fn get_bio_sample_meta_data_groups(
     .await
     .map_err(internal_error)?;
 
+    let hydration_states: Vec<_> = schema::bio_sample_hydration_states::table.select(models::BioSampleHydrationState::as_select())
+    .distinct()
+    .load(&mut conn)
+    .await
+    .map_err(internal_error)?;
+
     let sample_types: Vec<_> = schema::bio_sample_types::table.select(models::BioSampleType::as_select())
     .distinct()
     .load(&mut conn)
@@ -558,7 +564,7 @@ pub async fn get_bio_sample_meta_data_groups(
     .map_err(internal_error)?;
 
 
-    Ok(Json(models::BioSampleMetaDataGrouping{conditions, fixations, fixatives, sample_types, sample_origins, sample_sub_origins, tissue_sources, sample_type_origin_links, sample_origin_tissue_source_links}))
+    Ok(Json(models::BioSampleMetaDataGrouping{conditions, fixations, fixatives, hydration_states, sample_types, sample_origins, sample_sub_origins, tissue_sources, sample_type_origin_links, sample_origin_tissue_source_links}))
 
 
 }
@@ -625,6 +631,26 @@ pub async fn upsert_bio_sample(
     {
         return fail("A sample fixation must be selected.");
     }
+
+    // ---- hydration state is required when the sample is fixed (fixation is not
+    // 'None'). The DB trigger bio_samples_hydration_check enforces this too; this
+    // check just yields a clean message instead of a raw trigger error. ----
+    let fixation_name: String = match schema::bio_sample_fixations::table
+        .filter(schema::bio_sample_fixations::id.eq(payload.sample.fixation_id))
+        .select(schema::bio_sample_fixations::name)
+        .first(&mut conn)
+        .await
+    {
+        Ok(name) => name,
+        Err(diesel::result::Error::NotFound) => return fail("The selected sample fixation does not exist."),
+        Err(err) => return fail(&format!("Failed to verify sample fixation: {}", err)),
+    };
+    if fixation_name != "None"
+        && payload.sample.hydration_state_id.map_or(true, |id| id <= 0)
+    {
+        return fail("A hydration state is required for fixed samples.");
+    }
+
     if payload.dataset_ids.is_empty()
     {
         return fail("Select at least one dataset to assign this sample to.");

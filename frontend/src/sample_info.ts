@@ -34,6 +34,7 @@ interface BioSample
     condition_id: number;
     treatment_details: string | null;
     fixation_id: number;
+    hydration_state_id: number | null;
     expected_elemental_content_change: string | null;
     notes: string | null;
 }
@@ -57,7 +58,13 @@ interface BioSampleFixation
     fixative_id: number;
 }
 
-interface BioSampleFixative 
+interface BioSampleFixative
+{
+    id: number;
+    name: string;
+}
+
+interface BioSampleHydrationState
 {
     id: number;
     name: string;
@@ -103,6 +110,7 @@ interface SampleMetaDataGroups
     conditions: Array<BioSampleCondition>,
     fixations: Array<BioSampleFixation>,
     fixatives: Array<BioSampleFixative>,
+    hydration_states: Array<BioSampleHydrationState>,
     sample_types: Array<BioSampleType>,
     sample_origins: Array<SampleOrigin>,
     sample_sub_origins: Array<SampleSubOrigin>,
@@ -121,6 +129,7 @@ const KEY_SAMPLE_CONDITION: string = "Sample Condition:";
 const KEY_TREATMENT: string = "Treatment Details:";
 const KEY_FIXATION: string = "Sample Fixation:";
 const KEY_FIXATIVE: string = "Sample Fixative:";
+const KEY_HYDRATION: string = "Hydration State:";
 const KEY_EECC: string = "Expected Elemental Content Change:";
 const KEY_OTHER_NOTES: string = "Other Notes:";
 
@@ -165,6 +174,7 @@ class SampleManagementApp
     private sample_treatment_textarea: HTMLTextAreaElement;
     private sample_fixation_select: HTMLSelectElement;
     private sample_fixative_select: HTMLSelectElement;
+    private sample_hydration_select: HTMLSelectElement;
     private sample_eecc_textarea: HTMLTextAreaElement;
     private sample_notes_textarea: HTMLTextAreaElement;
     private sample_submit_btn: HTMLButtonElement;
@@ -189,6 +199,7 @@ class SampleManagementApp
         this.defaultHiddenOptionsStr.push(KEY_TREATMENT);
         this.defaultHiddenOptionsStr.push(KEY_FIXATION);
         this.defaultHiddenOptionsStr.push(KEY_FIXATIVE);
+        this.defaultHiddenOptionsStr.push(KEY_HYDRATION);
         this.defaultHiddenOptionsStr.push(KEY_EECC);
         this.defaultHiddenOptionsStr.push(KEY_OTHER_NOTES);
 
@@ -354,6 +365,13 @@ class SampleManagementApp
         this.sample_fixative_select.innerHTML = '<option value="">Select a sample fixative...</option>';
         div11.appendChild(this.sample_fixative_select);
         this.sample_form.appendChild(div11);
+
+        const div_hydration = this.create_div_group(KEY_HYDRATION, true);
+        this.sample_hydration_select = document.createElement('select') as HTMLSelectElement;
+        this.sample_hydration_select.id = 'sampleHydration';
+        this.sample_hydration_select.innerHTML = '<option value="">Select a hydration state...</option>';
+        div_hydration.appendChild(this.sample_hydration_select);
+        this.sample_form.appendChild(div_hydration);
 
         const div12 = this.create_div_group(KEY_EECC, true);
         this.sample_eecc_textarea = document.createElement('textarea') as HTMLTextAreaElement;
@@ -895,6 +913,16 @@ class SampleManagementApp
         }
         this.colorSelectOptions(this.sample_fixative_select, 'fixative');
         this.setPropVisible(KEY_FIXATIVE, true);
+
+        // Hydration state only applies to fixed samples. Show (and require) it
+        // when a real fixation other than 'None' is chosen; otherwise hide and
+        // clear it so an unfixed sample carries no hydration state.
+        const fixed = name !== "" && name !== KEY_NONE;
+        if (!fixed)
+        {
+            this.sample_hydration_select.value = "";
+        }
+        this.setPropVisible(KEY_HYDRATION, fixed);
     }
 
     private async loadSampleMetaDataGroups(): Promise<void>
@@ -932,7 +960,8 @@ class SampleManagementApp
         this.sample_condition_select.innerHTML = '<option value="">Select a sample type...</option>';
         this.sample_fixation_select.innerHTML = '<option value="">Select a sample type...</option>';
         this.sample_fixative_select.innerHTML = '<option value="">Select a sample type...</option>';
-        
+        this.sample_hydration_select.innerHTML = '<option value="">Select a hydration state...</option>';
+
         this.sample_meta_data_groups?.sample_types.forEach(sampleType =>
         {
             const option = document.createElement('option') as HTMLOptionElement;
@@ -967,6 +996,14 @@ class SampleManagementApp
                 option.textContent = item.name;
                 this.sample_fixation_select.appendChild(option);
             }
+        });
+
+        this.sample_meta_data_groups?.hydration_states.forEach(item =>
+        {
+            const option = document.createElement('option') as HTMLOptionElement;
+            option.value = String(item.id);
+            option.textContent = item.name;
+            this.sample_hydration_select.appendChild(option);
         });
 /*
         this.sample_meta_data_groups?.fixatives.forEach(val =>
@@ -1144,7 +1181,7 @@ class SampleManagementApp
         const columns: Array<string> = [
             'ID', 'Name', 'Type', 'Origin', 'Sub Origin', 'Tissue Source',
             'Thickness (microns)', 'Cell Line', 'Is Cancer', 'Condition',
-            'Treatment Details', 'Fixation', 'Fixative',
+            'Treatment Details', 'Fixation', 'Fixative', 'Hydration State',
             'External Elemental Content Change', 'Notes',
         ];
 
@@ -1193,6 +1230,7 @@ class SampleManagementApp
                 { text: fix.fixation,
                   color: this.colorForValue('fixation', fixation_obj ? fixation_obj.name : null) },
                 { text: fix.fixative, color: this.colorForValue('fixative', fixative_id) },
+                { text: this.lookupName(sample.hydration_state_id, g?.hydration_states), color: null },
                 { text: sample.expected_elemental_content_change ?? '-', color: null },
                 { text: sample.notes ?? '-', color: null },
             ];
@@ -1323,6 +1361,10 @@ class SampleManagementApp
             this.sampleFixationChanged(fixation.name);
             this.sample_fixative_select.value = String(fixation.fixative_id);
         }
+
+        // sampleFixationChanged (above) has already shown/hidden the hydration
+        // field based on the fixation, so just restore the stored value.
+        this.sample_hydration_select.value = sample.hydration_state_id !== null ? String(sample.hydration_state_id) : '';
 
         this.sample_eecc_textarea.value = sample.expected_elemental_content_change ?? '';
         this.sample_notes_textarea.value = sample.notes ?? '';
@@ -1588,6 +1630,15 @@ class SampleManagementApp
             return;
         }
 
+        // Hydration state is required for fixed samples (fixation other than
+        // 'None'); it is hidden and left blank for unfixed samples.
+        const hydration_state_id = Number(this.sample_hydration_select.value);
+        if (fixation_name !== KEY_NONE && !(hydration_state_id > 0))
+        {
+            this.showMessage('Please select a hydration state.', 'error');
+            return;
+        }
+
         // Optional / conditional fields. Only visible inputs are sent; hidden
         // ones are treated as not provided (null).
         const id_str = this.sample_id_input.value.trim();
@@ -1645,6 +1696,7 @@ class SampleManagementApp
             condition_id: condition_id,
             treatment_details: treatment.length > 0 ? treatment : null,
             fixation_id: fixation_id,
+            hydration_state_id: hydration_state_id > 0 ? hydration_state_id : null,
             expected_elemental_content_change: eecc.length > 0 ? eecc : null,
             notes: notes.length > 0 ? notes : null,
         };
