@@ -104,6 +104,10 @@ diesel::table! {
         expected_elemental_content_change -> Nullable<Varchar>,
         #[max_length = 3000]
         notes -> Nullable<Varchar>,
+        created_by -> Nullable<Int4>,
+        created_at -> Timestamptz,
+        updated_by -> Nullable<Int4>,
+        updated_at -> Timestamptz,
     }
 }
 

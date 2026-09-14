@@ -697,8 +697,14 @@ pub async fn upsert_bio_sample(
     {
         Some(id) =>
         {
+            // Stamp the editor and edit time; created_* are left untouched so the
+            // original creator is preserved across edits.
             let res = diesel::update(schema::bio_samples::table.find(id))
-                .set(&payload.sample)
+                .set((
+                    &payload.sample,
+                    schema::bio_samples::updated_by.eq(claims.get_badge()),
+                    schema::bio_samples::updated_at.eq(chrono::Utc::now()),
+                ))
                 .returning(schema::bio_samples::id)
                 .get_result::<i32>(&mut conn)
                 .await;
@@ -712,8 +718,14 @@ pub async fn upsert_bio_sample(
         }
         None =>
         {
+            // Record the creator as both creator and initial editor; the *_at
+            // columns default to now() at the database.
             let res = diesel::insert_into(schema::bio_samples::table)
-                .values(&payload.sample)
+                .values((
+                    &payload.sample,
+                    schema::bio_samples::created_by.eq(claims.get_badge()),
+                    schema::bio_samples::updated_by.eq(claims.get_badge()),
+                ))
                 .returning(schema::bio_samples::id)
                 .get_result::<i32>(&mut conn)
                 .await;

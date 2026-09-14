@@ -18,6 +18,13 @@ fixation_id integer NOT NULL REFERENCES bio_sample_fixations (id),
 hydration_state_id integer REFERENCES bio_sample_hydration_states (id),
 expected_elemental_content_change varchar(2000),
 notes varchar(3000),
+-- Audit: who created the row and who last edited it (badge -> users.badge),
+-- plus when. created_* are set once on insert and never changed; updated_* are
+-- refreshed on every edit. Written by the upsert_bio_sample handler.
+created_by integer NOT NULL REFERENCES users (badge),
+created_at timestamptz NOT NULL DEFAULT now(),
+updated_by integer NOT NULL REFERENCES users (badge),
+updated_at timestamptz NOT NULL DEFAULT now(),
 -- Enforce that the (type, origin, sub_origin) triple is one the
 -- bio_sample_type_origin_sub_origin_links table declares valid, rather than
 -- letting the three FKs be set independently. sub_origin_id is nullable; under
