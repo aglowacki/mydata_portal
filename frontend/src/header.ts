@@ -1,4 +1,5 @@
 import { get_user_info } from "./auth";
+import type { Claims } from "./auth";
 import { delete_cookie } from "./cookies";
 import { get_effective_theme, toggle_theme } from "./theme";
 
@@ -120,7 +121,7 @@ export function gen_user_icon()
     return menu;
 }
 
-export function gen_header()
+export function gen_header(claims?: Claims)
 {
     const header = document.createElement("header");
     header.classList.add("header");
@@ -134,6 +135,27 @@ export function gen_header()
     header_nav.appendChild(gen_link("Proposals", "/proposals.html"));
     header_nav.appendChild(gen_link("Samples", "/samples.html"));
     header_nav.appendChild(gen_link("Beamline", "/beamline.html"));
+
+    // The Scheduler is Admin/Staff (beamline scientist) only. Prefer the claims
+    // already resolved by gen_index so the link renders deterministically on
+    // every page; fall back to a lookup if they weren't supplied.
+    const add_scheduler_link = (uac: string) =>
+    {
+        if (uac === "Admin" || uac === "Staff")
+        {
+            header_nav.appendChild(gen_link("Scheduler", "/scheduler.html"));
+        }
+    };
+    if (claims)
+    {
+        add_scheduler_link(claims.uac);
+    }
+    else
+    {
+        get_user_info()
+            .then(c => add_scheduler_link(c.uac))
+            .catch(() => { /* Not logged in / unavailable — leave the link out. */ });
+    }
     //header_nav.appendChild(gen_signin_form());
 
     header.appendChild(gen_user_icon());

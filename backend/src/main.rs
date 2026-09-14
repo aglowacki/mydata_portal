@@ -31,6 +31,7 @@ mod sse;
 mod database;
 mod appstate;
 mod beamline_controls;
+mod scheduler;
 
 #[tokio::main]
 async fn main() 
@@ -98,7 +99,19 @@ async fn main()
         .route("/api/get_beamline_worker_task_queues/{beamline_id}", get(beamline_controls::get_beamline_worker_task_queues))
         .route("/api/get_beamline_worker_heartbeat/{beamline_id}", get(beamline_controls::get_beamline_worker_heartbeat))
         .route("/api/queue_beamline_worker_task/{beamline_id}", post(beamline_controls::queue_beamline_worker_task))
-        
+
+        // Scheduler (APS beamline-scheduling) proxy. Restricted to Admin/Staff; the
+        // service Authorization header (SVC_AUTH_STR) is injected server-side.
+        .route("/api/scheduler/activity/by_run_beamline/{syncotron_run}/{beamline_id}", get(scheduler::activity_by_run_and_beamline))
+        .route("/api/scheduler/activity/by_id/{activity_id}", get(scheduler::activity_by_id))
+        .route("/api/scheduler/beamlines/by_id/{beamline_id}", get(scheduler::beamlines_by_id))
+        .route("/api/scheduler/beamlines/active", get(scheduler::active_beamlines))
+        .route("/api/scheduler/authorized_beamlines", get(scheduler::authorized_beamlines))
+        .route("/api/scheduler/beamtime_requests/{syncotron_run}/{beamline_id}", get(scheduler::beamtime_requests))
+        .route("/api/scheduler/runs/all", get(scheduler::all_runs))
+        .route("/api/scheduler/runs/current", get(scheduler::current_run))
+        .route("/api/scheduler/runs/by_year/{year}", get(scheduler::run_by_year))
+
         // Extend the caller's session by an hour after each successful, authenticated request.
         .layer(middleware::from_fn(auth::refresh_token_layer))
         .layer((

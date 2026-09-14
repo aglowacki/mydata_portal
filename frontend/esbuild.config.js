@@ -6,6 +6,7 @@
             'src/sample_info.ts',
             'src/beamline.ts',
             'src/profile.ts',
+            'src/scheduler.ts',
             'src/index.ts'
         ],
         bundle: true,
