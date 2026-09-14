@@ -5,3 +5,4 @@ worker/target/
 runner/target/
 .DS_Store
 *.dump
+*.json
