@@ -76,17 +76,21 @@
   overflow-x: auto;
 }
 
+/* Themed via the shared --table-* tokens (defined in main.css) so this table
+   matches the rest of the site in both light and dark, and follows the user's
+   theme override — not just the OS setting. */
 .sample-table-grid
 {
   border-collapse: collapse;
   width: 100%;
   font-size: 0.85em;
+  color: var(--text);
 }
 
 .sample-table-grid th,
 .sample-table-grid td
 {
-  border: 1px solid #ccc;
+  border: 1px solid var(--table-border);
   padding: 4px 6px;
   text-align: left;
   vertical-align: top;
@@ -94,14 +98,16 @@
 
 .sample-table-grid thead th
 {
-  background-color: #f0f0f0;
+  background-color: var(--table-header-bg);
+  color: var(--table-header-text);
+  font-weight: 600;
   position: sticky;
   top: 0;
 }
 
 .sample-table-grid tbody tr:nth-child(even)
 {
-  background-color: #f9f9f9;
+  background-color: var(--table-row-alt);
 }
 
 /* Rows are clickable to load the sample into the form for editing. */
@@ -112,18 +118,18 @@
 
 .sample-table-grid tbody tr.sample-table-row:hover
 {
-  background-color: #eef5ff;
+  background-color: var(--table-hover);
 }
 
 .sample-table-grid tbody tr.sample-table-row.selected
 {
-  background-color: #d6e8ff;
+  background-color: var(--table-selected);
 }
 
 /* Expanded detail row listing the datasets linked to a sample. */
 .sample-table-grid tbody tr.sample-detail-row td
 {
-  background-color: #f4f8ff;
+  background-color: var(--table-row-alt);
   padding: 8px 10px;
 }
 
@@ -175,9 +181,9 @@
   background-color: #eef5ff;
 }
 
-/* Dark mode: the table's default light backgrounds wash out against a dark
-   page, so remap the borders, header, zebra striping, hover/selected states
-   and the expanded detail row to dark-friendly colors. */
+/* Dark mode for the non-table widgets (autocomplete popup, dataset picker).
+   The sample table itself is now fully driven by the shared --table-* tokens,
+   which already switch for dark mode, so it needs no overrides here. */
 @media (prefers-color-scheme: dark)
 {
   .autocomplete-list
@@ -201,42 +207,5 @@
   {
     border-color: #f66;
     background-color: #522;
-  }
-
-  .sample-table-grid
-  {
-    color: #e0e0e0;
-  }
-
-  .sample-table-grid th,
-  .sample-table-grid td
-  {
-    border-color: #555;
-  }
-
-  .sample-table-grid thead th
-  {
-    background-color: #2b2b2b;
-    color: #f0f0f0;
-  }
-
-  .sample-table-grid tbody tr:nth-child(even)
-  {
-    background-color: #1e1e1e;
-  }
-
-  .sample-table-grid tbody tr.sample-table-row:hover
-  {
-    background-color: #2a3a4a;
-  }
-
-  .sample-table-grid tbody tr.sample-table-row.selected
-  {
-    background-color: #33465c;
-  }
-
-  .sample-table-grid tbody tr.sample-detail-row td
-  {
-    background-color: #23303d;
   }
 }

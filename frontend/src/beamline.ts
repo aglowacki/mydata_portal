@@ -346,7 +346,10 @@
 
             //nlogs?.reverse();
             let table = document.createElement("table") as HTMLTableElement;
-            let hrow = table.insertRow();
+            table.classList.add("animated-table");
+            // Header goes in a <thead> so the shared table styling renders a
+            // proper header bar (thead th) rather than a plain first row.
+            let hrow = table.createTHead().insertRow();
             let th0 = document.createElement("th");
             th0.innerText = "Status";
             hrow.appendChild(th0);
@@ -643,7 +646,8 @@
             {
                 const table = document.createElement("table") as HTMLTableElement;
                 table.classList.add("scan-plan-params");
-                const hrow = table.insertRow();
+                // Header in a <thead> so the themed header bar renders.
+                const hrow = table.createTHead().insertRow();
                 ["Parameter", "Value", "Description"].forEach(text =>
                 {
                     const th = document.createElement("th");

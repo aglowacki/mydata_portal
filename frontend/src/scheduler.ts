@@ -182,7 +182,8 @@ function build_table(headers: Array<string>, rows: Array<Array<string>>): HTMLTa
 function gen_scheduler_tools(): HTMLDivElement
 {
     const card = document.createElement('div');
-    card.classList.add('profile-card');
+    // data-card widens the container; the activity/beamtime tables are wide.
+    card.classList.add('profile-card', 'data-card');
 
     const heading = document.createElement('h2');
     heading.textContent = 'Beamline Scheduler';
@@ -217,8 +218,10 @@ function gen_scheduler_tools(): HTMLDivElement
     controls.appendChild(requests_btn);
     card.appendChild(controls);
 
-    // Results area, replaced on each query.
+    // Results area, replaced on each query. table-scroll lets wide tables scroll
+    // horizontally instead of overflowing the card.
     const results = document.createElement('div');
+    results.classList.add('table-scroll');
     card.appendChild(results);
 
     const set_results = (node: HTMLElement) =>
