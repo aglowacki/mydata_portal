@@ -159,6 +159,119 @@
     width: 100%;
 }
 
+/* Log list: monospace lines with alternating rows, themed via the shared
+   --table-* tokens so it matches the site in light and dark mode. */
+.beamline-log-list
+{
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+    font-size: 0.85em;
+}
+
+.beamline-log-item
+{
+    padding: 4px 10px;
+    border-bottom: 1px solid var(--table-border);
+    /* Keep each entry on one line; the modal is for reading the full text. */
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    cursor: pointer;
+}
+
+.beamline-log-item:nth-child(even)
+{
+    background: var(--table-row-alt);
+}
+
+.beamline-log-item:hover
+{
+    background: var(--table-hover);
+}
+
+/* Full-screen dimmed backdrop for the log detail modal. */
+.beamline-log-modal-overlay
+{
+    position: fixed;
+    inset: 0;
+    z-index: 1000;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: rgba(0, 0, 0, 0.5);
+}
+
+.beamline-log-modal
+{
+    display: flex;
+    flex-direction: column;
+    width: min(80vw, 900px);
+    max-height: 80vh;
+    border: 2px solid #1f1f59;
+    border-radius: 8px;
+    overflow: hidden;
+    background: Canvas;
+    color: CanvasText;
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4);
+}
+
+.beamline-log-modal-header
+{
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+    padding: 8px 12px;
+    background: var(--table-header-bg);
+    color: var(--table-header-text);
+}
+
+.beamline-log-modal-title
+{
+    font-weight: 600;
+}
+
+.beamline-log-modal-close
+{
+    flex: 0 0 auto;
+    width: 26px;
+    height: 26px;
+    line-height: 1;
+    font-size: 1.2em;
+    cursor: pointer;
+    border: 1px solid #6b6bc4;
+    border-radius: 4px;
+    color: #ffffff;
+    background: #3a3a7a;
+}
+
+.beamline-log-modal-close:hover
+{
+    background: #4d4da0;
+}
+
+/* Task rows are double-clickable to open the detail modal. */
+.beamline-task-row
+{
+    cursor: pointer;
+}
+
+/* Scrollable, wrapped body so long lines and formatted JSON are readable. */
+.beamline-log-modal-body
+{
+    margin: 0;
+    padding: 12px;
+    overflow: auto;
+    white-space: pre-wrap;
+    word-break: break-word;
+    font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+    font-size: 0.9em;
+    line-height: 1.4;
+    tab-size: 2;
+}
+
 .beamline-log-tab
 {
     outline: 2px solid #1f1f59;

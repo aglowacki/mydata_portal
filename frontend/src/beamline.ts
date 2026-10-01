@@ -311,31 +311,148 @@
             }
         }
 
+        // Return the single <ul> that holds all log lines, creating it on first
+        // use so populateLogs and appendLog share one list instead of stacking
+        // a new <ul> per entry.
+        private getLogList(): HTMLUListElement
+        {
+            let list = this.logs_div.querySelector('ul.beamline-log-list') as HTMLUListElement | null;
+            if (!list)
+            {
+                list = document.createElement("ul") as HTMLUListElement;
+                list.classList.add("beamline-log-list");
+                this.logs_div.appendChild(list);
+            }
+            return list;
+        }
+
+        // Build one log line. Double-clicking opens a modal showing the full
+        // message, pretty-printed when it parses as JSON.
+        private createLogItem(item: BeamlineLog): HTMLLIElement
+        {
+            const list_item = document.createElement("li") as HTMLLIElement;
+            list_item.classList.add("beamline-log-item");
+            list_item.textContent = item.msg;
+            list_item.title = "Double-click to view";
+            list_item.addEventListener('dblclick', () => this.showLogModal(item));
+            return list_item;
+        }
+
         private populateLogs(nlogs: BeamlineLogs | null): void
         {
             //console.log(nlogs);
             this.logs_div.innerText = "";
 
+            const list = this.getLogList();
             //nlogs?.reverse();
-            let htmlList = document.createElement("ul") as HTMLUListElement;
-            nlogs?.forEach((item: BeamlineLog) => 
+            nlogs?.forEach((item: BeamlineLog) =>
             {
-                let list_item = document.createElement("li") as HTMLLIElement;
-                list_item.textContent  = item.msg;
-                htmlList.appendChild(list_item);
+                list.appendChild(this.createLogItem(item));
             });
-            this.logs_div.appendChild(htmlList);
         }
 
         private appendLog(item: BeamlineLog | null): void
         {
             if(item)
             {
-                let htmlList = document.createElement("ul") as HTMLUListElement;
-                let list_item = document.createElement("li") as HTMLLIElement;
-                list_item.textContent  = item.msg;
-                htmlList.appendChild(list_item);
-                this.logs_div.appendChild(htmlList);
+                const list = this.getLogList();
+                list.appendChild(this.createLogItem(item));
+                // Keep the newest line in view when the panel is open.
+                this.logs_div.scrollTop = this.logs_div.scrollHeight;
+            }
+        }
+
+        // Pop up a modal with the full log line so long messages are readable.
+        // If the message is valid JSON it is shown pretty-printed; otherwise the
+        // raw text is preserved with its original whitespace.
+        private showLogModal(item: BeamlineLog): void
+        {
+            // item.time is a unix-ish timestamp; show it when present.
+            const title = item.time ? new Date(item.time).toLocaleString() : "Log Entry";
+            this.showModal(title, item.msg);
+        }
+
+        // Generic detail modal shared by logs and tasks. `text` is shown
+        // pretty-printed when it parses as JSON, otherwise raw with its original
+        // whitespace. Closes via the × button, backdrop click, or Escape.
+        private showModal(title_text: string, text: string): void
+        {
+            const overlay = document.createElement("div") as HTMLDivElement;
+            overlay.classList.add("beamline-log-modal-overlay");
+
+            const modal = document.createElement("div") as HTMLDivElement;
+            modal.classList.add("beamline-log-modal");
+
+            const header = document.createElement("div") as HTMLDivElement;
+            header.classList.add("beamline-log-modal-header");
+
+            const title = document.createElement("span") as HTMLSpanElement;
+            title.classList.add("beamline-log-modal-title");
+            title.innerText = title_text;
+            header.appendChild(title);
+
+            const close_btn = document.createElement("button") as HTMLButtonElement;
+            close_btn.type = "button";
+            close_btn.classList.add("beamline-log-modal-close");
+            close_btn.innerText = "×"; // ×
+            header.appendChild(close_btn);
+
+            const body = document.createElement("pre") as HTMLPreElement;
+            body.classList.add("beamline-log-modal-body");
+
+            const pretty = this.tryFormatJson(text);
+            if (pretty !== null)
+            {
+                body.textContent = pretty;
+                body.classList.add("is-json");
+            }
+            else
+            {
+                body.textContent = text;
+            }
+
+            modal.appendChild(header);
+            modal.appendChild(body);
+            overlay.appendChild(modal);
+
+            const close = () =>
+            {
+                document.removeEventListener('keydown', on_key);
+                overlay.remove();
+            };
+            const on_key = (e: KeyboardEvent) =>
+            {
+                if (e.key === "Escape") { close(); }
+            };
+
+            close_btn.addEventListener('click', close);
+            // Click outside the modal (on the dimmed backdrop) closes it.
+            overlay.addEventListener('click', (e) =>
+            {
+                if (e.target === overlay) { close(); }
+            });
+            document.addEventListener('keydown', on_key);
+
+            document.body.appendChild(overlay);
+        }
+
+        // Return a pretty-printed version of `text` if it parses as a JSON
+        // object or array, otherwise null. Plain strings/numbers are treated as
+        // "not JSON" so ordinary log lines fall through to raw display.
+        private tryFormatJson(text: string): string | null
+        {
+            const trimmed = text.trim();
+            if (!(trimmed.startsWith("{") || trimmed.startsWith("[")))
+            {
+                return null;
+            }
+            try
+            {
+                return JSON.stringify(JSON.parse(trimmed), null, 2);
+            }
+            catch (error)
+            {
+                return null;
             }
         }
 
@@ -344,91 +461,56 @@
             //console.log(nlogs);
             this.tasks_div.innerText = "";
 
-            //nlogs?.reverse();
             let table = document.createElement("table") as HTMLTableElement;
             table.classList.add("animated-table");
+            table.classList.add("beamline-tasks-table");
             // Header goes in a <thead> so the shared table styling renders a
             // proper header bar (thead th) rather than a plain first row.
             let hrow = table.createTHead().insertRow();
-            let th0 = document.createElement("th");
-            th0.innerText = "Status";
-            hrow.appendChild(th0);
-            let th1 = document.createElement("th");
-            th1.innerText = "Command";
-            hrow.appendChild(th1);
-            let th2 = document.createElement("th");
-            th2.innerText = "Username";
-            hrow.appendChild(th2);
-            let th3 = document.createElement("th");
-            th3.innerText = "Reply";
-            hrow.appendChild(th3);
-            let th4 = document.createElement("th");
-            th4.innerText = "Start Time";
-            hrow.appendChild(th4);
-            let th5 = document.createElement("th");
-            th5.innerText = "End Time";
-            hrow.appendChild(th5);
-            bTasks?.queued.forEach((item: BeamlineTask) => 
+            ["Status", "Command", "Username", "Reply", "Start Time", "End Time"].forEach(text =>
             {
-                let row = table.insertRow();
-                let cell0 = row.insertCell();
-                cell0.innerText = item.status;
-                let cell1 = row.insertCell();
-                cell1.innerText = item.cmd;
-                let cell2 = row.insertCell();
-                cell2.innerText = item.username!;
-                let cell3 = row.insertCell();
-                let div = document.createElement('div') as HTMLDivElement;
-                div.innerText = item.reply!;
-                div.classList.add('scrollable');
-                cell3.appendChild(div);
-                let cell4 = row.insertCell();
-                cell4.innerText = item.proc_start_time!;
-                let cell5 = row.insertCell();
-                cell5.innerText = item.proc_end_time!;
-                
+                let th = document.createElement("th");
+                th.innerText = text;
+                hrow.appendChild(th);
             });
-            bTasks?.processing.forEach((item: BeamlineTask) => 
-            {
-                let row = table.insertRow();
-                let cell0 = row.insertCell();
-                cell0.innerText = item.status;
-                let cell1 = row.insertCell();
-                cell1.innerText = item.cmd;
-                let cell2 = row.insertCell();
-                cell2.innerText = item.username!;
-                let cell3 = row.insertCell();
-                let div = document.createElement('div') as HTMLDivElement;
-                div.innerText = item.reply!;
-                div.classList.add('scrollable');
-                cell3.appendChild(div);
-                let cell4 = row.insertCell();
-                cell4.innerText = item.proc_start_time!;
-                let cell5 = row.insertCell();
-                cell5.innerText = item.proc_end_time!;
-                
-            });
-            bTasks?.done.forEach((item: BeamlineTask) => 
-            {
-                let row = table.insertRow();
-                let cell0 = row.insertCell();
-                cell0.innerText = item.status;
-                let cell1 = row.insertCell();
-                cell1.innerText = item.cmd;
-                let cell2 = row.insertCell();
-                cell2.innerText = item.username!;
-                let cell3 = row.insertCell();
-                let div = document.createElement('div') as HTMLDivElement;
-                div.innerText = item.reply!;
-                div.classList.add('scrollable');
-                cell3.appendChild(div);
-                let cell4 = row.insertCell();
-                cell4.innerText = item.proc_start_time!;
-                let cell5 = row.insertCell();
-                cell5.innerText = item.proc_end_time!;
-                
-            });
+
+            const body = table.createTBody();
+            // All three queues share the same row layout; render them in order.
+            bTasks?.queued.forEach((item: BeamlineTask) => body.appendChild(this.createTaskRow(item)));
+            bTasks?.processing.forEach((item: BeamlineTask) => body.appendChild(this.createTaskRow(item)));
+            bTasks?.done.forEach((item: BeamlineTask) => body.appendChild(this.createTaskRow(item)));
+
             this.tasks_div.appendChild(table);
+        }
+
+        // Build one task row. Double-clicking opens a modal showing the full
+        // task, pretty-printed as JSON.
+        private createTaskRow(item: BeamlineTask): HTMLTableRowElement
+        {
+            const row = document.createElement("tr") as HTMLTableRowElement;
+            row.classList.add("beamline-task-row");
+            row.title = "Double-click to view";
+
+            row.insertCell().innerText = item.status;
+            row.insertCell().innerText = item.cmd;
+            row.insertCell().innerText = item.username ?? "";
+
+            const reply_cell = row.insertCell();
+            const div = document.createElement('div') as HTMLDivElement;
+            div.innerText = item.reply ?? "";
+            div.classList.add('scrollable');
+            reply_cell.appendChild(div);
+
+            row.insertCell().innerText = item.proc_start_time ?? "";
+            row.insertCell().innerText = item.proc_end_time ?? "";
+
+            row.addEventListener('dblclick', () =>
+            {
+                const title = item.cmd ? `Task: ${item.cmd}` : "Task";
+                this.showModal(title, JSON.stringify(item, null, 2));
+            });
+
+            return row;
         }
     }
  
