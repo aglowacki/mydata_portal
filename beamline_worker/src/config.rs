@@ -30,6 +30,9 @@ pub struct XrfStreamConfig
     /// Byte width of XRF-Maps' real type: 4 (float) or 8 (double).
     #[serde(default = "default_real_bytes")]
     pub real_bytes: usize,
+    /// Directory the per-dataset zarr stores are written under, as
+    /// `<output_dir>/<dataset>.zarr`. Required; the listener is disabled if empty.
+    pub output_dir: String,
 }
 
 fn default_real_bytes() -> usize {

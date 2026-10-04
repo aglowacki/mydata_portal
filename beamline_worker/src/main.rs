@@ -41,6 +41,11 @@ struct Args {
     /// Path to the JSON configuration file.
     #[arg(short, long, default_value = "config.json")]
     config_filename: String,
+
+    /// Print decoded XRF stream information (per-pixel meta and element counts)
+    /// before it is written to zarr. Useful for diagnosing empty/metadata-only stores.
+    #[arg(short, long)]
+    debug: bool,
 }
 
 fn main() -> Result<()> {
@@ -103,12 +108,14 @@ fn main() -> Result<()> {
     };
 
     // XRF live-map stream thread: subscribes to a ZeroMQ PUB/SUB feed (configured
-    // via the `xrf_stream` config section) and mirrors decoded per-pixel counts
-    // into Redis. Optional: returns None when the section is absent.
+    // via the `xrf_stream` config section), writes decoded per-pixel counts into a
+    // per-dataset zarr store, and publishes a Redis event at the end of each row.
+    // Optional: returns None when the section is absent.
     let xrf_handle = xrf_stream::spawn(
         config.xrf_stream.clone(),
         config.redis_config.conn_str.clone(),
         running.clone(),
+        args.debug,
     );
 
     // Main thread: synchronous ZeroMQ + Redis command/log poll loop.
@@ -142,7 +149,6 @@ fn main() -> Result<()> {
             warn!("XRF stream thread panicked");
         }
     }
-
     info!("stopped");
     Ok(())
 }

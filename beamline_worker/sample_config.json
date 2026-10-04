@@ -25,6 +25,7 @@
     "host": "127.0.0.1",
     "port": 43434,
     "topic": "",
-    "real_bytes": 4
+    "real_bytes": 4,
+    "output_dir": "/data/xrf_live_maps"
   }
 }
