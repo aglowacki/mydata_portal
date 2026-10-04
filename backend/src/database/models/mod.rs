@@ -29,6 +29,7 @@ use crate::database::schema::{beamline_contacts,
                                 sample_sub_origins,
                                 tissue_sources,
                                 scan_types,
+                                streaming_info,
                                 syncotron_runs,
                                 user_access_controls,
                                 users
@@ -91,6 +92,19 @@ pub struct Beamline {
 pub struct BeamlineInfo {
     pub acronym: String,
     pub name: String,
+}
+
+/// Maps a beamline to the on-disk directory where the beamline worker writes its
+/// live XRF zarr stores (`<streaming_cache_path>/<dataset>.zarr`). Loaded into
+/// memory at startup and keyed by beamline acronym for the streaming-cache endpoint.
+#[derive(Queryable, Debug, Identifiable, Selectable, QueryableByName, Associations)]
+#[diesel(belongs_to(Beamline, foreign_key=beamline_id))]
+#[diesel(primary_key(id))]
+#[diesel(table_name = streaming_info)]
+pub struct StreamingInfo {
+    pub id: i32,
+    pub beamline_id: i32,
+    pub streaming_cache_path: String,
 }
 
 #[derive(Queryable, Debug, Identifiable, Selectable, QueryableByName, serde::Serialize)]

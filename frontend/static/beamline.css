@@ -295,6 +295,37 @@ padding: 0;
 overflow-y: scroll
 }
 
+/* Live XRF map widget: controls row above a scaled, crisp-pixel canvas. */
+.beamline-xrf
+{
+    margin: 1em 0;
+}
+
+.beamline-xrf-controls
+{
+    display: flex;
+    align-items: center;
+    gap: 0.75em;
+    margin-bottom: 0.5em;
+    flex-wrap: wrap;
+}
+
+.beamline-xrf-status
+{
+    font-size: 0.85em;
+    opacity: 0.8;
+    margin-bottom: 0.5em;
+}
+
+.beamline-xrf-canvas
+{
+    border: 1px solid var(--table-border, #444);
+    /* Keep the upscaled map sharp rather than blurring between pixels. */
+    image-rendering: pixelated;
+    image-rendering: crisp-edges;
+    background: #202020;
+}
+
 .hidden
 {
   display: none;

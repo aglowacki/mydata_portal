@@ -1,4 +1,7 @@
 
+use std::collections::HashMap;
+use std::sync::Arc;
+
 use diesel_async::{
     pooled_connection::AsyncDieselConnectionManager, AsyncPgConnection,
 };
@@ -22,6 +25,11 @@ pub struct AppState
     /// Set to `true` when the server is shutting down so long-lived
     /// connections (e.g. SSE streams) can terminate instead of hanging.
     pub shutdown_rx: watch::Receiver<bool>,
+    /// Beamline acronym -> on-disk XRF streaming cache directory, loaded once from
+    /// the `streaming_info` table at startup. The acronym is the `beamline_id` the
+    /// frontend sends, so the streaming-cache endpoint can resolve a path without a
+    /// database round-trip.
+    pub streaming_cache: Arc<HashMap<String, String>>,
 }
 
 impl FromRef<AppState> for DieselPool 

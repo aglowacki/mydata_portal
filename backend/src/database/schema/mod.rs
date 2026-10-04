@@ -228,6 +228,15 @@ diesel::table! {
 }
 
 diesel::table! {
+    streaming_info (id) {
+        id -> Int4,
+        beamline_id -> Int4,
+        #[max_length = 400]
+        streaming_cache_path -> Varchar,
+    }
+}
+
+diesel::table! {
     syncotron_runs (id) {
         id -> Int4,
         #[max_length = 6]
@@ -295,6 +304,7 @@ diesel::joinable!(experimenters -> proposals (proposal_id));
 diesel::joinable!(experimenters -> users (user_badge));
 diesel::joinable!(proposal_dataset_links -> datasets (dataset_id));
 diesel::joinable!(proposal_dataset_links -> proposals (proposal_id));
+diesel::joinable!(streaming_info -> beamlines (beamline_id));
 diesel::joinable!(users -> user_access_controls (user_access_control_id));
 
 diesel::allow_tables_to_appear_in_same_query!(
@@ -320,6 +330,7 @@ diesel::allow_tables_to_appear_in_same_query!(
     tissue_sources,
     sample_sub_origins,
     scan_types,
+    streaming_info,
     syncotron_runs,
     user_access_controls,
     users,

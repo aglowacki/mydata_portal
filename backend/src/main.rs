@@ -58,7 +58,11 @@ async fn main()
     let diesel_pool = bb8::Pool::builder().build(db_config).await.unwrap();
     let redis_host = std::env::var("REDIS_HOST").unwrap_or_else(|_| "localhost".to_string());
     let redis_client = redis::Client::open(format!("redis://{}", redis_host)).unwrap();
-    let app_state = appstate::AppState { diesel_pool, redis_client, sse_tx, shutdown_rx, };
+    // Load the XRF streaming cache map (beamline acronym -> cache dir) once; it is
+    // static reference data served by /api/get_xrf_streaming_cache.
+    let streaming_cache = std::sync::Arc::new(database::get_streaming_cache_map(&diesel_pool).await);
+    tracing::debug!("loaded {} streaming cache entries", streaming_cache.len());
+    let app_state = appstate::AppState { diesel_pool, redis_client, sse_tx, shutdown_rx, streaming_cache, };
 
     tokio::spawn(sse::redis_event_listener(app_state.clone()));
 
@@ -99,6 +103,7 @@ async fn main()
         .route("/api/get_beamline_worker_task_queues/{beamline_id}", get(beamline_controls::get_beamline_worker_task_queues))
         .route("/api/get_beamline_worker_heartbeat/{beamline_id}", get(beamline_controls::get_beamline_worker_heartbeat))
         .route("/api/queue_beamline_worker_task/{beamline_id}", post(beamline_controls::queue_beamline_worker_task))
+        .route("/api/get_xrf_streaming_cache/{beamline_id}", get(beamline_controls::get_xrf_streaming_cache))
 
         // Scheduler (APS beamline-scheduling) proxy. Restricted to Admin/Staff; the
         // service Authorization header (SVC_AUTH_STR) is injected server-side.

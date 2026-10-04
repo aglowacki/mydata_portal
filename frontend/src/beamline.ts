@@ -89,6 +89,20 @@
         done: Array<BeamlineTask>,
     }
 
+    // One element's 2-D XRF map returned by /api/get_xrf_streaming_cache. `data` is
+    // row-major (`height` rows of `width` values); never-written pixels arrive as
+    // null. `datasets`/`elements` list what else is available to switch to.
+    interface XrfMap
+    {
+        dataset: string;
+        element: string;
+        width: number;
+        height: number;
+        datasets: string[];
+        elements: string[];
+        data: (number | null)[];
+    }
+
     class ScanPlan
     {
 
@@ -822,11 +836,227 @@
 
     }
 
+    // Shows a single element of a live XRF scan map as a false-color 2-D image on a
+    // canvas, with dropdowns to switch between the datasets/elements available in the
+    // beamline's streaming cache. Data comes from /api/get_xrf_streaming_cache as raw
+    // numbers; the colormap is applied here.
+    class BeamlineXrfWidget
+    {
+        private beamline_id: string;
+        private main_div: HTMLDivElement;
+        private controls_div: HTMLDivElement;
+        private dataset_select: HTMLSelectElement;
+        private element_select: HTMLSelectElement;
+        private refresh_btn: HTMLButtonElement;
+        private status_div: HTMLDivElement;
+        private canvas: HTMLCanvasElement;
+        // Dataset currently displayed, so element changes can re-request the same scan.
+        private current_dataset: string | null;
+
+        constructor(beam_id: string)
+        {
+            this.beamline_id = beam_id;
+            this.current_dataset = null;
+
+            this.main_div = document.createElement("div") as HTMLDivElement;
+            this.main_div.id = "beamline-xrf";
+            this.main_div.classList.add("beamline-xrf");
+
+            const heading = document.createElement("h3") as HTMLHeadingElement;
+            heading.innerText = "Live XRF Map";
+            this.main_div.appendChild(heading);
+
+            this.controls_div = document.createElement("div") as HTMLDivElement;
+            this.controls_div.classList.add("beamline-xrf-controls");
+
+            const dataset_label = document.createElement("label") as HTMLLabelElement;
+            dataset_label.innerText = "Dataset: ";
+            this.dataset_select = document.createElement("select") as HTMLSelectElement;
+            this.dataset_select.classList.add("beamline-xrf-select");
+            // Switching dataset resets the element to the store's first one.
+            this.dataset_select.addEventListener('change', () =>
+            {
+                this.loadMap(this.dataset_select.value, undefined);
+            });
+            dataset_label.appendChild(this.dataset_select);
+
+            const element_label = document.createElement("label") as HTMLLabelElement;
+            element_label.innerText = " Element: ";
+            this.element_select = document.createElement("select") as HTMLSelectElement;
+            this.element_select.classList.add("beamline-xrf-select");
+            this.element_select.addEventListener('change', () =>
+            {
+                this.loadMap(this.current_dataset ?? undefined, this.element_select.value);
+            });
+            element_label.appendChild(this.element_select);
+
+            this.refresh_btn = document.createElement("button") as HTMLButtonElement;
+            this.refresh_btn.type = "button";
+            this.refresh_btn.innerText = "Refresh";
+            this.refresh_btn.addEventListener('click', () =>
+            {
+                // Re-pull the current selection (picks up newly streamed rows/scans).
+                this.loadMap(this.current_dataset ?? undefined, this.element_select.value || undefined);
+            });
+
+            this.controls_div.appendChild(dataset_label);
+            this.controls_div.appendChild(element_label);
+            this.controls_div.appendChild(this.refresh_btn);
+            this.main_div.appendChild(this.controls_div);
+
+            this.status_div = document.createElement("div") as HTMLDivElement;
+            this.status_div.classList.add("beamline-xrf-status");
+            this.main_div.appendChild(this.status_div);
+
+            this.canvas = document.createElement("canvas") as HTMLCanvasElement;
+            this.canvas.classList.add("beamline-xrf-canvas");
+            this.main_div.appendChild(this.canvas);
+
+            this.loadMap(undefined, undefined);
+        }
+
+        public gen_main_div(): HTMLDivElement
+        {
+            return this.main_div;
+        }
+
+        // Fetch one element's map (optionally a specific dataset/element) and render it.
+        private async loadMap(dataset?: string, element?: string): Promise<void>
+        {
+            this.status_div.innerText = "Loading…";
+            const map = await this.fetchMap(dataset, element);
+            if (map === null)
+            {
+                this.status_div.innerText = "No XRF data available.";
+                return;
+            }
+            this.render(map);
+        }
+
+        private async fetchMap(dataset?: string, element?: string): Promise<XrfMap | null>
+        {
+            try
+            {
+                let url = '/api/get_xrf_streaming_cache/' + encodeURIComponent(this.beamline_id);
+                const query: string[] = [];
+                if (dataset) { query.push('dataset=' + encodeURIComponent(dataset)); }
+                if (element) { query.push('element=' + encodeURIComponent(element)); }
+                if (query.length > 0) { url += '?' + query.join('&'); }
+
+                const response = await fetch(url);
+                if (!response.ok)
+                {
+                    throw new Error(`HTTP error! status: ${response.status}`);
+                }
+                return await response.json() as XrfMap;
+            }
+            catch (error)
+            {
+                console.error('Error loading XRF map:', error);
+                return null;
+            }
+        }
+
+        // Repopulate a <select> with `options`, selecting `selected`.
+        private fill_select(select: HTMLSelectElement, options: string[], selected: string): void
+        {
+            select.innerText = "";
+            options.forEach(opt =>
+            {
+                const o = document.createElement("option") as HTMLOptionElement;
+                o.value = opt;
+                o.textContent = opt;
+                if (opt === selected) { o.selected = true; }
+                select.appendChild(o);
+            });
+        }
+
+        // Draw `map` onto the canvas with a false-color scale, and sync the dropdowns
+        // to what is actually being shown.
+        private render(map: XrfMap): void
+        {
+            this.current_dataset = map.dataset;
+            this.fill_select(this.dataset_select, map.datasets, map.dataset);
+            this.fill_select(this.element_select, map.elements, map.element);
+
+            const w = map.width;
+            const h = map.height;
+            this.canvas.width = w;
+            this.canvas.height = h;
+            // Scale the display up while keeping pixels crisp (see beamline.css).
+            this.canvas.style.width = Math.min(w * 4, 512) + "px";
+
+            const ctx = this.canvas.getContext('2d');
+            if (!ctx)
+            {
+                this.status_div.innerText = "Canvas not supported.";
+                return;
+            }
+
+            // Normalize over the non-null values so the colormap spans the data range.
+            let min = Infinity;
+            let max = -Infinity;
+            for (const v of map.data)
+            {
+                if (v !== null && Number.isFinite(v))
+                {
+                    if (v < min) { min = v; }
+                    if (v > max) { max = v; }
+                }
+            }
+            const span = (max > min) ? (max - min) : 1;
+
+            const img = ctx.createImageData(w, h);
+            for (let i = 0; i < map.data.length; i++)
+            {
+                const v = map.data[i];
+                const o = i * 4;
+                if (v === null || !Number.isFinite(v as number))
+                {
+                    // No-data pixel: dark gray so empty regions read as "not scanned".
+                    img.data[o] = 32; img.data[o + 1] = 32; img.data[o + 2] = 32; img.data[o + 3] = 255;
+                    continue;
+                }
+                const t = ((v as number) - min) / span;
+                const [r, g, b] = this.colormap(t);
+                img.data[o] = r; img.data[o + 1] = g; img.data[o + 2] = b; img.data[o + 3] = 255;
+            }
+            ctx.putImageData(img, 0, 0);
+
+            this.status_div.innerText =
+                `${map.dataset} / ${map.element} — ${w}×${h}, range ${min.toPrecision(3)}–${max.toPrecision(3)}`;
+        }
+
+        // Map t in [0,1] to an RGB triple via a compact viridis-style gradient.
+        private colormap(t: number): [number, number, number]
+        {
+            const stops: Array<[number, number, number]> = [
+                [68, 1, 84],    // dark purple
+                [59, 82, 139],  // blue
+                [33, 145, 140], // teal
+                [94, 201, 98],  // green
+                [253, 231, 37], // yellow
+            ];
+            const clamped = Math.max(0, Math.min(1, t));
+            const scaled = clamped * (stops.length - 1);
+            const idx = Math.min(Math.floor(scaled), stops.length - 2);
+            const frac = scaled - idx;
+            const a = stops[idx] as [number, number, number];
+            const b = stops[idx + 1] as [number, number, number];
+            return [
+                Math.round(a[0] + (b[0] - a[0]) * frac),
+                Math.round(a[1] + (b[1] - a[1]) * frac),
+                Math.round(a[2] + (b[2] - a[2]) * frac),
+            ];
+        }
+    }
+
     class BeamlineWidget
     {
         private scans_widget: BeamlineScansWidget;
         private refresh_plans_btn: HTMLButtonElement;
         private logs_widget: BeamlineLogWidget;
+        private xrf_widget: BeamlineXrfWidget;
         private main_div: HTMLDivElement;
         private beamline_id: string;
 
@@ -836,6 +1066,7 @@
             this.main_div.id = "beamline-widget";
             this.main_div.classList.add("beamline-widget");
             this.scans_widget = new BeamlineScansWidget(beam_id);
+            this.xrf_widget = new BeamlineXrfWidget(beam_id);
             this.logs_widget = new BeamlineLogWidget(beam_id);
             this.beamline_id = beam_id;
             this.refresh_plans_btn = document.createElement("button") as HTMLButtonElement;
@@ -845,8 +1076,9 @@
 
             this.main_div.appendChild(this.refresh_plans_btn);
             this.main_div.appendChild(this.scans_widget.gen_main_div())
+            this.main_div.appendChild(this.xrf_widget.gen_main_div())
             this.main_div.appendChild(this.logs_widget.gen_main_div())
-            
+
         }
         
         public gen_main_div(): HTMLDivElement

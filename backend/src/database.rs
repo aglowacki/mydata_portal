@@ -46,12 +46,42 @@ pub async fn get_beamlines(state: &appstate::AppState,) -> Vec<models::Beamline>
 {
     let pool = appstate::DieselPool::from_ref(state);
     let mut conn = pool.get_owned().await.unwrap();
-    
+
     let beamlines = schema::beamlines::table.select(models::Beamline::as_select())
         .load(&mut conn)
         .await
         .unwrap_or(Vec::new());
     return beamlines;
+}
+
+/// Load the XRF streaming cache map (beamline acronym -> cache directory) from the
+/// `streaming_info` table, joined to `beamlines` for the acronym. Called once at
+/// startup. Any failure (missing table, empty pool) is logged and yields an empty
+/// map so the server still starts; the streaming endpoint then 404s per beamline.
+pub async fn get_streaming_cache_map(pool: &appstate::DieselPool) -> std::collections::HashMap<String, String>
+{
+    let mut conn = match pool.get_owned().await
+    {
+        Ok(conn) => conn,
+        Err(err) =>
+        {
+            tracing::warn!(error = %err, "failed to get a connection to load streaming_info");
+            return std::collections::HashMap::new();
+        }
+    };
+
+    let rows: Vec<(String, String)> = schema::streaming_info::table
+        .inner_join(schema::beamlines::table.on(schema::beamlines::id.eq(schema::streaming_info::beamline_id)))
+        .select((schema::beamlines::acronym, schema::streaming_info::streaming_cache_path))
+        .load::<(String, String)>(&mut conn)
+        .await
+        .unwrap_or_else(|err|
+        {
+            tracing::warn!(error = %err, "failed to load streaming_info table");
+            Vec::new()
+        });
+
+    rows.into_iter().collect()
 }
 
 
