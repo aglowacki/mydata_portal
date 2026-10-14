@@ -326,6 +326,63 @@ overflow-y: scroll
     background: #202020;
 }
 
+.beamline-schedule
+{
+    margin: 1em 0;
+    padding: 0.75em 1em;
+    border: 1px solid var(--table-border, #444);
+    border-radius: 6px;
+}
+
+/* Accent the panel while an activity is actually in progress. */
+.beamline-schedule.active
+{
+    border-color: hsl(140 45% 45%);
+    box-shadow: 0 0 0 1px hsl(140 45% 45% / 0.4);
+}
+
+.beamline-schedule h3
+{
+    margin: 0 0 0.5em 0;
+}
+
+.beamline-schedule-status
+{
+    font-weight: 600;
+    margin-bottom: 0.5em;
+}
+
+.beamline-schedule.active .beamline-schedule-status
+{
+    color: hsl(140 55% 55%);
+}
+
+.beamline-schedule-empty
+{
+    opacity: 0.8;
+    font-style: italic;
+}
+
+.beamline-schedule-table
+{
+    border-collapse: collapse;
+}
+
+.beamline-schedule-table th
+{
+    text-align: left;
+    padding: 2px 12px 2px 0;
+    font-weight: 600;
+    opacity: 0.85;
+    white-space: nowrap;
+    vertical-align: top;
+}
+
+.beamline-schedule-table td
+{
+    padding: 2px 0;
+}
+
 .hidden
 {
   display: none;

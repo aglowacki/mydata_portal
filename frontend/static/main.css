@@ -154,6 +154,9 @@ form.nav.right {
     --table-row-alt: hsl(var(--hue) var(--saturation) 10%);
     --table-hover: hsl(var(--hue) var(--saturation) 17%);
     --table-selected: hsl(var(--hue) var(--saturation) 24%);
+    --table-past-bg: hsl(var(--hue) calc(var(--saturation) / 3) 7%);
+    --table-past-text: hsl(var(--hue) calc(var(--saturation) / 3) 55%);
+    --table-active-bg: hsl(140 45% 20%);
   }
 
   b {
@@ -176,6 +179,9 @@ form.nav.right {
   --table-row-alt: hsl(var(--hue) var(--saturation) 10%);
   --table-hover: hsl(var(--hue) var(--saturation) 17%);
   --table-selected: hsl(var(--hue) var(--saturation) 24%);
+  --table-past-bg: hsl(var(--hue) calc(var(--saturation) / 3) 7%);
+  --table-past-text: hsl(var(--hue) calc(var(--saturation) / 3) 55%);
+  --table-active-bg: hsl(140 45% 20%);
 }
 
 :root[data-theme="dark"] b {
@@ -191,6 +197,9 @@ form.nav.right {
   --table-row-alt: hsl(var(--hue) calc(var(--saturation) / 2) 91%);
   --table-hover: hsl(var(--hue) calc(var(--saturation) / 2) 83%);
   --table-selected: hsl(var(--hue) calc(var(--saturation) / 2) 74%);
+  --table-past-bg: hsl(var(--hue) calc(var(--saturation) / 2) 88%);
+  --table-past-text: hsl(var(--hue) calc(var(--saturation) / 2) 45%);
+  --table-active-bg: hsl(140 50% 80%);
 }
 
 :root[data-theme="light"] b {
@@ -349,6 +358,27 @@ form.nav.right {
 .profile-card tbody tr:last-child td,
 .animated-table tbody tr:last-child td {
   border-bottom: none;
+}
+
+/* Scheduler activity status: past activities are dimmed, and an activity whose
+   start/end window contains "now" is highlighted as currently active. These sit
+   after the zebra/hover rules so they override the striping. */
+.profile-card tbody tr.sched-past,
+.profile-card tbody tr.sched-past:nth-child(even) {
+  background: var(--table-past-bg);
+  color: var(--table-past-text);
+}
+
+.profile-card tbody tr.sched-active,
+.profile-card tbody tr.sched-active:nth-child(even) {
+  background: var(--table-active-bg);
+  font-weight: 600;
+}
+
+/* Keep hover feedback distinct from the status colors. */
+.profile-card tbody tr.sched-past:hover,
+.profile-card tbody tr.sched-active:hover {
+  filter: brightness(1.15);
 }
 
 /* ----------------- table.ts ------------------*/

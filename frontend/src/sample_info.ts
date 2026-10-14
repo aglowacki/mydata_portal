@@ -119,6 +119,7 @@ interface SampleMetaDataGroups
     sample_origin_tissue_source_links: Array<SampleOriginTissueSourceLink>,
 }
 
+const KEY_SAMPLE_ID: string = "Sample ID:";
 const KEY_SAMPLE_ORIGIN: string = "Sample Origin:";
 const KEY_SUB_SAMPLE_ORIGIN: string = "Sample Sub Origin:";
 const KEY_TISSUE_SOURCE: string = "Tissue Source:";
@@ -229,6 +230,10 @@ class SampleManagementApp
         {
             let item = event.target as HTMLSelectElement;
             const value = Number(item?.value);
+            // Switching proposals starts a fresh (new sample) context, so hide
+            // and clear the Sample ID field until an existing entry is selected.
+            this.sample_id_input.value = '';
+            this.setPropVisible(KEY_SAMPLE_ID, false);
             this.loadProposalDatasets(value);
             this.loadProposalBioSamples(value);
         });
@@ -244,8 +249,9 @@ class SampleManagementApp
         div_ds.appendChild(this.sample_datasets_div);
         this.sample_form.appendChild(div_ds);
 
-        // sample selection input
-        const div0 = this.create_div_group("Sample ID:", false);
+        // sample selection input - hidden until an existing bio sample is
+        // selected from the table (new samples get their id from the backend).
+        const div0 = this.create_div_group(KEY_SAMPLE_ID, true);
         this.sample_id_input = document.createElement('input') as HTMLInputElement;
         this.sample_id_input.id = 'sampleId';
         this.sample_id_input.type = 'text';
@@ -1328,6 +1334,9 @@ class SampleManagementApp
     {
         // Setting the Sample ID switches the form to "update" mode and lets
         // autoCheckDatasetsForSample tick the datasets already linked to it.
+        // Reveal the (otherwise hidden) Sample ID field now that an existing
+        // database entry is being edited.
+        this.setPropVisible(KEY_SAMPLE_ID, true);
         this.sample_id_input.value = String(sample.id);
         this.sample_name_input.value = sample.name;
 

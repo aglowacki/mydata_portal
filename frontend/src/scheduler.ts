@@ -147,7 +147,11 @@ function user_of(activity: SchedActivity): string
     return full || (user.userName ?? '');
 }
 
-function build_table(headers: Array<string>, rows: Array<Array<string>>): HTMLTableElement
+function build_table(
+    headers: Array<string>,
+    rows: Array<Array<string>>,
+    row_classes?: Array<string | undefined>,
+): HTMLTableElement
 {
     const table = document.createElement('table');
 
@@ -168,13 +172,39 @@ function build_table(headers: Array<string>, rows: Array<Array<string>>): HTMLTa
     });
 
     const tbody = table.createTBody();
-    rows.forEach(cells =>
+    rows.forEach((cells, i) =>
     {
         const row = tbody.insertRow();
+        const cls = row_classes?.[i];
+        if (cls)
+        {
+            row.classList.add(cls);
+        }
         cells.forEach(text => { row.insertCell().textContent = text; });
     });
 
     return table;
+}
+
+// Classify an activity relative to now by its start/end window:
+//   'sched-active' — now falls within [start, end]
+//   'sched-past'   — the activity has already ended
+//   undefined      — upcoming, or dates missing/unparseable
+function activity_status(act: SchedActivity): string | undefined
+{
+    const now = Date.now();
+    const start = act.startTime ? new Date(act.startTime).getTime() : NaN;
+    const end = act.endTime ? new Date(act.endTime).getTime() : NaN;
+
+    if (!isNaN(start) && !isNaN(end) && now >= start && now <= end)
+    {
+        return 'sched-active';
+    }
+    if (!isNaN(end) && now > end)
+    {
+        return 'sched-past';
+    }
+    return undefined;
 }
 
 // --- Page ------------------------------------------------------------------
@@ -298,7 +328,17 @@ function gen_scheduler_tools(): HTMLDivElement
             `activity/by_run_beamline/${encodeURIComponent(sel.run)}/${encodeURIComponent(sel.beamline)}`,
         ).then(activities =>
         {
-            const rows = activities.map(act =>
+            // Sort by start time (ascending); missing times sort to the end.
+            const sorted = [...activities].sort((a, b) =>
+            {
+                const ta = a.startTime ? new Date(a.startTime).getTime() : NaN;
+                const tb = b.startTime ? new Date(b.startTime).getTime() : NaN;
+                if (isNaN(ta) && isNaN(tb)) { return 0; }
+                if (isNaN(ta)) { return 1; }
+                if (isNaN(tb)) { return -1; }
+                return ta - tb;
+            });
+            const rows = sorted.map(act =>
             {
                 const pi = pi_of(act);
                 const pi_name = pi ? `${pi.firstName ?? ''} ${pi.lastName ?? ''}`.trim() : '';
@@ -314,9 +354,11 @@ function gen_scheduler_tools(): HTMLDivElement
                     fmt_time(act.endTime),
                 ];
             });
+            const row_classes = sorted.map(activity_status);
             set_results(build_table(
                 ['GUP', 'PI', 'Institution', 'Proposal Title', 'User', 'Activity', 'Station', 'Start', 'End'],
                 rows,
+                row_classes,
             ));
         }).catch(error =>
         {

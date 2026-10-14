@@ -233,8 +233,8 @@ fn run(cfg: &XrfStreamConfig, redis_url: &str, running: &AtomicBool, debug: bool
                         "[xrf-debug] end-of-scan sentinel: dataset={dataset:?} (payload {} bytes)",
                         payload.len()
                     );
+                    info!(%dataset, "received XRF end-of-scan block");
                 }
-                info!(%dataset, "received XRF end-of-scan block");
                 if let Some(mut writer) = writers.remove(&dataset) {
                     writer.finish(&mut redis_conn);
                 }

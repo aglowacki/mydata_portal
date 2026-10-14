@@ -425,12 +425,17 @@ fn read_xrf_map(
             Some(n) if n.ends_with(".zarr") => n.trim_end_matches(".zarr").to_string(),
             _ => continue,
         };
+        // Skip empty/metadata-only stores (e.g. a freshly created `<name>.zarr` that
+        // only holds `zarr.json` with no element data yet). Including them would list
+        // an unselectable dataset and, if the empty one is the newest, break the
+        // default load so the dropdown shows nothing.
+        if !store_has_data(&path) { continue; }
         let mtime = entry.metadata().and_then(|m| m.modified()).unwrap_or(SystemTime::UNIX_EPOCH);
         stores.push((name, path, mtime));
     }
     if stores.is_empty()
     {
-        return Err((StatusCode::NOT_FOUND, format!("No XRF datasets found in {}", dir)));
+        return Err((StatusCode::NOT_FOUND, format!("No XRF datasets with data found in {}", dir)));
     }
     let mut datasets: Vec<String> = stores.iter().map(|(n, _, _)| n.clone()).collect();
     datasets.sort();
@@ -473,6 +478,28 @@ fn read_xrf_map(
     let (height, width, data) = read_element_grid(&store_path.join(&element))?;
 
     Ok(XrfMapResponse { dataset, element, width, height, datasets, elements, data })
+}
+
+/// Whether a `<dataset>.zarr` store holds any readable element data. True when at
+/// least one child element directory has a `c/` chunk directory containing at least
+/// one row chunk. Metadata-only stores (just `zarr.json`, or element dirs with empty
+/// `c/`) return false so callers can skip them.
+fn store_has_data(store_path: &std::path::Path) -> bool
+{
+    let entries = match std::fs::read_dir(store_path) { Ok(e) => e, Err(_) => return false };
+    for entry in entries.flatten()
+    {
+        let c_dir = entry.path().join("c");
+        if c_dir.is_dir()
+        {
+            // A non-empty `c/` means at least one row chunk has been written.
+            if std::fs::read_dir(&c_dir).ok().and_then(|mut rd| rd.next()).is_some()
+            {
+                return true;
+            }
+        }
+    }
+    false
 }
 
 /// Read one element's live map from its raw zarr chunks. The element directory holds

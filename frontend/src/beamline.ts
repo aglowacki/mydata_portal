@@ -103,6 +103,39 @@
         data: (number | null)[];
     }
 
+    // --- Scheduler activity shapes (minimal subset of the upstream API) --------
+    // Mirrors the shapes used on the scheduler page; only the fields shown in the
+    // "current activity" panel are declared.
+    interface SchedExperimenter
+    {
+        firstName?: string;
+        lastName?: string;
+        institution?: string;
+        piFlag?: string | null;
+    }
+
+    interface SchedProposal
+    {
+        gupId?: number | null;
+        proposalTitle?: string | null;
+        experimenters?: Array<SchedExperimenter>;
+    }
+
+    interface SchedActivity
+    {
+        activityName?: string | null;
+        startTime?: string | null;
+        endTime?: string | null;
+        beamtime?: { proposal?: SchedProposal };
+        station?: { stationName?: string | null } | null;
+        user?: { name?: string | null; firstName?: string | null; lastName?: string | null; userName?: string | null } | null;
+    }
+
+    interface SchedRun
+    {
+        runName?: string;
+    }
+
     class ScanPlan
     {
 
@@ -852,11 +885,14 @@
         private canvas: HTMLCanvasElement;
         // Dataset currently displayed, so element changes can re-request the same scan.
         private current_dataset: string | null;
+        // Element currently displayed, so switching datasets keeps the same element.
+        private current_element: string | null;
 
         constructor(beam_id: string)
         {
             this.beamline_id = beam_id;
             this.current_dataset = null;
+            this.current_element = null;
 
             this.main_div = document.createElement("div") as HTMLDivElement;
             this.main_div.id = "beamline-xrf";
@@ -873,10 +909,11 @@
             dataset_label.innerText = "Dataset: ";
             this.dataset_select = document.createElement("select") as HTMLSelectElement;
             this.dataset_select.classList.add("beamline-xrf-select");
-            // Switching dataset resets the element to the store's first one.
+            // Switching dataset keeps the currently selected element (falling back to
+            // the store's first element if the new dataset doesn't have it).
             this.dataset_select.addEventListener('change', () =>
             {
-                this.loadMap(this.dataset_select.value, undefined);
+                this.loadMap(this.dataset_select.value, this.current_element ?? undefined);
             });
             dataset_label.appendChild(this.dataset_select);
 
@@ -924,7 +961,13 @@
         private async loadMap(dataset?: string, element?: string): Promise<void>
         {
             this.status_div.innerText = "Loading…";
-            const map = await this.fetchMap(dataset, element);
+            let map = await this.fetchMap(dataset, element);
+            // The remembered element may not exist in the chosen dataset (the backend
+            // 404s); fall back to that dataset's default (first) element.
+            if (map === null && element !== undefined)
+            {
+                map = await this.fetchMap(dataset, undefined);
+            }
             if (map === null)
             {
                 this.status_div.innerText = "No XRF data available.";
@@ -976,6 +1019,7 @@
         private render(map: XrfMap): void
         {
             this.current_dataset = map.dataset;
+            this.current_element = map.element;
             this.fill_select(this.dataset_select, map.datasets, map.dataset);
             this.fill_select(this.element_select, map.elements, map.element);
 
@@ -1051,9 +1095,183 @@
         }
     }
 
+    // Shows the scheduler activity currently in progress for this beamline (the one
+    // whose start/end window contains "now"). Falls back to the next upcoming
+    // activity for the current run, or a quiet message when nothing is scheduled.
+    // The scheduler proxy is Admin/Staff-only, so for other users the fetch fails
+    // and the panel simply hides itself.
+    class BeamlineScheduleWidget
+    {
+        private beamline_id: string;
+        private main_div: HTMLDivElement;
+        private body_div: HTMLDivElement;
+
+        constructor(beam_id: string)
+        {
+            this.beamline_id = beam_id;
+
+            this.main_div = document.createElement("div") as HTMLDivElement;
+            this.main_div.id = "beamline-schedule";
+            this.main_div.classList.add("beamline-schedule");
+            // Hidden until a successful fetch populates it (keeps the panel out of
+            // the way for users without scheduler access or when nothing is scheduled).
+            this.main_div.classList.add("hidden");
+
+            const heading = document.createElement("h3") as HTMLHeadingElement;
+            heading.innerText = "Current Scheduler Activity";
+            this.main_div.appendChild(heading);
+
+            this.body_div = document.createElement("div") as HTMLDivElement;
+            this.body_div.classList.add("beamline-schedule-body");
+            this.main_div.appendChild(this.body_div);
+
+            this.loadActivity();
+        }
+
+        public gen_main_div(): HTMLDivElement
+        {
+            return this.main_div;
+        }
+
+        // GET a scheduler-proxy endpoint, mirroring the auth used elsewhere on the
+        // page. Throws on a non-OK response so callers can hide the panel.
+        private async sched_get<T>(path: string): Promise<T>
+        {
+            const auth_cookie: string = get_cookie('access_token');
+            const headers = new Headers({
+                'Accept': 'application/json',
+                'Authorization': auth_cookie,
+            });
+            const response = await auth_fetch('/api/scheduler/' + path, { method: 'GET', headers });
+            if (!response.ok)
+            {
+                throw new Error(`Scheduler request failed (${response.status})`);
+            }
+            return await response.json() as T;
+        }
+
+        // Format an ISO timestamp for display, falling back to the raw value.
+        private fmt_time(value: string | null | undefined): string
+        {
+            if (!value) { return "—"; }
+            const d = new Date(value);
+            return isNaN(d.getTime()) ? value : d.toLocaleString();
+        }
+
+        // The PI for an activity: the experimenter flagged piFlag === 'Y', or the
+        // first listed experimenter.
+        private pi_name(act: SchedActivity): string
+        {
+            const experimenters = act.beamtime?.proposal?.experimenters ?? [];
+            const pi = experimenters.find(e => e.piFlag === 'Y') ?? experimenters[0];
+            if (!pi) { return ""; }
+            return `${pi.firstName ?? ''} ${pi.lastName ?? ''}`.trim();
+        }
+
+        private user_name(act: SchedActivity): string
+        {
+            const user = act.user;
+            if (!user) { return ""; }
+            if (user.name) { return user.name; }
+            const full = `${user.firstName ?? ''} ${user.lastName ?? ''}`.trim();
+            return full || (user.userName ?? "");
+        }
+
+        // Fetch the current run and its activities for this beamline, then render
+        // whichever activity is active now (or the next upcoming one).
+        private async loadActivity(): Promise<void>
+        {
+            try
+            {
+                const run = await this.sched_get<SchedRun>('runs/current');
+                const run_name = run?.runName;
+                if (!run_name)
+                {
+                    return; // No current run; leave the panel hidden.
+                }
+
+                const activities = await this.sched_get<Array<SchedActivity>>(
+                    `activity/by_run_beamline/${encodeURIComponent(run_name)}/${encodeURIComponent(this.beamline_id)}`,
+                );
+
+                const now = Date.now();
+                const parse = (v: string | null | undefined) => v ? new Date(v).getTime() : NaN;
+
+                // The activity whose [start, end] window contains now.
+                const active = activities.find(a =>
+                {
+                    const s = parse(a.startTime);
+                    const e = parse(a.endTime);
+                    return !isNaN(s) && !isNaN(e) && now >= s && now <= e;
+                });
+
+                // Otherwise, the soonest activity that hasn't started yet.
+                const upcoming = activities
+                    .filter(a => { const s = parse(a.startTime); return !isNaN(s) && s > now; })
+                    .sort((a, b) => parse(a.startTime) - parse(b.startTime))[0];
+
+                this.render(active ?? upcoming, !!active);
+                this.main_div.classList.remove('hidden');
+            }
+            catch (error)
+            {
+                // Non-staff users (403) or scheduler outages: keep the panel hidden.
+                console.error('Could not load scheduler activity:', error);
+            }
+        }
+
+        private render(act: SchedActivity | undefined, is_active: boolean): void
+        {
+            this.body_div.innerText = "";
+
+            if (!act)
+            {
+                this.main_div.classList.remove('active');
+                const msg = document.createElement("div") as HTMLDivElement;
+                msg.classList.add("beamline-schedule-empty");
+                msg.innerText = "No scheduled activity for the current run.";
+                this.body_div.appendChild(msg);
+                return;
+            }
+
+            // Highlight the panel when the shown activity is actually in progress.
+            this.main_div.classList.toggle('active', is_active);
+
+            const status = document.createElement("div") as HTMLDivElement;
+            status.classList.add("beamline-schedule-status");
+            status.innerText = is_active ? "● In progress now" : "Up next";
+            this.body_div.appendChild(status);
+
+            const rows: Array<[string, string]> = [
+                ["Proposal", act.beamtime?.proposal?.gupId != null ? String(act.beamtime.proposal.gupId) : "—"],
+                ["Title", act.beamtime?.proposal?.proposalTitle || "—"],
+                ["PI", this.pi_name(act) || "—"],
+                ["User", this.user_name(act) || "—"],
+                ["Activity", act.activityName || "—"],
+                ["Station", act.station?.stationName || "—"],
+                ["Start", this.fmt_time(act.startTime)],
+                ["End", this.fmt_time(act.endTime)],
+            ];
+
+            const table = document.createElement("table") as HTMLTableElement;
+            table.classList.add("beamline-schedule-table");
+            const body = table.createTBody();
+            rows.forEach(([label, value]) =>
+            {
+                const row = body.insertRow();
+                const th = document.createElement("th");
+                th.innerText = label;
+                row.appendChild(th);
+                row.insertCell().innerText = value;
+            });
+            this.body_div.appendChild(table);
+        }
+    }
+
     class BeamlineWidget
     {
         private scans_widget: BeamlineScansWidget;
+        private schedule_widget: BeamlineScheduleWidget;
         private refresh_plans_btn: HTMLButtonElement;
         private logs_widget: BeamlineLogWidget;
         private xrf_widget: BeamlineXrfWidget;
@@ -1065,6 +1283,7 @@
             this.main_div = document.createElement("div") as HTMLDivElement;
             this.main_div.id = "beamline-widget";
             this.main_div.classList.add("beamline-widget");
+            this.schedule_widget = new BeamlineScheduleWidget(beam_id);
             this.scans_widget = new BeamlineScansWidget(beam_id);
             this.xrf_widget = new BeamlineXrfWidget(beam_id);
             this.logs_widget = new BeamlineLogWidget(beam_id);
@@ -1074,6 +1293,7 @@
             this.refresh_plans_btn.addEventListener('click', (event)=>
             { this.refresh_plans(); });
 
+            this.main_div.appendChild(this.schedule_widget.gen_main_div())
             this.main_div.appendChild(this.refresh_plans_btn);
             this.main_div.appendChild(this.scans_widget.gen_main_div())
             this.main_div.appendChild(this.xrf_widget.gen_main_div())
