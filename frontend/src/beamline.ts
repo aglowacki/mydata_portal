@@ -7,6 +7,8 @@
     const SSE_TOPIC_DELIMITER = ':::';
     const SSE_TOPIC_CONTROLS_EVENT = 'CONTROLS_EVENT'; // log line payload
     const SSE_TOPIC_TASK_EVENT = 'TASK_EVENT';         // task queue changed
+    const SSE_TOPIC_QUEUE_EVENT = 'QUEUE_EVENT';       // scan (plan) queue changed
+    const SSE_TOPIC_HISTORY_EVENT = 'HISTORY_EVENT';   // scan finished; history changed
 
     // One entry in the beamline selector dropdown. `acronym` doubles as the
     // page's beamline_id; `name` is the human-readable label.
@@ -58,11 +60,62 @@
         [key: string] : Plan; // Allows for dynamic keys
     }
 
-    interface ScanApiResponse 
+    interface ScanApiResponse
     {
         success: boolean;
         msg: string;
         plans_allowed: PlansAllowed;
+    }
+
+    // One entry in the queueserver plan queue (or the running item). Mirrors the
+    // subset of fields returned by the queueserver `queue_get` API we display.
+    interface QueueItem
+    {
+        item_type?: string;   // "plan" | "instruction"
+        name?: string;
+        args?: unknown[];
+        kwargs?: { [key: string]: unknown };
+        item_uid?: string;
+        user?: string;
+        user_group?: string;
+    }
+
+    // Response shape of the queueserver `queue_get` API, cached by the worker and
+    // served verbatim by /api/get_queued_scans/<beamline_id>.
+    interface QueueGetResponse
+    {
+        success: boolean;
+        msg: string;
+        items: QueueItem[];
+        running_item: QueueItem | Record<string, never>;
+        plan_queue_uid: string;
+    }
+
+    // The per-item `result` block the queueserver attaches to finished scans in the
+    // history. Only the fields we display/inspect are declared.
+    interface HistoryResult
+    {
+        exit_status?: string;      // "completed" | "failed" | "aborted" | "halted" | ...
+        time_start?: number;       // unix seconds
+        time_stop?: number;        // unix seconds
+        msg?: string;
+        traceback?: string;
+    }
+
+    // One finished scan in the queueserver history: a QueueItem plus its result.
+    interface HistoryItem extends QueueItem
+    {
+        result?: HistoryResult;
+    }
+
+    // Response shape of the queueserver `history_get` API, cached by the worker and
+    // served verbatim by /api/get_scan_history/<beamline_id>.
+    interface HistoryGetResponse
+    {
+        success: boolean;
+        msg: string;
+        items: HistoryItem[];
+        plan_history_uid: string;
     }
 
     interface CommandArgs
@@ -159,9 +212,21 @@
         private beamline_event_source: EventSource;
         // Which panel is expanded ('logs' | 'tasks'), or null when the dock is collapsed.
         private active_tab: string | null;
+        // When true, the log view auto-scrolls to the newest line as messages
+        // arrive. Scrolling up disengages it; the follow button re-engages it.
+        private follow_logs: boolean;
+        // Sticky "follow/paused" control shown over the log panel.
+        private follow_bar: HTMLDivElement;
+        private follow_btn: HTMLButtonElement;
+        // Invoked when a QUEUE_EVENT arrives so the owner can refresh the scan queue.
+        private on_queue_event?: () => void;
+        // Invoked when a HISTORY_EVENT arrives so the owner can refresh scan history.
+        private on_history_event?: () => void;
 
-        constructor(beam_id: string)
+        constructor(beam_id: string, on_queue_event?: () => void, on_history_event?: () => void)
         {
+            this.on_queue_event = on_queue_event;
+            this.on_history_event = on_history_event;
             this.main_div = document.createElement("div") as HTMLDivElement;
             this.main_div.id = "beamline-log-main";
             this.main_div.classList.add("beamline-log-main");
@@ -189,6 +254,22 @@
             this.active_tab = null;
             this.beamline_id = beam_id;
 
+            // Log auto-follow: on by default. A sticky pill over the log panel
+            // shows the state and, when paused, re-engages following on click.
+            this.follow_logs = true;
+            this.follow_bar = document.createElement("div") as HTMLDivElement;
+            this.follow_bar.classList.add("beamline-log-follow-bar");
+            this.follow_bar.classList.add("hidden");
+            this.follow_btn = document.createElement("button") as HTMLButtonElement;
+            this.follow_btn.type = "button";
+            this.follow_btn.classList.add("beamline-log-follow");
+            this.follow_btn.addEventListener('click', () =>
+            {
+                this.setFollow(true);
+                this.scrollLogsToBottom();
+            });
+            this.follow_bar.appendChild(this.follow_btn);
+
             this.tab_link_logs = document.createElement('button') as HTMLButtonElement;
             this.tab_link_logs.innerText = "Logs";
             this.tab_link_logs.classList.add('beamline-log-tab');
@@ -204,6 +285,11 @@
 
             this.content_div.appendChild(this.logs_div);
             this.content_div.appendChild(this.tasks_div);
+            this.content_div.appendChild(this.follow_bar);
+            // Disengage follow when the user scrolls up; re-engage when they
+            // scroll (or are scrolled) back to the bottom.
+            this.content_div.addEventListener('scroll', () => this.onLogScroll());
+            this.updateFollowBtn();
 
             // Tab bar sits below the content so the dock grows upward when expanded.
             this.main_div.appendChild(this.content_div);
@@ -282,6 +368,24 @@
                     this.fetcTasks().then(tasks => this.populateTasks(tasks));
                     break;
                 }
+                case SSE_TOPIC_QUEUE_EVENT:
+                {
+                    // The scan (plan) queue changed; let the owner refresh it.
+                    if (this.on_queue_event)
+                    {
+                        this.on_queue_event();
+                    }
+                    break;
+                }
+                case SSE_TOPIC_HISTORY_EVENT:
+                {
+                    // A scan finished; let the owner refresh the scan history.
+                    if (this.on_history_event)
+                    {
+                        this.on_history_event();
+                    }
+                    break;
+                }
                 default:
                     console.warn("Unknown SSE topic:", topic);
             }
@@ -308,8 +412,59 @@
             const tasks_active = this.active_tab === 'tasks';
             this.logs_div.classList.toggle('hidden', !logs_active);
             this.tasks_div.classList.toggle('hidden', !tasks_active);
+            this.follow_bar.classList.toggle('hidden', !logs_active);
             this.tab_link_logs.classList.toggle('active', logs_active);
             this.tab_link_tasks.classList.toggle('active', tasks_active);
+
+            // Opening the log panel while following snaps to the newest line.
+            if (logs_active && this.follow_logs)
+            {
+                this.scrollLogsToBottom();
+            }
+        }
+
+        // Scroll the (shared) content area to the bottom so the newest log line
+        // is visible. The log/tasks panels live inside content_div, which is the
+        // actual scrolling element.
+        private scrollLogsToBottom(): void
+        {
+            this.content_div.scrollTop = this.content_div.scrollHeight;
+        }
+
+        // True when the log view is at (or within a small threshold of) the
+        // bottom, i.e. the newest line is in view.
+        private isLogAtBottom(): boolean
+        {
+            const el = this.content_div;
+            return (el.scrollHeight - el.scrollTop - el.clientHeight) <= 24;
+        }
+
+        // On user scroll, follow only while pinned to the bottom. Ignored unless
+        // the logs panel is the one being shown.
+        private onLogScroll(): void
+        {
+            if (this.active_tab !== 'logs')
+            {
+                return;
+            }
+            this.setFollow(this.isLogAtBottom());
+        }
+
+        // Update the follow state and reflect it in the button.
+        private setFollow(follow: boolean): void
+        {
+            this.follow_logs = follow;
+            this.updateFollowBtn();
+        }
+
+        // Sync the follow button's label/appearance with the current state.
+        private updateFollowBtn(): void
+        {
+            this.follow_btn.classList.toggle('following', this.follow_logs);
+            this.follow_btn.innerText = this.follow_logs ? "🔒 Following" : "🔓 Paused — click to follow";
+            this.follow_btn.title = this.follow_logs
+                ? "Following the newest log line. Scroll up to pause."
+                : "Auto-scroll paused. Click to follow the newest line again.";
         }
 
         private async fetcLogs(): Promise<BeamlineLogs | null>
@@ -396,6 +551,12 @@
             {
                 list.appendChild(this.createLogItem(item));
             });
+
+            // Start pinned to the newest line (unless the user has paused follow).
+            if (this.follow_logs)
+            {
+                this.scrollLogsToBottom();
+            }
         }
 
         private appendLog(item: BeamlineLog | null): void
@@ -404,8 +565,12 @@
             {
                 const list = this.getLogList();
                 list.appendChild(this.createLogItem(item));
-                // Keep the newest line in view when the panel is open.
-                this.logs_div.scrollTop = this.logs_div.scrollHeight;
+                // Keep the newest line in view only while following; if the user
+                // has scrolled up to read history, leave their position alone.
+                if (this.follow_logs)
+                {
+                    this.scrollLogsToBottom();
+                }
             }
         }
 
@@ -565,10 +730,16 @@
     {
         private beamline_id: string;
         private main_div: HTMLDivElement;
+        // Tab bar switching the scan panel between the live queue and history.
+        private scan_tabs_div: HTMLDivElement;
+        private tab_link_queue: HTMLButtonElement;
+        private tab_link_history: HTMLButtonElement;
+        private queue_div: HTMLDivElement;
+        private history_div: HTMLDivElement;
         private queued_div: HTMLDivElement;
-        private processing_div: HTMLDivElement;
-        private done_div: HTMLDivElement;
-        
+        // Which scan panel is shown: 'queue' (running + queued) or 'history'.
+        private active_scan_tab: string;
+
         private available_scans: ScanApiResponse | null;
 
         constructor(beam_id: string)
@@ -577,22 +748,43 @@
             this.main_div.id = "beamline-scans";
             this.main_div.classList.add("beamline-scans");
 
+            // Tab bar: "Queue" (default) shows running + queued; "History" shows
+            // completed scans.
+            this.active_scan_tab = 'queue';
+            this.scan_tabs_div = document.createElement("div") as HTMLDivElement;
+            this.scan_tabs_div.classList.add("scan-tabs");
+            this.tab_link_queue = document.createElement("button") as HTMLButtonElement;
+            this.tab_link_queue.type = "button";
+            this.tab_link_queue.innerText = "Queue";
+            this.tab_link_queue.classList.add("scan-tab");
+            this.tab_link_queue.addEventListener('click', () => this.showScanTab('queue'));
+            this.tab_link_history = document.createElement("button") as HTMLButtonElement;
+            this.tab_link_history.type = "button";
+            this.tab_link_history.innerText = "History";
+            this.tab_link_history.classList.add("scan-tab");
+            this.tab_link_history.addEventListener('click', () => this.showScanTab('history'));
+            this.scan_tabs_div.appendChild(this.tab_link_queue);
+            this.scan_tabs_div.appendChild(this.tab_link_history);
+
+            // Live queueserver plan queue (updated on QUEUE_EVENT).
+            this.queue_div = document.createElement("div") as HTMLDivElement;
+            this.queue_div.id = "beamline-scans-queue";
+            this.queue_div.classList.add("beamline-scans");
+
+            // Completed scans / history (updated on HISTORY_EVENT).
+            this.history_div = document.createElement("div") as HTMLDivElement;
+            this.history_div.id = "beamline-scans-history";
+            this.history_div.classList.add("beamline-scans");
+            this.history_div.classList.add("hidden");
+
             this.queued_div = document.createElement("div") as HTMLDivElement;
             this.queued_div.id = "beamline-scans-queued";
             this.queued_div.classList.add("beamline-scans");
-            
-            this.processing_div = document.createElement("div") as HTMLDivElement;
-            this.processing_div.id = "beamline-scans-processing";
-            this.processing_div.classList.add("beamline-scans");
-            
-            this.done_div = document.createElement("div") as HTMLDivElement;
-            this.done_div.id = "beamline-scans-done";
-            this.done_div.classList.add("beamline-scans");
-            
 
+            this.main_div.appendChild(this.scan_tabs_div);
+            this.main_div.appendChild(this.queue_div);
+            this.main_div.appendChild(this.history_div);
             this.main_div.appendChild(this.queued_div);
-            this.main_div.appendChild(this.processing_div);
-            this.main_div.appendChild(this.done_div);
 
             this.available_scans = null;
             this.beamline_id = beam_id;
@@ -603,11 +795,35 @@
                 this.populateAvailableScans(scans);
             }
             );
+
+            this.applyScanTabState();
+            // Render the current scan queue and history, then keep them fresh via
+            // QUEUE_EVENT / HISTORY_EVENT.
+            this.refreshQueue();
+            this.refreshHistory();
         }
 
         public gen_main_div(): HTMLDivElement
         {
             return this.main_div;
+        }
+
+        // Switch the active scan tab and reflect it in the DOM.
+        private showScanTab(tab: string): void
+        {
+            this.active_scan_tab = tab;
+            this.applyScanTabState();
+        }
+
+        // Show the panel for the active tab and highlight its button.
+        private applyScanTabState(): void
+        {
+            const queue_active = this.active_scan_tab === 'queue';
+            const history_active = this.active_scan_tab === 'history';
+            this.queue_div.classList.toggle('hidden', !queue_active);
+            this.history_div.classList.toggle('hidden', !history_active);
+            this.tab_link_queue.classList.toggle('active', queue_active);
+            this.tab_link_history.classList.toggle('active', history_active);
         }
 
         private async fetchAvailableScans(): Promise<ScanApiResponse | null>
@@ -632,30 +848,313 @@
                 return null;
             }
         }
-/*
-        private async fetchScanQueue(): Promise<ScanApiResponse | null>
+        // Fetch the current scan queue cached by the beamline worker (the
+        // queueserver `queue_get` response, served verbatim by the backend).
+        private async fetchQueuedScans(): Promise<QueueGetResponse | null>
         {
-            try 
+            try
             {
-                const response = await fetch('/api/get_available_scans/'+this.beamline_id);
+                const response = await fetch('/api/get_queued_scans/'+this.beamline_id);
 
-                if (!response.ok) 
+                if (!response.ok)
                 {
                     throw new Error(`HTTP error! status: ${response.status}`);
                 }
-                
-                //this.logs = await response.json();
-                const json_repl: ScanApiResponse = await response.json();
+
+                const json_repl: QueueGetResponse = await response.json();
                 return json_repl;
             }
-            catch (error) 
+            catch (error)
             {
-                console.error('Error loading sample types:', error);
-                //this.showMessage('Failed to load sample types. Using default values.', 'error');
+                console.error('Error loading scan queue:', error);
                 return null;
             }
         }
-*/
+
+        // Re-fetch the scan queue and re-render it. Called on load and whenever a
+        // QUEUE_EVENT arrives over SSE (item added/removed/reordered).
+        public refreshQueue(): void
+        {
+            this.fetchQueuedScans().then(queue => this.populateQueuedScans(queue));
+        }
+
+        // Render the live scan queue as a table: the running item (if any)
+        // followed by the ordered list of queued items.
+        private populateQueuedScans(queue: QueueGetResponse | null): void
+        {
+            this.queue_div.innerText = "";
+
+            if (!queue || queue.success !== true)
+            {
+                const msg = document.createElement("div") as HTMLDivElement;
+                msg.classList.add("scan-queue-empty");
+                msg.innerText = queue?.msg ? queue.msg : "No scan queue available.";
+                this.queue_div.appendChild(msg);
+                return;
+            }
+
+            // Currently running item, if one is present (empty object means idle).
+            const running = queue.running_item as QueueItem;
+            const items = Array.isArray(queue.items) ? queue.items : [];
+
+            if (items.length === 0 && !(running && running.name))
+            {
+                const msg = document.createElement("div") as HTMLDivElement;
+                msg.classList.add("scan-queue-empty");
+                msg.innerText = "Queue is empty.";
+                this.queue_div.appendChild(msg);
+                return;
+            }
+
+            const table = document.createElement("table") as HTMLTableElement;
+            table.classList.add("scan-queue-table");
+
+            const hrow = table.createTHead().insertRow();
+            ["#", "Plan", "Arguments", "User"].forEach(text =>
+            {
+                const th = document.createElement("th");
+                th.innerText = text;
+                hrow.appendChild(th);
+            });
+
+            const body = table.createTBody();
+            if (running && running.name)
+            {
+                body.appendChild(this.gen_queue_row(running, "▶", true));
+            }
+            items.forEach((item, idx) =>
+            {
+                body.appendChild(this.gen_queue_row(item, String(idx + 1), false));
+            });
+
+            this.queue_div.appendChild(table);
+        }
+
+        // One row in the scan queue table: position/status marker, plan name, a
+        // compact summary of its keyword arguments, and the submitting user. The
+        // running item is flagged so it can be highlighted.
+        private gen_queue_row(item: QueueItem, position: string, running: boolean): HTMLTableRowElement
+        {
+            const row = document.createElement("tr") as HTMLTableRowElement;
+            row.classList.add("scan-queue-row");
+            if (running)
+            {
+                row.classList.add("running");
+            }
+
+            const pos = row.insertCell();
+            pos.classList.add("scan-queue-pos");
+            pos.innerText = position;
+
+            const name = row.insertCell();
+            name.classList.add("scan-queue-name");
+            name.innerText = item.name ? item.name : (item.item_type ? item.item_type : "unknown");
+
+            const args = row.insertCell();
+            args.classList.add("scan-queue-args");
+            if (item.kwargs && Object.keys(item.kwargs).length > 0)
+            {
+                args.innerText = Object.entries(item.kwargs)
+                    .map(([k, v]) => `${k}=${JSON.stringify(v)}`)
+                    .join(", ");
+            }
+            else
+            {
+                args.innerText = "—";
+            }
+
+            const user = row.insertCell();
+            user.classList.add("scan-queue-user");
+            user.innerText = item.user ? item.user : "—";
+
+            return row;
+        }
+
+        // Fetch the cached scan history (completed scans) served by the backend
+        // from the worker's `history_get` cache.
+        private async fetchScanHistory(): Promise<HistoryGetResponse | null>
+        {
+            try
+            {
+                const response = await fetch('/api/get_scan_history/'+this.beamline_id);
+
+                if (!response.ok)
+                {
+                    throw new Error(`HTTP error! status: ${response.status}`);
+                }
+
+                const json_repl: HistoryGetResponse = await response.json();
+                return json_repl;
+            }
+            catch (error)
+            {
+                console.error('Error loading scan history:', error);
+                return null;
+            }
+        }
+
+        // Re-fetch the scan history and re-render it. Called on load and whenever a
+        // HISTORY_EVENT arrives over SSE (a scan finished).
+        public refreshHistory(): void
+        {
+            this.fetchScanHistory().then(history => this.populateScanHistory(history));
+        }
+
+        // Render the scan history as a table, newest scan first.
+        private populateScanHistory(history: HistoryGetResponse | null): void
+        {
+            this.history_div.innerText = "";
+
+            if (!history || history.success !== true)
+            {
+                const msg = document.createElement("div") as HTMLDivElement;
+                msg.classList.add("scan-queue-empty");
+                msg.innerText = history?.msg ? history.msg : "No scan history available.";
+                this.history_div.appendChild(msg);
+                return;
+            }
+
+            const items = Array.isArray(history.items) ? history.items : [];
+            if (items.length === 0)
+            {
+                const msg = document.createElement("div") as HTMLDivElement;
+                msg.classList.add("scan-queue-empty");
+                msg.innerText = "No completed scans yet.";
+                this.history_div.appendChild(msg);
+                return;
+            }
+
+            const table = document.createElement("table") as HTMLTableElement;
+            table.classList.add("scan-queue-table");
+
+            const hrow = table.createTHead().insertRow();
+            ["#", "Plan", "Arguments", "Status", "User", "Finished"].forEach(text =>
+            {
+                const th = document.createElement("th");
+                th.innerText = text;
+                hrow.appendChild(th);
+            });
+
+            const body = table.createTBody();
+            // Newest scan first: history is appended chronologically, so iterate in
+            // reverse and number from the most recent.
+            items.slice().reverse().forEach((item, idx) =>
+            {
+                body.appendChild(this.gen_history_row(item, items.length - idx));
+            });
+
+            this.history_div.appendChild(table);
+        }
+
+        // One row in the history table: position, plan name, args, exit status
+        // (color-coded), user, and finish time. Double-clicking opens a modal with
+        // the full item (including any traceback) pretty-printed as JSON.
+        private gen_history_row(item: HistoryItem, position: number): HTMLTableRowElement
+        {
+            const row = document.createElement("tr") as HTMLTableRowElement;
+            row.classList.add("scan-queue-row");
+            row.title = "Double-click to view details";
+
+            const pos = row.insertCell();
+            pos.classList.add("scan-queue-pos");
+            pos.innerText = String(position);
+
+            const name = row.insertCell();
+            name.classList.add("scan-queue-name");
+            name.innerText = item.name ? item.name : (item.item_type ? item.item_type : "unknown");
+
+            const args = row.insertCell();
+            args.classList.add("scan-queue-args");
+            if (item.kwargs && Object.keys(item.kwargs).length > 0)
+            {
+                args.innerText = Object.entries(item.kwargs)
+                    .map(([k, v]) => `${k}=${JSON.stringify(v)}`)
+                    .join(", ");
+            }
+            else
+            {
+                args.innerText = "—";
+            }
+
+            const status = item.result?.exit_status ?? "unknown";
+            const status_cell = row.insertCell();
+            status_cell.classList.add("scan-history-status");
+            status_cell.classList.add("status-" + status);
+            status_cell.innerText = status;
+
+            const user = row.insertCell();
+            user.classList.add("scan-queue-user");
+            user.innerText = item.user ? item.user : "—";
+
+            const finished = row.insertCell();
+            finished.classList.add("scan-history-time");
+            finished.innerText = this.fmt_epoch(item.result?.time_stop);
+
+            row.addEventListener('dblclick', () => this.showHistoryModal(item));
+
+            return row;
+        }
+
+        // Format a unix-seconds timestamp for display, falling back to an em-dash.
+        private fmt_epoch(secs: number | undefined): string
+        {
+            if (secs === undefined || !Number.isFinite(secs)) { return "—"; }
+            return new Date(secs * 1000).toLocaleString();
+        }
+
+        // Pop up a modal showing a finished scan's full detail (args, result,
+        // traceback) pretty-printed as JSON. Self-contained so the scans widget
+        // doesn't depend on the log widget's modal.
+        private showHistoryModal(item: HistoryItem): void
+        {
+            const overlay = document.createElement("div") as HTMLDivElement;
+            overlay.classList.add("beamline-log-modal-overlay");
+
+            const modal = document.createElement("div") as HTMLDivElement;
+            modal.classList.add("beamline-log-modal");
+
+            const header = document.createElement("div") as HTMLDivElement;
+            header.classList.add("beamline-log-modal-header");
+
+            const title = document.createElement("span") as HTMLSpanElement;
+            title.classList.add("beamline-log-modal-title");
+            title.innerText = item.name ? `Scan: ${item.name}` : "Scan";
+            header.appendChild(title);
+
+            const close_btn = document.createElement("button") as HTMLButtonElement;
+            close_btn.type = "button";
+            close_btn.classList.add("beamline-log-modal-close");
+            close_btn.innerText = "×";
+            header.appendChild(close_btn);
+
+            const double_body = document.createElement("pre") as HTMLPreElement;
+            double_body.classList.add("beamline-log-modal-body");
+            double_body.classList.add("is-json");
+            double_body.textContent = JSON.stringify(item, null, 2);
+
+            modal.appendChild(header);
+            modal.appendChild(double_body);
+            overlay.appendChild(modal);
+
+            const close = () =>
+            {
+                document.removeEventListener('keydown', on_key);
+                overlay.remove();
+            };
+            const on_key = (e: KeyboardEvent) =>
+            {
+                if (e.key === "Escape") { close(); }
+            };
+            close_btn.addEventListener('click', close);
+            overlay.addEventListener('click', (e) =>
+            {
+                if (e.target === overlay) { close(); }
+            });
+            document.addEventListener('keydown', on_key);
+
+            document.body.appendChild(overlay);
+        }
+
         // Render the available scan plans parsed from the redis value into
         // viewable components: one card per plan showing its description and a
         // table of parameters.
@@ -1286,7 +1785,14 @@
             this.schedule_widget = new BeamlineScheduleWidget(beam_id);
             this.scans_widget = new BeamlineScansWidget(beam_id);
             this.xrf_widget = new BeamlineXrfWidget(beam_id);
-            this.logs_widget = new BeamlineLogWidget(beam_id);
+            // Route scan-queue-change and scan-finished SSE events (owned by the log
+            // widget's EventSource) to the scans widget so it re-renders the live
+            // queue and the scan history respectively.
+            this.logs_widget = new BeamlineLogWidget(
+                beam_id,
+                () => this.scans_widget.refreshQueue(),
+                () => this.scans_widget.refreshHistory(),
+            );
             this.beamline_id = beam_id;
             this.refresh_plans_btn = document.createElement("button") as HTMLButtonElement;
             this.refresh_plans_btn.innerText="Refresh Scan Plans";

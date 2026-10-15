@@ -118,7 +118,26 @@ pub async fn get_queued_scans(
     let mut conn = state.redis_client.get_connection().unwrap();
     let get_id = format!("{}{}", defines::KEY_BEAMLINE_QUEUED_SCANS, beamline_id);
     let str_plans: String = conn.get(get_id).expect("{msg: \"Error getting queued scans\"}");
-    Ok(str_plans) 
+    Ok(str_plans)
+}
+
+// Serve the cached scan history (completed scans). The beamline worker caches the
+// queueserver `history_get` reply verbatim under KEY_BEAMLINE_DONE_SCANS and
+// refreshes it whenever a scan finishes, so this just returns the cached JSON.
+#[axum_macros::debug_handler]
+pub async fn get_scan_history(
+    Path(beamline_id): Path<String>,
+    State(state): State<appstate::AppState>,
+    //claims: auth::Claims
+) -> Result<String, (StatusCode, String)>
+{
+    let mut conn = state.redis_client.get_connection().unwrap();
+    let get_id = format!("{}{}", defines::KEY_BEAMLINE_DONE_SCANS, beamline_id);
+    // Return an empty-but-valid history response when nothing has been cached yet
+    // (e.g. the worker has not run a history fetch for this beamline).
+    let str_hist: String = conn.get(get_id).unwrap_or_else(|_|
+        "{\"success\":true,\"msg\":\"no history cached\",\"items\":[],\"plan_history_uid\":\"\"}".to_string());
+    Ok(str_hist)
 }
 
 

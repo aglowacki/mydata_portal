@@ -6,6 +6,15 @@ pub const KEY_BEAMLINE_EVENT: &str = "BEAMLINE_EVENT_";
 // Header prepended (with the ':::' delimiter) to control-log messages published
 // on the KEY_BEAMLINE_EVENT channel, identifying the event type.
 pub const KEY_CONTROLS_EVENT: &str = "CONTROLS_EVENT";
+// Header prepended (with the ':::' delimiter) to scan-queue-changed events
+// published on the KEY_BEAMLINE_EVENT channel when the queueserver plan queue
+// is modified (item added, removed, or reordered).
+pub const KEY_QUEUE_EVENT: &str = "QUEUE_EVENT";
+// Header prepended (with the ':::' delimiter) to scan-history-changed events
+// published on the KEY_BEAMLINE_EVENT channel when a scan finishes and the
+// queueserver plan history (completed scans) gains a new entry. The frontend
+// re-fetches the cached history (KEY_BEAMLINE_DONE_SCANS) on this event.
+pub const KEY_HISTORY_EVENT: &str = "HISTORY_EVENT";
 pub const KEY_TASK_QUEUE_WAITING: &str = "TASK_QUEUE_WAITING_";
 pub const KEY_TASK_QUEUE_PROCESSING: &str = "TASK_QUEUE_PROCESSING_";
 pub const KEY_TASK_QUEUE_DONE: &str = "TASK_QUEUE_DONE_";

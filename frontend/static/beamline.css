@@ -129,6 +129,167 @@
     padding: 4px;
 }
 
+/* Tab bar switching the scan panel between the live queue and history. */
+.scan-tabs
+{
+    display: flex;
+    gap: 4px;
+    margin: 8px 8px 0 8px;
+}
+
+.scan-tab
+{
+    padding: 5px 16px;
+    cursor: pointer;
+    border: 1px solid var(--table-border);
+    border-bottom: none;
+    border-radius: 6px 6px 0 0;
+    background: var(--table-row-alt);
+    color: inherit;
+    font-weight: 600;
+}
+
+.scan-tab:hover
+{
+    background: var(--table-hover);
+}
+
+/* The active tab reads as the header of the table below it. */
+.scan-tab.active
+{
+    background: var(--table-header-bg);
+    color: var(--table-header-text);
+    border-color: var(--table-header-bg);
+}
+
+/* Live scan queue table, themed via the shared --table-* tokens (defined in
+   main.css) so it matches the rest of the site in light and dark mode. */
+.scan-queue-table
+{
+    width: 100%;
+    margin: 6px 0 12px 0;
+    border-collapse: collapse;
+    border: 1px solid var(--table-border);
+    border-radius: 8px;
+    overflow: hidden;
+}
+
+.scan-queue-table th,
+.scan-queue-table td
+{
+    text-align: left;
+    padding: 5px 10px;
+    border-bottom: 1px solid var(--table-border);
+    vertical-align: top;
+}
+
+.scan-queue-table thead th
+{
+    background: var(--table-header-bg);
+    color: var(--table-header-text);
+    font-weight: 600;
+    border-bottom: none;
+}
+
+.scan-queue-table tbody tr:nth-child(even)
+{
+    background: var(--table-row-alt);
+}
+
+.scan-queue-table tbody tr:hover
+{
+    background: var(--table-hover);
+}
+
+.scan-queue-table tbody tr:last-child td
+{
+    border-bottom: none;
+}
+
+/* Narrow, centered position/status column. */
+.scan-queue-table .scan-queue-pos
+{
+    width: 2.5em;
+    text-align: center;
+    white-space: nowrap;
+    font-variant-numeric: tabular-nums;
+}
+
+.scan-queue-table .scan-queue-name
+{
+    font-weight: 600;
+    white-space: nowrap;
+}
+
+/* Keyword args can be long; keep them readable without blowing out the row. */
+.scan-queue-table .scan-queue-args
+{
+    font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+    font-size: 0.85em;
+    word-break: break-word;
+}
+
+.scan-queue-table .scan-queue-user
+{
+    white-space: nowrap;
+    opacity: 0.85;
+}
+
+/* Highlight the currently running item. */
+.scan-queue-table tbody tr.running,
+.scan-queue-table tbody tr.running:hover
+{
+    background: var(--table-active-bg, hsl(140 45% 20%));
+    font-weight: 600;
+}
+
+.scan-queue-table tbody tr.running .scan-queue-pos
+{
+    color: hsl(140 55% 55%);
+}
+
+.scan-queue-empty
+{
+    margin: 6px 0 12px 0;
+    opacity: 0.8;
+    font-style: italic;
+}
+
+/* Scan history: exit-status column is color-coded, finish time is compact. */
+.scan-queue-table .scan-history-status
+{
+    font-weight: 600;
+    white-space: nowrap;
+    text-transform: capitalize;
+}
+
+.scan-queue-table .scan-history-time
+{
+    white-space: nowrap;
+    font-variant-numeric: tabular-nums;
+    opacity: 0.85;
+}
+
+/* Completed successfully. */
+.scan-history-status.status-completed
+{
+    color: hsl(140 55% 42%);
+}
+
+/* Failed or errored out. */
+.scan-history-status.status-failed
+{
+    color: hsl(0 70% 55%);
+}
+
+/* User-aborted / halted / stopped. */
+.scan-history-status.status-aborted,
+.scan-history-status.status-halted,
+.scan-history-status.status-stopped
+{
+    color: hsl(35 85% 50%);
+}
+
 /* Bottom-docked logs/tasks panel. The tab bar is always visible; clicking a
    tab expands the content area upward to a third of the viewport. */
 .beamline-log-main
@@ -189,6 +350,45 @@
 .beamline-log-item:hover
 {
     background: var(--table-hover);
+}
+
+/* Sticky "follow/paused" control that floats at the bottom-right of the log
+   panel. The bar spans the width but ignores pointer events so it doesn't block
+   the log lines behind it; only the button itself is clickable. */
+.beamline-log-follow-bar
+{
+    position: sticky;
+    bottom: 0;
+    display: flex;
+    justify-content: flex-end;
+    padding: 6px 10px;
+    pointer-events: none;
+}
+
+.beamline-log-follow
+{
+    pointer-events: auto;
+    cursor: pointer;
+    font-size: 0.8em;
+    padding: 3px 12px;
+    border: 1px solid #6b6bc4;
+    border-radius: 12px;
+    color: #ffffff;
+    background: #3a3a7a;
+    box-shadow: 0 1px 4px rgba(0, 0, 0, 0.3);
+}
+
+.beamline-log-follow:hover
+{
+    background: #4d4da0;
+}
+
+/* Muted green while actively following; the default (paused) state keeps the
+   accent color so it reads as a call-to-action to resume. */
+.beamline-log-follow.following
+{
+    background: hsl(140 40% 30%);
+    border-color: hsl(140 45% 45%);
 }
 
 /* Full-screen dimmed backdrop for the log detail modal. */

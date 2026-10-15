@@ -241,12 +241,19 @@ fn run_command_loop(config: &Config, running: &AtomicBool) -> Result<()> {
     println!("Updating Redis with available scans");
     client_map.update_available_scans(&mut redis_conn);
 
+    println!("Updating Redis with current scan queue");
+    client_map.update_queued_scans(&mut redis_conn);
+
+    println!("Updating Redis with scan history");
+    client_map.update_scan_history(&mut redis_conn);
+
     let mut heartbeat_start = Instant::now();
     let ten_seconds_dur = Duration::new(10, 0);
 
     println!("Polling for messages...");
     while running.load(Ordering::SeqCst) {
-        // poll and publish logs
+        // poll and publish logs (also triggers a scan-queue refresh when a log
+        // line reports the queue or running scan changed)
         client_map.poll_logs(&mut redis_conn);
         // poll redis command queue
         client_map.poll_cmd_queue(&mut redis_conn);

@@ -112,6 +112,44 @@ impl BeamlineCommand
         }
     }
 
+    // Fetch the current scan queue from the control server. The queueserver
+    // `queue_get` method takes no parameters and returns the queued items plus
+    // the currently running item.
+    pub fn gen_get_queue(beam_id: &String) -> Self
+    {
+        Self
+        {
+            beamline_id: beam_id.clone(),
+            status: "QUEUED".to_string(),
+            cmd: "queue_get".to_string(),
+            args: HashMap::new(),
+            username: None,
+            reply: None,
+            proc_start_time: None,
+            proc_end_time: None,
+            original_str: None,
+        }
+    }
+
+    // Fetch the scan history (completed scans) from the control server. The
+    // queueserver `history_get` method takes no parameters and returns the
+    // finished plan items plus a `plan_history_uid` that changes on each new entry.
+    pub fn gen_get_history(beam_id: &String) -> Self
+    {
+        Self
+        {
+            beamline_id: beam_id.clone(),
+            status: "QUEUED".to_string(),
+            cmd: "history_get".to_string(),
+            args: HashMap::new(),
+            username: None,
+            reply: None,
+            proc_start_time: None,
+            proc_end_time: None,
+            original_str: None,
+        }
+    }
+
 }
 
 impl BeamlineTaskQueues
